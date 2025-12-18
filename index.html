@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Taller de Reparaciones</title>
+    <link rel="stylesheet" href="styles.css?v=2">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+</head>
+<body>
+    <!-- Pantalla de Login -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="login-icon">🔧</div>
+                <h1>Taller de Reparaciones</h1>
+                <p>Sistema de Gestión Profesional</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="input-group">
+                    <label for="loginUsername">Usuario</label>
+                    <input type="text" id="loginUsername" placeholder="Ingresa tu usuario" required autocomplete="username">
+                </div>
+                <div class="input-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <input type="password" id="loginPassword" placeholder="Ingresa tu contraseña" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="login-btn">Iniciar Sesión</button>
+                <button type="button" class="login-btn" onclick="mostrarActivacionLicencia()" style="background: linear-gradient(135deg, #28a745, #20c997); margin-top: 10px;">🔐 Activar Licencia</button>
+                <div class="login-footer">
+                    <p><small>© 2025 Todos los derechos reservados<br><strong>Ing. Carlos Jiménez</strong></small></p>
+                    <a href="licencias.html" style="display: block; margin-top: 10px; text-align: center; color: #999; font-size: 11px; text-decoration: none; opacity: 0.5; transition: opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'">🔑 Administrador de Licencias</a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Modal de Activación de Licencia -->
+        <div id="modalLicencia" class="login-container" style="display: none; max-width: 500px;">
+            <div class="login-header">
+                <div class="login-icon">🔐</div>
+                <h1>Activar Licencia</h1>
+                <p>Ingresa tu clave de licencia para activar el sistema</p>
+            </div>
+            <form id="licenseActivationForm" class="login-form" onsubmit="activarLicencia(event)">
+                <div class="input-group">
+                    <label for="licenseKey">Clave de Licencia</label>
+                    <input type="text" id="licenseKey" placeholder="TT-XXX-XXXXXXXX-XXXXX-XXXX" required style="text-transform: uppercase; font-family: monospace;">
+                    <small style="color: #666; display: block; margin-top: 5px;">Ejemplo: TT-MEN-ABCD1234-K5N2M-A9B2</small>
+                </div>
+                <div id="licenseError" style="display: none; padding: 12px; background: #f8d7da; color: #721c24; border-radius: 8px; margin-bottom: 15px; font-size: 14px;"></div>
+                <div id="licenseSuccess" style="display: none; padding: 12px; background: #d4edda; color: #155724; border-radius: 8px; margin-bottom: 15px; font-size: 14px;"></div>
+                <button type="submit" class="login-btn">Validar y Continuar</button>
+                <button type="button" class="login-btn" onclick="ocultarActivacionLicencia()" style="background: #6c757d; margin-top: 10px;">Cancelar</button>
+            </form>
+        </div>
+        
+        <!-- Modal de Registro de Usuario -->
+        <div id="modalRegistro" class="login-container" style="display: none; max-width: 500px;">
+            <div class="login-header">
+                <div class="login-icon">👤</div>
+                <h1>Crear Usuario</h1>
+                <p>Configura tu usuario para acceder al sistema</p>
+            </div>
+            <form id="userRegistrationForm" class="login-form" onsubmit="registrarUsuario(event)">
+                <div class="input-group">
+                    <label for="regNombreTaller">Nombre del Taller</label>
+                    <input type="text" id="regNombreTaller" placeholder="Mi Taller de Reparaciones" required>
+                </div>
+                <div class="input-group">
+                    <label for="regUsuario">Usuario</label>
+                    <input type="text" id="regUsuario" placeholder="usuario" required autocomplete="off">
+                    <small style="color: #666; display: block; margin-top: 5px;">Mínimo 4 caracteres</small>
+                </div>
+                <div class="input-group">
+                    <label for="regPassword">Contraseña</label>
+                    <input type="password" id="regPassword" placeholder="Contraseña segura" required autocomplete="new-password">
+                    <small style="color: #666; display: block; margin-top: 5px;">Mínimo 6 caracteres</small>
+                </div>
+                <div class="input-group">
+                    <label for="regPasswordConfirm">Confirmar Contraseña</label>
+                    <input type="password" id="regPasswordConfirm" placeholder="Repite la contraseña" required autocomplete="new-password">
+                </div>
+                <div id="registroError" style="display: none; padding: 12px; background: #f8d7da; color: #721c24; border-radius: 8px; margin-bottom: 15px; font-size: 14px;"></div>
+                <button type="submit" class="login-btn">Crear Usuario y Acceder</button>
+            </form>
+        </div>
+    </div>
+```
+        </div>
+    </div>
+
+    <!-- Aplicación Principal -->
+    <div id="mainApp" class="container" style="display: none;">
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h1>🔧 Taller de Reparaciones</h1>
+                <button onclick="cerrarSesion()" class="btn-logout">🚪 Cerrar Sesión</button>
+            </div>
+            <nav>
+                <button class="nav-btn active" data-section="dashboard">Dashboard</button>
+                <button class="nav-btn" data-section="clientes">Clientes</button>
+                <button class="nav-btn" data-section="ordenes">Órdenes</button>
+                <button class="nav-btn" data-section="pagos">Pagos</button>
+                <button class="nav-btn" data-section="inventario">Inventario</button>
+                <button class="nav-btn" data-section="reportes">Reportes</button>
+                <button class="nav-btn" data-section="buscar">Buscar</button>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Dashboard -->
+            <section id="dashboard" class="section active">
+                <h2>Panel de Control</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Clientes</h3>
+                        <p class="stat-number" id="totalClientes">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Órdenes Activas</h3>
+                        <p class="stat-number" id="ordenesActivas">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>En Reparación</h3>
+                        <p class="stat-number" id="enReparacion">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Listas para Entrega</h3>
+                        <p class="stat-number" id="listasEntrega">0</p>
+                    </div>
+                </div>
+                <div class="recent-orders">
+                    <h3>Órdenes Recientes</h3>
+                    <div id="ordenesRecientes"></div>
+                </div>
+            </section>
+
+            <!-- Clientes -->
+            <section id="clientes" class="section">
+                <div class="section-header">
+                    <h2>Gestión de Clientes</h2>
+                    <button class="btn-primary" onclick="mostrarFormCliente()">+ Nuevo Cliente</button>
+                </div>
+
+                <div id="formCliente" class="form-container" style="display: none;">
+                    <h3>Nuevo Cliente</h3>
+                    <form id="clienteForm">
+                        <input type="hidden" id="clienteId">
+                        <div class="form-group">
+                            <label>Nombre *</label>
+                            <input type="text" id="clienteNombre" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Apellido *</label>
+                            <input type="text" id="clienteApellido" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Celular *</label>
+                            <input type="tel" id="clienteCelular" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="clienteEmail">
+                        </div>
+                        <div class="form-group">
+                            <label>Dirección</label>
+                            <input type="text" id="clienteDireccion">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Guardar</button>
+                            <button type="button" class="btn-secondary" onclick="cancelarFormCliente()">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="listaClientes" class="table-container"></div>
+            </section>
+
+            <!-- Órdenes -->
+            <section id="ordenes" class="section">
+                <div class="section-header">
+                    <h2>Órdenes de Reparación</h2>
+                    <button class="btn-primary" onclick="mostrarFormOrden()">+ Nueva Orden</button>
+                </div>
+
+                <div id="formOrden" class="form-container" style="display: none;">
+                    <h3>Nueva Orden de Reparación</h3>
+                    
+                    <!-- Formulario rápido de cliente -->
+                    <div id="formClienteRapido" style="display: none; background: #e8f5e9; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #4caf50;">
+                        <h4 style="margin-bottom: 15px; color: #2e7d32;">➕ Agregar Cliente Rápido</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nombre *</label>
+                                <input type="text" id="clienteRapidoNombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Apellido *</label>
+                                <input type="text" id="clienteRapidoApellido" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Celular *</label>
+                                <input type="tel" id="clienteRapidoCelular" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Email (opcional)</label>
+                                <input type="email" id="clienteRapidoEmail">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button type="button" class="btn-success" onclick="guardarClienteRapido()">✅ Guardar y Seleccionar</button>
+                            <button type="button" class="btn-secondary" onclick="cancelarClienteRapido()">❌ Cancelar</button>
+                        </div>
+                    </div>
+                    
+                    <form id="ordenForm">
+                        <input type="hidden" id="ordenId">
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label>Cliente *</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <select id="ordenCliente" required style="flex: 1;">
+                                        <option value="">Seleccionar cliente...</option>
+                                    </select>
+                                    <button type="button" class="btn-success" onclick="mostrarFormClienteRapido()" style="padding: 10px 15px; white-space: nowrap;">+ Nuevo</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Dispositivo *</label>
+                                <select id="ordenTipoDispositivo" required>
+                                    <option value="">Seleccionar...</option>
+                                    <option value="Celular">Celular</option>
+                                    <option value="Tablet">Tablet</option>
+                                    <option value="Laptop">Laptop</option>
+                                    <option value="Smartwatch">Smartwatch</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Marca *</label>
+                                <input type="text" id="ordenMarca" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Modelo *</label>
+                                <input type="text" id="ordenModelo" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>IMEI / Número de Serie</label>
+                            <input type="text" id="ordenIMEI">
+                        </div>
+                        <div class="form-group">
+                            <label>Problema Reportado *</label>
+                            <textarea id="ordenProblema" rows="3" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Accesorios Incluidos</label>
+                            <input type="text" id="ordenAccesorios" placeholder="Ej: Cargador, funda, audífonos...">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Estado *</label>
+                                <select id="ordenEstado" required>
+                                    <option value="Recibido">Recibido</option>
+                                    <option value="En Diagnóstico">En Diagnóstico</option>
+                                    <option value="Esperando Repuestos">Esperando Repuestos</option>
+                                    <option value="En Reparación">En Reparación</option>
+                                    <option value="Listo para Entrega">Listo para Entrega</option>
+                                    <option value="Entregado">Entregado</option>
+                                    <option value="Cancelado">Cancelado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Presupuesto ($)</label>
+                                <input type="text" id="ordenPresupuesto" placeholder="Ej: 2500 o 2500.50">
+                            </div>
+                            <div class="form-group">
+                                <label>Costo de Piezas ($ - si no están en inventario)</label>
+                                <input type="text" id="ordenCostoPiezas" placeholder="Ej: 500 o 500.50" value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Anticipo ($)</label>
+                                <input type="text" id="ordenAnticipo" placeholder="Ej: 500" value="0">
+                            </div>
+                        </div>
+                        <div class="form-group" style="border-top: 1px solid #e0e0e0; padding-top: 15px; margin-top: 15px;">
+                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">Garantía del Servicio</label>
+                            <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="tipoGarantia" value="con" onchange="toggleGarantia()" checked style="width: auto; cursor: pointer;">
+                                    <span>✅ Con garantía</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="tipoGarantia" value="sin" onchange="toggleGarantia()" style="width: auto; cursor: pointer;">
+                                    <span>❌ Sin garantía</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-row" id="campoGarantia">
+                            <div class="form-group">
+                                <label>Días de Garantía</label>
+                                <input type="number" id="ordenGarantia" value="30" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label style="color: #999; font-size: 13px;">La garantía inicia desde la fecha de entrega</label>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Fecha de Ingreso</label>
+                                <input type="date" id="ordenFechaIngreso" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha Estimada de Entrega</label>
+                                <input type="date" id="ordenFechaEstimada">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Técnico Asignado</label>
+                            <input type="text" id="ordenTecnico">
+                        </div>
+                        <div class="form-group">
+                            <label>Notas Adicionales</label>
+                            <textarea id="ordenNotas" rows="2"></textarea>
+                        </div>
+                        
+                        <!-- Repuestos del Inventario -->
+                        <div class="form-group" style="border-top: 2px solid #e0e0e0; padding-top: 20px; margin-top: 20px;">
+                            <h4 style="margin-bottom: 15px;">🔧 Repuestos Utilizados (Opcional)</h4>
+                            <div id="repuestosSeleccionados"></div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 2;">
+                                    <label>Seleccionar Repuesto del Inventario</label>
+                                    <select id="selectRepuesto">
+                                        <option value="">-- Seleccionar repuesto --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Cantidad</label>
+                                    <input type="number" id="cantidadRepuesto" min="1" value="1">
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: flex-end;">
+                                    <button type="button" class="btn-success" onclick="agregarRepuestoOrden()" style="margin-bottom: 0;">+ Agregar</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Guardar Orden</button>
+                            <button type="button" class="btn-secondary" onclick="cancelarFormOrden()">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="filters">
+                    <select id="filtroEstado" onchange="filtrarOrdenes()">
+                        <option value="">Todos los estados</option>
+                        <option value="Recibido">Recibido</option>
+                        <option value="En Diagnóstico">En Diagnóstico</option>
+                        <option value="Esperando Repuestos">Esperando Repuestos</option>
+                        <option value="En Reparación">En Reparación</option>
+                        <option value="Listo para Entrega">Listo para Entrega</option>
+                        <option value="Entregado">Entregado</option>
+                        <option value="Cancelado">Cancelado</option>
+                    </select>
+                </div>
+
+                <div id="listaOrdenes" class="table-container"></div>
+            </section>
+
+            <!-- Pagos -->
+            <section id="pagos" class="section">
+                <h2>Gestión de Pagos y Cuentas por Cobrar</h2>
+                <div class="stats-grid">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                        <h3>Total Cobrado</h3>
+                        <p class="stat-number" id="totalCobrado">$0</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <h3>Por Cobrar</h3>
+                        <p class="stat-number" id="porCobrar">$0</p>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <h3>Cobrado Hoy</h3>
+                        <p class="stat-number" id="cobradoHoy">$0</p>
+                    </div>
+                </div>
+                <div id="listaPagos"></div>
+            </section>
+
+            <!-- Inventario -->
+            <section id="inventario" class="section">
+                <div class="section-header">
+                    <h2>Inventario de Repuestos</h2>
+                    <button class="btn-primary" onclick="mostrarFormRepuesto()">+ Agregar Repuesto</button>
+                </div>
+
+                <div id="formRepuesto" class="form-container" style="display: none;">
+                    <h3>Nuevo Repuesto</h3>
+                    <form id="repuestoForm">
+                        <input type="hidden" id="repuestoId">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nombre del Repuesto *</label>
+                                <input type="text" id="repuestoNombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Categoría *</label>
+                                <select id="repuestoCategoria" required>
+                                    <option value="">Seleccionar...</option>
+                                    <option value="Pantallas">Pantallas</option>
+                                    <option value="Baterías">Baterías</option>
+                                    <option value="Cámaras">Cámaras</option>
+                                    <option value="Conectores">Conectores</option>
+                                    <option value="Altavoces">Altavoces</option>
+                                    <option value="Botones">Botones</option>
+                                    <option value="Carcasas">Carcasas</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Compatibilidad</label>
+                                <input type="text" id="repuestoCompatibilidad" placeholder="Ej: iPhone 12, Samsung S21">
+                            </div>
+                            <div class="form-group">
+                                <label>Código/SKU <small style="color: #999;">(se genera automáticamente)</small></label>
+                                <input type="text" id="repuestoCodigo" placeholder="Se generará automáticamente" disabled style="background: #f5f5f5; cursor: not-allowed;">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Cantidad en Stock *</label>
+                                <input type="number" id="repuestoStock" required min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Stock Mínimo</label>
+                                <input type="number" id="repuestoStockMinimo" value="5" min="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Precio Compra ($)</label>
+                                <input type="number" id="repuestoPrecioCompra" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>Precio Venta ($) *</label>
+                                <input type="number" id="repuestoPrecioVenta" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Ubicación en Almacén</label>
+                            <input type="text" id="repuestoUbicacion" placeholder="Ej: Estante A, Nivel 2">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Guardar</button>
+                            <button type="button" class="btn-secondary" onclick="cancelarFormRepuesto()">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="search-container" style="margin-bottom: 20px;">
+                    <input type="text" id="busquedaInventario" placeholder="Buscar por nombre, código SKU, compatibilidad..." oninput="filtrarInventario()">
+                    <button class="btn-primary" onclick="filtrarInventario()">🔍 Buscar</button>
+                </div>
+
+                <div class="filters">
+                    <select id="filtroCategoria" onchange="filtrarInventario()">
+                        <option value="">Todas las categorías</option>
+                        <option value="Pantallas">Pantallas</option>
+                        <option value="Baterías">Baterías</option>
+                        <option value="Cámaras">Cámaras</option>
+                        <option value="Conectores">Conectores</option>
+                        <option value="Altavoces">Altavoces</option>
+                        <option value="Botones">Botones</option>
+                        <option value="Carcasas">Carcasas</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                    <select id="filtroStock" onchange="filtrarInventario()">
+                        <option value="">Todos</option>
+                        <option value="bajo">Stock Bajo</option>
+                        <option value="agotado">Agotado</option>
+                    </select>
+                </div>
+
+                <div id="listaInventario" class="table-container"></div>
+            </section>
+
+            <!-- Reportes -->
+            <section id="reportes" class="section">
+                <h2>Reportes y Estadísticas</h2>
+                
+                <div class="filters" style="margin-bottom: 20px;">
+                    <label>Período:</label>
+                    <select id="periodoReporte" onchange="generarReportes()">
+                        <option value="hoy">Hoy</option>
+                        <option value="semana">Esta Semana</option>
+                        <option value="mes" selected>Este Mes</option>
+                        <option value="año">Este Año</option>
+                        <option value="todo">Todo el Tiempo</option>
+                    </select>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Ingresos Totales</h3>
+                        <p class="stat-number" id="reporteIngresos">$0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Órdenes Completadas</h3>
+                        <p class="stat-number" id="reporteCompletadas">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Promedio por Orden</h3>
+                        <p class="stat-number" id="reportePromedio">$0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Tiempo Promedio</h3>
+                        <p class="stat-number" id="reporteTiempo">0d</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h3>💰 Desglose de Ganancias</h3>
+                    <div id="desgloseganancias"></div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h3>Top Dispositivos Reparados</h3>
+                    <div id="topDispositivos"></div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h3>Top Clientes</h3>
+                    <div id="topClientes"></div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button class="btn-primary" onclick="exportarDatos()">📥 Exportar Datos (JSON)</button>
+                    <button class="btn-secondary" onclick="imprimirReporte()">🖨️ Imprimir Reporte</button>
+                </div>
+            </section>
+
+            <!-- Buscar -->
+            <section id="buscar" class="section">
+                <h2>Búsqueda Rápida</h2>
+                <div class="search-container">
+                    <input type="text" id="busqueda" placeholder="Buscar por nombre, celular, dispositivo, orden #...">
+                    <button class="btn-primary" onclick="buscar()">🔍 Buscar</button>
+                </div>
+                <div id="resultadosBusqueda"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal para impresión de recibos -->
+    <div id="modalImpresion" style="display: none;"></div>
+
+    <script src="app.js?v=3"></script>
+</body>
+</html>

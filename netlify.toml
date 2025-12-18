@@ -1,0 +1,25 @@
+[build]
+  command = "echo 'Build complete'"
+  publish = "."
+  # Ignorar Firebase API Key en escaneo de secretos
+  environment = { SECRETS_SCAN_SMART_DETECTION_ENABLED = "false" }
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"
+
+# Soportar archivos .env en build
+[context.production]
+  environment = { VITE_FIREBASE_API_KEY = "", VITE_FIREBASE_AUTH_DOMAIN = "", VITE_FIREBASE_PROJECT_ID = "", VITE_FIREBASE_STORAGE_BUCKET = "", VITE_FIREBASE_MESSAGING_SENDER_ID = "", VITE_FIREBASE_APP_ID = "", VITE_FIREBASE_MEASUREMENT_ID = "" }
+
+

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Buscador</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input { padding: 10px; width: 300px; margin: 20px 0; font-size: 16px; }
+        .item { padding: 10px; margin: 5px 0; background: #f0f0f0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test del Buscador de Inventario</h1>
+    <input type="text" id="buscar" placeholder="Escribe para buscar..." oninput="buscar()">
+    <div id="resultados"></div>
+
+    <script>
+        // Datos de prueba
+        const items = [
+            {nombre: 'Pantalla iPhone 12', codigo: 'SKU-0001', categoria: 'Pantallas'},
+            {nombre: 'Batería Samsung S21', codigo: 'SKU-0002', categoria: 'Baterías'},
+            {nombre: 'Cámara Xiaomi', codigo: 'SKU-0003', categoria: 'Cámaras'},
+            {nombre: 'Conector USB-C', codigo: 'SKU-0004', categoria: 'Conectores'}
+        ];
+
+        function buscar() {
+            const texto = document.getElementById('buscar').value.toLowerCase();
+            console.log('Buscando:', texto);
+            
+            const resultados = items.filter(item => 
+                item.nombre.toLowerCase().includes(texto) ||
+                item.codigo.toLowerCase().includes(texto) ||
+                item.categoria.toLowerCase().includes(texto)
+            );
+            
+            console.log('Resultados:', resultados.length);
+            
+            const container = document.getElementById('resultados');
+            if (resultados.length === 0) {
+                container.innerHTML = '<p>No se encontraron resultados</p>';
+            } else {
+                container.innerHTML = resultados.map(item => 
+                    `<div class="item">
+                        <strong>${item.nombre}</strong> - ${item.codigo} (${item.categoria})
+                    </div>`
+                ).join('');
+            }
+        }
+
+        // Mostrar todos al inicio
+        buscar();
+    </script>
+</body>
+</html>

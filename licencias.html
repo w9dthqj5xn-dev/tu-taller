@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Licencias - Tu Taller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a2332 0%, #2c3e50 50%, #34495e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+            animation: slideIn 0.5s ease;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            margin-top: 40px;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .login-section, .generator-section {
+            display: none;
+        }
+
+        .login-section.active, .generator-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #e67e22;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(230, 126, 34, 0.5);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .alert {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .license-card {
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .license-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .license-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .license-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        .license-row strong {
+            color: #333;
+        }
+
+        .license-key {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px dashed #ffc107;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #856404;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .licenses-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .license-item {
+            background: #f8f9fa;
+            border-left: 4px solid #e67e22;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .license-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .license-item.expired {
+            border-left-color: #ef4444;
+            opacity: 0.7;
+        }
+
+        .license-item h4 {
+            color: #e67e22;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .license-item p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            z-index: 10;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+            z-index: 10;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(100, 116, 139, 0.4);
+        }
+
+        .license-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-renovar, .btn-eliminar {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-renovar {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-renovar:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-eliminar {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-eliminar:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-suspender {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-suspender:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-activar {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+        }
+
+        .btn-activar:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+        }
+
+        .btn-editar {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-editar:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .license-item.suspended {
+            border-left-color: #ffc107;
+            opacity: 0.6;
+            background: #fff3cd;
+        }
+
+        /* Estilos de tablas modernas */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        table thead {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+        }
+
+        table thead th {
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        table tbody tr {
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.3s;
+        }
+
+        table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        table tbody td {
+            padding: 12px 15px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .licenses-table {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-expired {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-suspended {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                max-width: 100%;
+                padding: 20px;
+                border-radius: 16px;
+            }
+
+            .header {
+                margin-bottom: 20px;
+                margin-top: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .header p {
+                font-size: 12px;
+            }
+
+            .form-group {
+                margin-bottom: 15px;
+            }
+
+            .form-group input {
+                padding: 10px 12px;
+                font-size: 16px;
+            }
+
+            .btn {
+                padding: 12px;
+                font-size: 14px;
+                width: 100%;
+            }
+
+            .logout-btn, .back-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+                top: 10px;
+            }
+
+            .license-key {
+                font-size: 14px;
+                padding: 12px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            table thead th {
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+
+            table tbody td {
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+
+            .license-item {
+                padding: 12px;
+                margin-bottom: 8px;
+            }
+
+            .license-item h4 {
+                font-size: 14px;
+            }
+
+            .license-item p {
+                font-size: 12px;
+            }
+
+            .license-actions {
+                gap: 5px;
+            }
+
+            .btn-renovar, .btn-eliminar, .btn-suspender, .btn-activar, .btn-editar {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+
+            .alert {
+                font-size: 12px;
+                padding: 10px 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            .container {
+                padding: 15px;
+                border-radius: 12px;
+            }
+
+            .header {
+                margin-bottom: 15px;
+                margin-top: 15px;
+            }
+
+            .header h1 {
+                font-size: 1.2em;
+            }
+
+            .header p {
+                font-size: 11px;
+            }
+
+            .form-group {
+                margin-bottom: 12px;
+            }
+
+            .form-group label {
+                font-size: 13px;
+            }
+
+            .form-group input {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            .btn {
+                padding: 11px;
+                font-size: 13px;
+            }
+
+            .logout-btn, .back-btn {
+                padding: 5px 10px;
+                font-size: 10px;
+                top: 8px;
+            }
+
+            .logout-btn {
+                right: 8px;
+            }
+
+            .back-btn {
+                left: 8px;
+            }
+
+            .license-key {
+                font-size: 12px;
+                padding: 10px;
+                margin: 10px 0;
+            }
+
+            table {
+                font-size: 11px;
+                display: block;
+                overflow-x: auto;
+            }
+
+            table thead {
+                display: none;
+            }
+
+            table tbody, table tr, table td {
+                display: block;
+                width: 100%;
+            }
+
+            table tbody tr {
+                margin-bottom: 15px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 10px;
+            }
+
+            table tbody td {
+                padding: 8px 0;
+                text-align: left;
+                border: none;
+            }
+
+            table tbody td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #e67e22;
+                display: inline-block;
+                min-width: 100px;
+            }
+
+            .license-item {
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+
+            .license-item h4 {
+                font-size: 13px;
+            }
+
+            .license-item p {
+                font-size: 11px;
+            }
+
+            .license-actions {
+                gap: 4px;
+                flex-direction: column;
+            }
+
+            .btn-renovar, .btn-eliminar, .btn-suspender, .btn-activar, .btn-editar {
+                padding: 8px;
+                font-size: 12px;
+                width: 100%;
+            }
+
+            .licenses-list {
+                max-height: 300px;
+            }
+
+            .license-row {
+                flex-direction: column;
+                padding: 8px;
+                gap: 5px;
+            }
+
+            .alert {
+                font-size: 11px;
+                padding: 8px 10px;
+            }
+
+            .form-group input {
+                width: 100%;
+                min-height: 40px;
+            }
+        }
+
+        /* Ultra pequeños */
+        @media (max-width: 320px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header h1 {
+                font-size: 1.1em;
+            }
+
+            .btn {
+                padding: 10px;
+                font-size: 12px;
+            }
+
+            .logout-btn, .back-btn {
+                padding: 4px 8px;
+                font-size: 9px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button id="backBtn" class="back-btn" style="display: none;" onclick="volverLogin()">← Volver</button>
+        <button id="logoutBtn" class="logout-btn" style="display: none;" onclick="cerrarSesion()">Cerrar Sesión</button>
+        
+        <!-- Login Section -->
+        <div id="loginSection" class="login-section active">
+            <div class="header">
+                <h1>🔐 Generador de Licencias</h1>
+                <p>Sistema de Gestión de Taller - Administrador</p>
+            </div>
+
+            <div id="loginError" style="display: none;" class="alert alert-error"></div>
+
+            <form id="loginForm" onsubmit="iniciarSesion(event)">
+                <div class="form-group">
+                    <label for="username">Usuario</label>
+                    <input type="text" id="username" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Acceder</button>
+                <button type="button" class="btn btn-secondary" onclick="llenarDemoCredenciales()" style="margin-top: 10px; display: block; width: 100%;">Demo (Cargar credenciales)</button>
+            </form>
+        </div>
+
+        <!-- Generator Section -->
+        <div id="generatorSection" class="generator-section">
+            <div class="header">
+                <h1>⚙️ Generador de Licencias</h1>
+                <p>Crear nuevas licencias para clientes</p>
+            </div>
+
+            <div id="successMessage" style="display: none;" class="alert alert-success"></div>
+
+            <form id="licenseForm" onsubmit="generarLicencia(event)">
+                <div class="form-group">
+                    <label for="clientName">Nombre del Cliente/Taller</label>
+                    <input type="text" id="clientName" required placeholder="Ej: Taller TecnoCell">
+                </div>
+
+                <div class="form-group">
+                    <label for="clientEmail">Email del Cliente</label>
+                    <input type="email" id="clientEmail" required placeholder="ejemplo@correo.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="licenseType">Tipo de Licencia</label>
+                    <select id="licenseType" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <option value="prueba">Prueba - 3 días</option>
+                        <option value="mensual">Mensual - 30 días</option>
+                        <option value="trimestral">Trimestral - 90 días</option>
+                        <option value="semestral">Semestral - 180 días</option>
+                        <option value="anual">Anual - 365 días</option>
+                        <option value="vitalicia">Vitalicia - Sin expiración</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="maxDevices">Máximo de Dispositivos</label>
+                    <input type="number" id="maxDevices" value="1" min="1" max="10" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Generar Licencia</button>
+            </form>
+
+            <div id="licenseResult" style="display: none;">
+                <div class="license-card">
+                    <h3>✅ Licencia Generada Exitosamente</h3>
+                    <div class="license-info" id="licenseDetails"></div>
+                    <div class="license-key" id="licenseKeyDisplay"></div>
+                    <button class="btn btn-success" onclick="copiarLicencia()">📋 Copiar Licencia</button>
+                    <button class="btn btn-secondary" onclick="descargarLicencia()">💾 Descargar Licencia</button>
+                </div>
+            </div>
+
+            <div class="licenses-list">
+                <h3 style="margin-top: 30px; color: #667eea;">📋 Licencias Generadas</h3>
+                <div id="licensesList"></div>
+            </div>
+
+            <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e0e0e0;">
+                <h3 style="margin-bottom: 20px; color: #e67e22;">👥 Administración de Usuarios</h3>
+                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Gestiona los usuarios registrados y resetea contraseñas</p>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button class="btn btn-primary" onclick="cargarUsuarios()" style="flex: 1;">🔄 Cargar Usuarios</button>
+                    <button class="btn btn-secondary" onclick="crearUsuarioPrueba()" style="flex: 1;">➕ Usuario de Prueba</button>
+                </div>
+                <div id="usuariosList" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CREDENCIALES = {
+            usuario: 'carlosjimenezlic',
+            password: 'Layla1896'
+        };
+
+        // Verificar si hay sesión activa al cargar
+        window.addEventListener('DOMContentLoaded', () => {
+            const sesionActiva = localStorage.getItem('licenciasSession');
+            if (sesionActiva === 'activa') {
+                mostrarGenerador();
+            }
+        });
+
+        function iniciarSesion(event) {
+            event.preventDefault();
+            const usuario = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            console.log('=== DEBUG LOGIN ===');
+            console.log('Usuario ingresado:', usuario);
+            console.log('Password ingresado:', password);
+            console.log('Usuario esperado:', CREDENCIALES.usuario);
+            console.log('Password esperado:', CREDENCIALES.password);
+            console.log('Coincide usuario:', usuario === CREDENCIALES.usuario);
+            console.log('Coincide password:', password === CREDENCIALES.password);
+
+            if (usuario === 'carlosjimenezlic' && password === 'Layla1896') {
+                console.log('✅ Login exitoso');
+                localStorage.setItem('licenciasSession', 'activa');
+                mostrarGenerador();
+            } else {
+                console.log('❌ Login fallido');
+                const errorDiv = document.getElementById('loginError');
+                errorDiv.textContent = '❌ Usuario o contraseña incorrectos';
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function llenarDemoCredenciales() {
+            document.getElementById('username').value = 'carlosjimenezlic';
+            document.getElementById('password').value = 'Layla1896';
+            console.log('✅ Credenciales de demo cargadas');
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem('licenciasSession');
+            document.getElementById('loginSection').classList.add('active');
+            document.getElementById('generatorSection').classList.remove('active');
+            document.getElementById('logoutBtn').style.display = 'none';
+            document.getElementById('backBtn').style.display = 'none';
+            document.getElementById('loginForm').reset();
+        }
+
+        function volverLogin() {
+            if (confirm('¿Deseas volver al login? No se cerrará tu sesión.')) {
+                document.getElementById('loginSection').classList.add('active');
+                document.getElementById('generatorSection').classList.remove('active');
+                document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('backBtn').style.display = 'none';
+            }
+        }
+
+        function mostrarGenerador() {
+            document.getElementById('loginSection').classList.remove('active');
+            document.getElementById('generatorSection').classList.add('active');
+            document.getElementById('logoutBtn').style.display = 'block';
+            document.getElementById('backBtn').style.display = 'block';
+            cargarLicencias();
+        }
+
+        async function generarLicencia(event) {
+            event.preventDefault();
+
+            const clientName = document.getElementById('clientName').value;
+            const clientEmail = document.getElementById('clientEmail').value;
+            const licenseType = document.getElementById('licenseType').value;
+            const maxDevices = parseInt(document.getElementById('maxDevices').value);
+
+            // Calcular fecha de expiración
+            const fechaCreacion = new Date();
+            let fechaExpiracion = null;
+            let dias = 0;
+
+            switch (licenseType) {
+                case 'prueba': dias = 3; break;
+                case 'mensual': dias = 30; break;
+                case 'trimestral': dias = 90; break;
+                case 'semestral': dias = 180; break;
+                case 'anual': dias = 365; break;
+                case 'vitalicia': dias = 0; break;
+            }
+
+            if (dias > 0) {
+                fechaExpiracion = new Date();
+                fechaExpiracion.setDate(fechaExpiracion.getDate() + dias);
+            }
+
+            // Generar código de licencia único
+            const licenseKey = generarCodigoLicencia(clientName, licenseType);
+
+            const licencia = {
+                clientName,
+                clientEmail,
+                licenseType,
+                licenseKey,
+                maxDevices,
+                fechaCreacion: fechaCreacion.toISOString(),
+                fechaExpiracion: fechaExpiracion ? fechaExpiracion.toISOString() : null,
+                activa: true,
+                suspendida: false
+            };
+
+            try {
+                // Guardar licencia en Firebase
+                await db.collection('licencias').add(licencia);
+                
+                // También guardar en localStorage como respaldo
+                let licencias = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
+                licencias.unshift(licencia);
+                localStorage.setItem('licenciasGeneradas', JSON.stringify(licencias));
+
+                // Mostrar resultado
+                mostrarResultado(licencia);
+                await cargarLicencias();
+
+                // Limpiar formulario
+                document.getElementById('licenseForm').reset();
+                
+                alert('✅ Licencia generada y guardada en Firebase correctamente');
+            } catch (error) {
+                console.error('Error al generar licencia:', error);
+                alert('❌ Error al guardar licencia. Por favor intenta de nuevo.');
+            }
+        }
+
+        function generarCodigoLicencia(nombre, tipo) {
+            const prefijo = tipo.substring(0, 3).toUpperCase();
+            const nombreHash = btoa(nombre).substring(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const timestamp = Date.now().toString(36).toUpperCase();
+            const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+            
+            return `TT-${prefijo}-${nombreHash}-${timestamp}-${random}`;
+        }
+
+        function mostrarResultado(licencia) {
+            const resultDiv = document.getElementById('licenseResult');
+            const detailsDiv = document.getElementById('licenseDetails');
+            const keyDisplay = document.getElementById('licenseKeyDisplay');
+
+            const tipoTexto = {
+                prueba: 'Prueba (3 días)',
+                mensual: 'Mensual (30 días)',
+                trimestral: 'Trimestral (90 días)',
+                semestral: 'Semestral (180 días)',
+                anual: 'Anual (365 días)',
+                vitalicia: 'Vitalicia (Sin expiración)'
+            };
+
+            detailsDiv.innerHTML = `
+                <div class="license-row">
+                    <strong>Cliente:</strong>
+                    <span>${licencia.clientName}</span>
+                </div>
+                <div class="license-row">
+                    <strong>Email:</strong>
+                    <span>${licencia.clientEmail}</span>
+                </div>
+                <div class="license-row">
+                    <strong>Tipo:</strong>
+                    <span>${tipoTexto[licencia.licenseType]}</span>
+                </div>
+                <div class="license-row">
+                    <strong>Dispositivos:</strong>
+                    <span>${licencia.maxDevices}</span>
+                </div>
+                <div class="license-row">
+                    <strong>Fecha Creación:</strong>
+                    <span>${new Date(licencia.fechaCreacion).toLocaleDateString()}</span>
+                </div>
+                ${licencia.fechaExpiracion ? `
+                <div class="license-row">
+                    <strong>Fecha Expiración:</strong>
+                    <span>${new Date(licencia.fechaExpiracion).toLocaleDateString()}</span>
+                </div>
+                ` : ''}
+            `;
+
+            keyDisplay.textContent = licencia.licenseKey;
+            resultDiv.style.display = 'block';
+
+            // Scroll al resultado
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        async function cargarLicencias() {
+            const container = document.getElementById('licensesList');
+            
+            try {
+                // Cargar licencias desde Firebase
+                const snapshot = await db.collection('licencias')
+                    .orderBy('fechaCreacion', 'desc')
+                    .get();
+                
+                if (snapshot.empty) {
+                    container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay licencias generadas</p>';
+                    return;
+                }
+                
+                const licencias = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                const tipoTexto = {
+                    prueba: 'Prueba',
+                    mensual: 'Mensual',
+                    trimestral: 'Trimestral',
+                    semestral: 'Semestral',
+                    anual: 'Anual',
+                    vitalicia: 'Vitalicia'
+                };
+
+                // Obtener usuarios registrados desde localStorage (solo para info)
+                const usuariosRegistrados = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+            
+            container.innerHTML = licencias.map((lic, index) => {
+                const expirada = lic.fechaExpiracion && new Date(lic.fechaExpiracion) < new Date();
+                const suspendida = lic.suspendida === true;
+                let estado = '✅';
+                let claseEstado = '';
+                
+                if (suspendida) {
+                    estado = '⏸️ SUSPENDIDA';
+                    claseEstado = 'suspended';
+                } else if (expirada) {
+                    estado = '❌ EXPIRADA';
+                    claseEstado = 'expired';
+                }
+                
+                // Buscar usuario registrado con esta licencia
+                const usuarioRegistrado = usuariosRegistrados.find(u => u.licenseKey === lic.licenseKey);
+                
+                return `
+                    <div class="license-item ${claseEstado}">
+                        <h4>${lic.clientName} ${estado}</h4>
+                        <p><strong>Clave:</strong> ${lic.licenseKey}</p>
+                        <p><strong>Email:</strong> ${lic.clientEmail}</p>
+                        ${usuarioRegistrado ? `
+                            <p><strong>👤 Usuario:</strong> <span style="font-family: monospace; color: #667eea;">${usuarioRegistrado.usuario}</span></p>
+                            <p><strong>🔑 Contraseña:</strong> <span style="font-family: monospace; color: #667eea;">${usuarioRegistrado.password}</span></p>
+                            <p style="color: #28a745; font-size: 12px;">✓ Licencia activada el ${new Date(usuarioRegistrado.fechaRegistro).toLocaleDateString()}</p>
+                        ` : '<p style="color: #6c757d; font-size: 12px;">⚪ Licencia no activada - Sin usuario registrado</p>'}
+                        <p><strong>Tipo:</strong> ${tipoTexto[lic.licenseType]} | <strong>Dispositivos:</strong> ${lic.maxDevices}</p>
+                        <p><strong>Creada:</strong> ${new Date(lic.fechaCreacion).toLocaleDateString()}</p>
+                        ${lic.fechaExpiracion ? `<p><strong>Expira:</strong> ${new Date(lic.fechaExpiracion).toLocaleDateString()}</p>` : '<p><strong>Sin expiración</strong></p>'}
+                        ${suspendida ? '<p style="color: #856404; font-weight: bold;">⚠️ Licencia suspendida temporalmente</p>' : ''}
+                        <div class="license-actions">
+                            <button class="btn-editar" onclick="editarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">✏️ Editar</button>
+                            <button class="btn-renovar" onclick="renovarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">🔄 Renovar</button>
+                            ${suspendida ? 
+                                `<button class="btn-activar" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">▶️ Activar</button>` :
+                                `<button class="btn-suspender" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">⏸️ Suspender</button>`
+                            }
+                            <button class="btn-eliminar" onclick="eliminarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">🗑️ Eliminar</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+                
+            } catch (error) {
+                console.error('Error al cargar licencias:', error);
+                container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">❌ Error al cargar licencias</p>';
+            }
+        }
+
+        function copiarLicencia() {
+            const licenseKey = document.getElementById('licenseKeyDisplay').textContent;
+            navigator.clipboard.writeText(licenseKey).then(() => {
+                alert('✅ Licencia copiada al portapapeles');
+            });
+        }
+
+        // ====== ADMINISTRACIÓN DE USUARIOS ======
+
+        async function cargarUsuarios() {
+            const container = document.getElementById('usuariosList');
+            container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">⏳ Cargando usuarios...</p>';
+            
+            try {
+                console.log('🔍 Iniciando cargarUsuarios()...');
+                
+                let usuariosLocal = [];
+                
+                // Primero, intentar cargar desde localStorage (más rápido y confiable)
+                const localStorageData = localStorage.getItem('usuariosRegistrados');
+                console.log('📂 localStorage "usuariosRegistrados" disponible:', !!localStorageData);
+                
+                if (localStorageData) {
+                    usuariosLocal = JSON.parse(localStorageData);
+                    console.log('✅ Usuarios desde localStorage:', usuariosLocal.length);
+                }
+                
+                // Si no hay en localStorage, intentar Firebase
+                if (usuariosLocal.length === 0 && typeof db !== 'undefined' && db) {
+                    try {
+                        console.log('🔗 Intentando cargar desde Firebase...');
+                        const snapshot = await db.collection('usuarios').get();
+                        usuariosLocal = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                        console.log('✅ Usuarios desde Firebase:', usuariosLocal.length);
+                    } catch (error) {
+                        console.error('❌ Error al cargar de Firebase:', error);
+                    }
+                }
+                
+                if (usuariosLocal.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">📭 No hay usuarios registrados</p>';
+                    console.log('ℹ️ No hay usuarios para mostrar');
+                    return;
+                }
+
+                // Obtener datos de licencias
+                let licenciasMap = {};
+                if (typeof db !== 'undefined' && db) {
+                    try {
+                        const licenciasSnapshot = await db.collection('licencias').get();
+                        licenciasSnapshot.forEach(doc => {
+                            licenciasMap[doc.data().licenseKey] = doc.data();
+                        });
+                        console.log('✅ Licencias cargadas:', Object.keys(licenciasMap).length);
+                    } catch (error) {
+                        console.warn('⚠️ No se pudo cargar licencias:', error);
+                    }
+                }
+
+                // Crear tabla
+                let html = '<table style="width: 100%; border-collapse: collapse;"><thead><tr style="background-color: #e67e22; color: white;"><th style="padding: 10px; text-align: left;">Usuario</th><th style="padding: 10px; text-align: left;">Email</th><th style="padding: 10px; text-align: left;">Licencia</th><th style="padding: 10px; text-align: left;">Nueva Contraseña</th><th style="padding: 10px; text-align: center;">Acciones</th></tr></thead><tbody>';
+
+                usuariosLocal.forEach((usuario, index) => {
+                    const licencia = licenciasMap[usuario.licenseKey];
+                    const clienteName = licencia ? licencia.clientName : 'Sin información';
+                    
+                    html += `
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 10px;"><strong>${usuario.usuario}</strong></td>
+                            <td style="padding: 10px;">${usuario.email || '-'}</td>
+                            <td style="padding: 10px;">${clienteName}</td>
+                            <td style="padding: 10px;">
+                                <input type="text" id="newPass_${index}" placeholder="Nueva contraseña" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                            </td>
+                            <td style="padding: 10px; text-align: center;">
+                                <button onclick="resetearContrasena('${usuario.usuario}', ${index})" style="padding: 6px 10px; font-size: 11px; background-color: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Resetear</button>
+                                <button onclick="eliminarUsuario('${usuario.usuario}', ${index})" style="padding: 6px 10px; font-size: 11px; background-color: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">Eliminar</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+                console.log('✅ Tabla renderizada con', usuariosLocal.length, 'usuarios');
+
+            } catch (error) {
+                console.error('❌ Error en cargarUsuarios():', error);
+                container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">❌ Error: ' + error.message + '</p>';
+            }
+        }
+        }
+
+        async function resetearContrasena(nombreUsuario, index) {
+            const nuevaPass = document.getElementById(`newPass_${index}`).value;
+            
+            if (!nuevaPass || nuevaPass.trim().length < 4) {
+                alert('❌ Ingresa una contraseña de al menos 4 caracteres');
+                return;
+            }
+
+            if (!confirm(`¿Estás seguro de resetear la contraseña de ${nombreUsuario} a "${nuevaPass}"?`)) {
+                return;
+            }
+
+            try {
+                // Actualizar en Firebase
+                if (typeof db !== 'undefined' && db) {
+                    try {
+                        const snapshot = await db.collection('usuarios')
+                            .where('usuario', '==', nombreUsuario)
+                            .get();
+
+                        if (snapshot.empty) {
+                            alert('❌ Usuario no encontrado en Firebase');
+                            return;
+                        }
+
+                        await snapshot.docs[0].ref.update({
+                            password: nuevaPass,
+                            fechaReseteo: new Date().toISOString(),
+                            resetadoPor: 'admin',
+                            estado: 'activo'
+                        });
+                        
+                        console.log('✅ Contraseña actualizada en Firebase');
+                    } catch (firebaseError) {
+                        console.error('Error en Firebase:', firebaseError);
+                        throw firebaseError;
+                    }
+                }
+                
+                // También actualizar en localStorage como respaldo
+                const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+                const usuarioLocal = usuariosLocal.find(u => u.usuario === nombreUsuario);
+                if (usuarioLocal) {
+                    usuarioLocal.password = nuevaPass;
+                    usuarioLocal.fechaReseteo = new Date().toISOString();
+                    localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosLocal));
+                }
+
+                alert(`✅ Contraseña actualizada correctamente\n\nUsuario: ${nombreUsuario}\nNueva contraseña: ${nuevaPass}`);
+                document.getElementById(`newPass_${index}`).value = '';
+                await cargarUsuarios();
+            } catch (error) {
+                console.error('Error al resetear contraseña:', error);
+                alert(`❌ Error al actualizar la contraseña:\n${error.message}`);
+            }
+        }
+
+        async function eliminarUsuario(nombreUsuario, index) {
+            if (!confirm(`¿Estás seguro de eliminar al usuario ${nombreUsuario}?\n\nEsta acción no se puede deshacer.`)) {
+                return;
+            }
+
+            try {
+                // Eliminar de Firebase
+                if (typeof db !== 'undefined' && db) {
+                    try {
+                        const snapshot = await db.collection('usuarios')
+                            .where('usuario', '==', nombreUsuario)
+                            .get();
+
+                        snapshot.forEach(doc => {
+                            doc.ref.delete();
+                        });
+                        
+                        console.log('✅ Usuario eliminado de Firebase');
+                    } catch (firebaseError) {
+                        console.warn('No se pudo eliminar de Firebase:', firebaseError);
+                    }
+                }
+                
+                // También eliminar de localStorage
+                const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+                const indiceLocal = usuariosLocal.findIndex(u => u.usuario === nombreUsuario);
+                if (indiceLocal >= 0) {
+                    usuariosLocal.splice(indiceLocal, 1);
+                    localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosLocal));
+                }
+
+                alert('✅ Usuario eliminado correctamente');
+                await cargarUsuarios();
+            } catch (error) {
+                console.error('Error al eliminar usuario:', error);
+                alert(`❌ Error al eliminar el usuario:\n${error.message}`);
+            }
+        }
+
+        function descargarLicencia() {
+            const licencias = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
+            const ultimaLicencia = licencias[0];
+
+            const contenido = `
+TU TALLER - SISTEMA DE GESTIÓN
+================================
+LICENCIA DE SOFTWARE
+================================
+
+Cliente: ${ultimaLicencia.clientName}
+Email: ${ultimaLicencia.clientEmail}
+Tipo de Licencia: ${ultimaLicencia.licenseType}
+Máximo de Dispositivos: ${ultimaLicencia.maxDevices}
+
+CLAVE DE LICENCIA:
+${ultimaLicencia.licenseKey}
+
+Fecha de Creación: ${new Date(ultimaLicencia.fechaCreacion).toLocaleString()}
+${ultimaLicencia.fechaExpiracion ? `Fecha de Expiración: ${new Date(ultimaLicencia.fechaExpiracion).toLocaleString()}` : 'Sin fecha de expiración'}
+
+================================
+INSTRUCCIONES DE ACTIVACIÓN
+================================
+
+1. Abra el sistema "Tu Taller"
+2. Haga clic en "Activar Licencia"
+3. Ingrese la clave de licencia
+4. Complete el registro con su usuario y contraseña
+5. Inicie sesión con sus credenciales
+
+Para soporte técnico, contacte a:
+soporte@tutaller.com
+
+© ${new Date().getFullYear()} Tu Taller - Todos los derechos reservados
+            `;
+
+            const blob = new Blob([contenido], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Licencia_${ultimaLicencia.clientName.replace(/\s+/g, '_')}_${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Función para crear un usuario de prueba
+        function crearUsuarioPrueba() {
+            const usuarioPrueba = {
+                id: Date.now(),
+                usuario: 'usuario_prueba_' + Date.now(),
+                password: '12345678',
+                licenseKey: 'TT-TEST-00000000-00000-0000',
+                nombreTaller: 'Taller de Prueba',
+                email: 'prueba@taller.local',
+                fechaRegistro: new Date().toISOString(),
+                estado: 'activo'
+            };
+
+            try {
+                // Guardar en localStorage
+                let usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+                usuariosLocal.push(usuarioPrueba);
+                localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosLocal));
+
+                console.log('✅ Usuario de prueba creado en localStorage');
+                console.log('Usuario:', usuarioPrueba.usuario);
+                console.log('Contraseña:', usuarioPrueba.password);
+
+                alert(`✅ Usuario de prueba creado exitosamente\n\nUsuario: ${usuarioPrueba.usuario}\nContraseña: ${usuarioPrueba.password}`);
+                
+                // Recargar la tabla de usuarios
+                cargarUsuarios();
+            } catch (error) {
+                console.error('Error al crear usuario de prueba:', error);
+                alert('❌ Error al crear usuario de prueba: ' + error.message);
+            }
+        }
+    </script>
+    
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firebase-licencias.js"></script>
+</body>
+</html>

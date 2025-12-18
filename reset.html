@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resetear Sistema</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 { color: #333; margin-bottom: 20px; }
+        p { color: #666; margin-bottom: 30px; line-height: 1.6; }
+        .btn {
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4);
+        }
+        .btn-secondary {
+            background: #ddd;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #ccc;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚠️ Resetear Sistema</h1>
+        <div class="warning">
+            <p><strong>ADVERTENCIA:</strong> Esta acción eliminará TODOS los datos del sistema:</p>
+            <ul style="text-align: left; margin: 10px 0;">
+                <li>Todos los clientes</li>
+                <li>Todas las órdenes</li>
+                <li>Todo el inventario</li>
+            </ul>
+            <p><strong>Esta acción NO se puede deshacer.</strong></p>
+        </div>
+        <button class="btn btn-danger" onclick="resetear()">🗑️ Borrar Todo</button>
+        <button class="btn btn-secondary" onclick="cancelar()">❌ Cancelar</button>
+        <div class="success" id="success">
+            <h3>✅ Sistema Reseteado</h3>
+            <p>Todos los datos han sido eliminados. Redirigiendo...</p>
+        </div>
+    </div>
+
+    <script>
+        function resetear() {
+            if (confirm('¿Estás absolutamente seguro? Esta acción NO se puede deshacer.')) {
+                // Borrar todos los datos
+                localStorage.removeItem('clientes');
+                localStorage.removeItem('ordenes');
+                localStorage.removeItem('repuestos');
+                
+                // Mostrar mensaje de éxito
+                document.querySelector('.warning').style.display = 'none';
+                document.querySelector('.btn-danger').style.display = 'none';
+                document.querySelector('.btn-secondary').style.display = 'none';
+                document.getElementById('success').style.display = 'block';
+                
+                // Redirigir a la página principal después de 2 segundos
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+            }
+        }
+        
+        function cancelar() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

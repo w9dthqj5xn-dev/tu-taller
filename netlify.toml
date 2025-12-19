@@ -1,0 +1,6 @@
+[build]
+  command = "./build.sh"
+  publish = "."
+
+[build.environment]
+  NODE_VERSION = "18"

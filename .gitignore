@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.production
+env.js
 
 # Logs
 *.log
@@ -32,3 +33,5 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+# Local Netlify folder
+.netlify

@@ -464,7 +464,6 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary">Acceder</button>
-                <button type="button" class="btn btn-secondary" onclick="autoLogin()" style="margin-top: 10px;">🚀 Auto Login (Prueba)</button>
             </form>
         </div>
 
@@ -551,39 +550,18 @@
             const usuario = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
 
-            console.log('=== SUPER DEBUG LOGIN ===');
-            console.log('Usuario ingresado:', usuario);
-            console.log('Password ingresado:', password);
-            
-            // VALIDACIÓN SÚPER SIMPLE - DEBE FUNCIONAR SÍ O SÍ
             if (usuario === 'admin_licencias' && password === 'SecurePass2025!') {
-                console.log('🎉 ¡LOGIN EXITOSO!');
-                alert('¡Login exitoso!');
                 localStorage.setItem('licenciasSession', 'activa');
                 mostrarGenerador();
                 return;
             }
             
-            console.log('❌ Credenciales incorrectas');
-            alert(`Error: Usuario="${usuario}" Password="${password}" - Debe ser exactamente: admin_licencias / SecurePass2025!`);
             const errorDiv = document.getElementById('loginError');
             errorDiv.textContent = '❌ Usuario o contraseña incorrectos';
             errorDiv.style.display = 'block';
             setTimeout(() => {
                 errorDiv.style.display = 'none';
             }, 5000);
-        }
-
-        function autoLogin() {
-            console.log('🚀 Auto Login activado');
-            document.getElementById('username').value = 'admin_licencias';
-            document.getElementById('password').value = 'SecurePass2025!';
-            alert('Credenciales rellenadas automáticamente. Haz click en Acceder o espera...');
-            
-            // Auto submit después de 2 segundos
-            setTimeout(() => {
-                document.getElementById('loginForm').requestSubmit();
-            }, 2000);
         }
 
         function cerrarSesion() {

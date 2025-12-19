@@ -799,13 +799,28 @@
         async function cargarUsuarios() {
             const container = document.getElementById('usuariosList');
             
+            // Mostrar loading mientras carga
+            container.innerHTML = '<p style="text-align: center; padding: 20px;">🔄 Cargando usuarios...</p>';
+            
             try {
+                console.log('🔄 Iniciando carga de usuarios...');
+                
                 // Cargar usuarios desde localStorage
                 const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+                console.log('👥 Usuarios en localStorage:', usuariosLocal.length);
                 
                 // Cargar usuarios desde Firebase
                 const usuariosFirebase = [];
+                console.log('🔥 Conectando con Firebase...');
+                
+                // Verificar si Firebase está inicializado
+                if (!window.firebase || !db) {
+                    throw new Error('Firebase no está inicializado correctamente');
+                }
+                
                 const usuariosSnapshot = await db.collection('usuarios').get();
+                console.log('🔥 Documentos en Firebase:', usuariosSnapshot.size);
+                
                 usuariosSnapshot.forEach(doc => {
                     const data = doc.data();
                     usuariosFirebase.push({
@@ -817,6 +832,7 @@
                         origen: 'Firebase'
                     });
                 });
+                console.log('🔥 Usuarios procesados de Firebase:', usuariosFirebase.length);
 
                 // Combinar usuarios únicos (priorizar Firebase)
                 const todosUsuarios = [...usuariosFirebase];
@@ -883,8 +899,18 @@
                 container.innerHTML = statsHtml + html;
 
             } catch (error) {
-                console.error('Error al cargar usuarios:', error);
-                container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">❌ Error al cargar usuarios</p>';
+                console.error('❌ Error al cargar usuarios:', error);
+                console.error('❌ Detalles del error:', error.message);
+                console.error('❌ Stack:', error.stack);
+                
+                container.innerHTML = `
+                    <div style="text-align: center; color: #dc3545; padding: 20px; background: #fff5f5; border-radius: 6px; border: 1px solid #fed7d7;">
+                        <h4>❌ Error al cargar usuarios</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p style="font-size: 12px; margin-top: 10px;">Revisa la consola (F12) para más detalles</p>
+                        <button onclick="cargarUsuarios()" style="margin-top: 10px; padding: 6px 12px;">🔄 Reintentar</button>
+                    </div>
+                `;
             }
         }
 

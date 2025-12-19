@@ -12,5 +12,11 @@ const firebaseConfig = {
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
 
-console.log('✅ Firebase inicializado correctamente');
+// Configurar proveedor de Google
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
+
+console.log('✅ Firebase y Google Auth inicializados correctamente');

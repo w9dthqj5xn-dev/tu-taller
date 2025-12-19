@@ -42,10 +42,157 @@ function verificarLicenciaActiva() {
     return true;
 }
 
+// === GOOGLE SIGN-IN ===
+async function signInWithGoogle() {
+    try {
+        // Mostrar loading
+        const btn = document.querySelector('.google-signin-btn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<div style="width: 20px; height: 20px; border: 2px solid #ddd; border-top: 2px solid #666; border-radius: 50%; animation: spin 1s linear infinite;"></div> Conectando...';
+        btn.disabled = true;
+
+        // Autenticar con Google
+        const result = await auth.signInWithPopup(googleProvider);
+        const user = result.user;
+        
+        console.log('✅ Usuario autenticado con Google:', user.displayName);
+
+        // Crear datos del usuario
+        const userData = {
+            uid: user.uid,
+            email: user.email,
+            nombre: user.displayName,
+            foto: user.photoURL,
+            proveedor: 'google',
+            fechaRegistro: new Date().toISOString(),
+            ultimoAcceso: new Date().toISOString()
+        };
+
+        // Verificar si el usuario ya existe en nuestra base de datos
+        let existeUsuario = false;
+        try {
+            const userDoc = await db.collection('usuarios-google').doc(user.uid).get();
+            existeUsuario = userDoc.exists;
+        } catch (error) {
+            console.log('Primer acceso del usuario');
+        }
+
+        // Si es nuevo usuario, guardarlo
+        if (!existeUsuario) {
+            try {
+                await db.collection('usuarios-google').doc(user.uid).set(userData);
+                console.log('✅ Usuario registrado en Firebase');
+            } catch (error) {
+                console.warn('No se pudo guardar en Firebase (modo offline):', error);
+            }
+        } else {
+            // Actualizar último acceso
+            try {
+                await db.collection('usuarios-google').doc(user.uid).update({
+                    ultimoAcceso: new Date().toISOString()
+                });
+            } catch (error) {
+                console.warn('No se pudo actualizar en Firebase (modo offline):', error);
+            }
+        }
+
+        // Guardar sesión localmente
+        localStorage.setItem('sesionActiva', 'true');
+        localStorage.setItem('usuarioGoogle', JSON.stringify(userData));
+        localStorage.setItem('tipoLogin', 'google');
+
+        // Verificar licencia
+        if (!verificarLicenciaActiva()) {
+            return;
+        }
+
+        // Mostrar mensaje de bienvenida
+        mostrarMensaje(`¡Bienvenido/a ${user.displayName}! 🎉`, 'success');
+
+        // Cambiar a la aplicación principal
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+
+        // Restaurar botón
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+
+    } catch (error) {
+        console.error('Error en Google Sign-In:', error);
+        
+        let mensaje = '❌ Error al iniciar sesión con Google';
+        if (error.code === 'auth/popup-closed-by-user') {
+            mensaje = '⚠️ Ventana cerrada. Intenta nuevamente.';
+        } else if (error.code === 'auth/popup-blocked') {
+            mensaje = '🚫 Pop-up bloqueado. Permite pop-ups para este sitio.';
+        }
+        
+        mostrarMensaje(mensaje, 'error');
+
+        // Restaurar botón
+        const btn = document.querySelector('.google-signin-btn');
+        btn.innerHTML = '<img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" width="20" height="20"> Continuar con Google';
+        btn.disabled = false;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     verificarSesion();
     mostrarInfoLicencia();
+    
+    // Agregar estilos para el loading spinner
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
 });
+
+// Función para mostrar mensajes
+function mostrarMensaje(mensaje, tipo = 'info') {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        animation: slideInRight 0.3s ease;
+        background: ${tipo === 'success' ? 'linear-gradient(135deg, #10b981, #059669)' : 
+                    tipo === 'error' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 
+                    'linear-gradient(135deg, #3b82f6, #1d4ed8)'};
+    `;
+    toast.textContent = mensaje;
+    
+    // Agregar animación CSS si no existe
+    if (!document.querySelector('#toast-animations')) {
+        const toastStyle = document.createElement('style');
+        toastStyle.id = 'toast-animations';
+        toastStyle.textContent = `
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(toastStyle);
+    }
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideInRight 0.3s ease reverse';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
 
 document.getElementById('loginForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -331,8 +478,22 @@ function mostrarInfoLicencia() {
 
 function cerrarSesion() {
     if (confirm('¿Estás seguro de cerrar sesión?')) {
+        // Remover datos locales
         localStorage.removeItem('sesionActiva');
         localStorage.removeItem('usuario');
+        localStorage.removeItem('usuarioGoogle');
+        localStorage.removeItem('tipoLogin');
+        
+        // Cerrar sesión de Google si es necesario
+        const tipoLogin = localStorage.getItem('tipoLogin');
+        if (tipoLogin === 'google' && auth.currentUser) {
+            auth.signOut().then(() => {
+                console.log('✅ Sesión de Google cerrada');
+            }).catch((error) => {
+                console.error('Error al cerrar sesión de Google:', error);
+            });
+        }
+        
         document.getElementById('loginScreen').style.display = 'flex';
         document.getElementById('mainApp').style.display = 'none';
         document.getElementById('loginForm').reset();

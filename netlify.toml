@@ -1,5 +1,5 @@
 [build]
-  command = "echo 'Build complete'"
+  command = "echo 'Build complete - Tu Taller Sistema v1.1'"
   publish = "."
   # Ignorar Firebase API Key en escaneo de secretos
   environment = { SECRETS_SCAN_SMART_DETECTION_ENABLED = "false" }

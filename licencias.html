@@ -693,8 +693,8 @@
 </head>
 <body>
     <div class="container">
-        <button id="backBtn" class="back-btn" style="display: none;" onclick="volverLogin()">← Volver</button>
-        <button id="logoutBtn" class="logout-btn" style="display: none;" onclick="cerrarSesion()">Cerrar Sesión</button>
+        <button id="backBtn" class="back-btn" style="display: none;" onclick="volverLogin()">&larr; Volver</button>
+        <button id="logoutBtn" class="logout-btn" style="display: none;" onclick="cerrarSesion()">Cerrar Sesion</button>
         
         <!-- Login Section -->
         <div id="loginSection" class="login-section active">
@@ -1049,13 +1049,13 @@
                         ${lic.fechaExpiracion ? `<p><strong>Expira:</strong> ${new Date(lic.fechaExpiracion).toLocaleDateString()}</p>` : '<p><strong>Sin expiración</strong></p>'}
                         ${suspendida ? '<p style="color: #856404; font-weight: bold;">⚠️ Licencia suspendida temporalmente</p>' : ''}
                         <div class="license-actions">
-                            <button class="btn-editar" onclick="editarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">✏️ Editar</button>
-                            <button class="btn-renovar" onclick="renovarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">🔄 Renovar</button>
+                            <button class="btn-editar" onclick="editarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Editar</button>
+                            <button class="btn-renovar" onclick="renovarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Renovar</button>
                             ${suspendida ? 
-                                `<button class="btn-activar" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">▶️ Activar</button>` :
-                                `<button class="btn-suspender" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">⏸️ Suspender</button>`
+                                `<button class="btn-activar" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Activar</button>` :
+                                `<button class="btn-suspender" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Suspender</button>`
                             }
-                            <button class="btn-eliminar" onclick="eliminarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">🗑️ Eliminar</button>
+                            <button class="btn-eliminar" onclick="eliminarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Eliminar</button>
                         </div>
                     </div>
                 `;

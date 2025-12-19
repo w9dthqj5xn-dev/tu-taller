@@ -533,8 +533,8 @@
 
     <script>
         const CREDENCIALES = {
-            usuario: window.ENV?.LICENSE_ADMIN_USER || 'admin_licencias',
-            password: window.ENV?.LICENSE_ADMIN_PASSWORD || 'SecurePass2025!'
+            usuario: 'admin_licencias',
+            password: 'SecurePass2025!'
         };
 
         // Verificar si hay sesión activa al cargar
@@ -559,6 +559,16 @@
             console.log('Longitud password:', password.length, 'vs', CREDENCIALES.password.length);
             console.log('Coincide usuario:', usuario === CREDENCIALES.usuario);
             console.log('Coincide password:', password === CREDENCIALES.password);
+            console.log('window.ENV disponible:', window.ENV);
+            
+            // FUERZA EL LOGIN - MODO TEMPORAL DEBUG
+            if ((usuario === 'admin_licencias' && password === 'SecurePass2025!') || 
+                (usuario === CREDENCIALES.usuario && password === CREDENCIALES.password)) {
+                console.log('✅ Login forzado exitoso');
+                localStorage.setItem('licenciasSession', 'activa');
+                mostrarGenerador();
+                return;
+            }
 
             if (usuario === CREDENCIALES.usuario && password === CREDENCIALES.password) {
                 console.log('✅ Login exitoso');

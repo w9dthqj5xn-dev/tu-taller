@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #1a2332 0%, #2c3e50 50%, #34495e 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -22,14 +22,15 @@
         }
 
         .container {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(20px);
-            border-radius: 24px;
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.8);
             width: 100%;
-            max-width: 600px;
-            padding: 40px;
-            animation: slideIn 0.5s ease;
+            max-width: 1200px;
+            padding: 0;
+            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
         }
 
         @keyframes slideIn {
@@ -43,26 +44,127 @@
             }
         }
 
-        .header {
+        .dashboard {
+            display: flex;
+            height: 90vh;
+            max-height: 900px;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            padding: 30px 20px;
+            color: white;
+        }
+
+        .sidebar-header {
             text-align: center;
-            margin-bottom: 30px;
-            margin-top: 40px;
+            margin-bottom: 40px;
         }
 
-        .header h1 {
-            font-size: 2em;
+        .sidebar-header h1 {
+            font-size: 1.8em;
             font-weight: 800;
-            background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
 
-        .header p {
-            color: #6b7280;
+        .sidebar-header p {
+            opacity: 0.9;
             font-size: 14px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-item {
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
             font-weight: 500;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            transform: translateX(4px);
+        }
+
+        .nav-icon {
+            margin-right: 12px;
+            font-size: 1.2em;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+
+        .content-header {
+            margin-bottom: 30px;
+        }
+
+        .content-header h2 {
+            font-size: 2em;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .content-header p {
+            color: #64748b;
+            font-size: 16px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .card-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-icon {
+            margin-right: 12px;
+            font-size: 1.5em;
+            color: #667eea;
         }
 
         .login-section, .generator-section {
@@ -74,70 +176,127 @@
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
 
         .form-group label {
             display: block;
-            color: #333;
+            color: #374151;
             font-weight: 600;
             margin-bottom: 8px;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
             font-size: 14px;
-            transition: border-color 0.3s;
         }
 
-        .form-group input:focus {
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+        .form-group input:focus, .form-group select:focus {
             outline: none;
-            border-color: #e67e22;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 500;
         }
 
         .btn {
-            width: 100%;
-            padding: 14px;
+            padding: 12px 24px;
             border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            min-width: auto;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px) scale(1.05);
-            box-shadow: 0 8px 25px rgba(230, 126, 34, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
         }
 
         .btn-success {
-            background: #28a745;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
-            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
 
         .btn-success:hover {
-            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
         }
 
         .btn-secondary {
-            background: #6c757d;
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
             color: white;
-            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
         }
 
         .btn-secondary:hover {
-            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(100, 116, 139, 0.4);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
         }
 
         .alert {
@@ -462,66 +621,192 @@
             </form>
         </div>
 
-        <!-- Generator Section -->
+        <!-- Dashboard Section -->
         <div id="generatorSection" class="generator-section">
-            <div class="header">
-                <h1>⚙️ Generador de Licencias</h1>
-                <p>Crear nuevas licencias para clientes</p>
-            </div>
-
-            <div id="successMessage" style="display: none;" class="alert alert-success"></div>
-
-            <form id="licenseForm" onsubmit="generarLicencia(event)">
-                <div class="form-group">
-                    <label for="clientName">Nombre del Cliente/Taller</label>
-                    <input type="text" id="clientName" required placeholder="Ej: Taller TecnoCell">
+            <div class="dashboard">
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <div class="sidebar-header">
+                        <h1>🔐 Tu Taller</h1>
+                        <p>Sistema de Licencias</p>
+                    </div>
+                    
+                    <ul class="nav-menu">
+                        <li class="nav-item">
+                            <div class="nav-link active" onclick="showSection('generator')">
+                                <span class="nav-icon">⚙️</span>
+                                Generar Licencias
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <div class="nav-link" onclick="showSection('licenses')">
+                                <span class="nav-icon">📋</span>
+                                Licencias Activas
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <div class="nav-link" onclick="showSection('users')">
+                                <span class="nav-icon">👥</span>
+                                Usuarios
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <div class="nav-link" onclick="showSection('statistics')">
+                                <span class="nav-icon">📊</span>
+                                Estadísticas
+                            </div>
+                        </li>
+                        <li class="nav-item" style="margin-top: auto;">
+                            <div class="nav-link" onclick="cerrarSesion()">
+                                <span class="nav-icon">🚪</span>
+                                Cerrar Sesión
+                            </div>
+                        </li>
+                    </ul>
                 </div>
 
-                <div class="form-group">
-                    <label for="clientEmail">Email del Cliente</label>
-                    <input type="email" id="clientEmail" required placeholder="ejemplo@correo.com">
+                <!-- Main Content -->
+                <div class="main-content">
+                    <!-- Generator Section -->
+                    <div id="section-generator" class="content-section">
+                        <div class="content-header">
+                            <h2>⚙️ Generar Nueva Licencia</h2>
+                            <p>Crea licencias personalizadas para tus clientes</p>
+                        </div>
+
+                        <div id="successMessage" style="display: none;" class="alert alert-success"></div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <span class="card-icon">📝</span>
+                                    Datos del Cliente
+                                </h3>
+                            </div>
+                            
+                            <form id="licenseForm" onsubmit="generarLicencia(event)">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="clientName">Nombre del Cliente/Taller</label>
+                                        <input type="text" id="clientName" required placeholder="Ej: Taller TecnoCell">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="clientEmail">Email del Cliente</label>
+                                        <input type="email" id="clientEmail" required placeholder="ejemplo@correo.com">
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="licenseType">Tipo de Licencia</label>
+                                        <select id="licenseType">
+                                            <option value="prueba">🔍 Prueba - 3 días</option>
+                                            <option value="mensual">📅 Mensual - 30 días</option>
+                                            <option value="trimestral">🗓️ Trimestral - 90 días</option>
+                                            <option value="semestral">📆 Semestral - 180 días</option>
+                                            <option value="anual">🎯 Anual - 365 días</option>
+                                            <option value="vitalicia">♾️ Vitalicia - Sin expiración</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="maxDevices">Máximo de Dispositivos</label>
+                                        <input type="number" id="maxDevices" value="1" min="1" max="10" required>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    ⚙️ Generar Licencia
+                                </button>
+                            </form>
+                        </div>
+
+                        <div id="licenseResult" style="display: none;">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <span class="card-icon">✅</span>
+                                        Licencia Generada Exitosamente
+                                    </h3>
+                                </div>
+                                <div class="license-info" id="licenseDetails"></div>
+                                <div class="license-key" id="licenseKeyDisplay"></div>
+                                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                                    <button class="btn btn-success" onclick="copiarLicencia()">📋 Copiar</button>
+                                    <button class="btn btn-secondary" onclick="descargarLicencia()">💾 Descargar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Licenses Section -->
+                    <div id="section-licenses" class="content-section" style="display: none;">
+                        <div class="content-header">
+                            <h2>📋 Licencias Activas</h2>
+                            <p>Administra todas las licencias del sistema</p>
+                        </div>
+                        <div class="card">
+                            <div id="licensesList"></div>
+                        </div>
+                    </div>
+
+                    <!-- Users Section -->
+                    <div id="section-users" class="content-section" style="display: none;">
+                        <div class="content-header">
+                            <h2>👥 Administración de Usuarios</h2>
+                            <p>Gestiona los usuarios registrados y resetea contraseñas</p>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <span class="card-icon">👤</span>
+                                    Lista de Usuarios
+                                </h3>
+                                <button class="btn btn-primary" onclick="cargarUsuarios()">
+                                    🔄 Actualizar
+                                </button>
+                            </div>
+                            <div id="usuariosList"></div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Section -->
+                    <div id="section-statistics" class="content-section" style="display: none;">
+                        <div class="content-header">
+                            <h2>📊 Panel de Estadísticas</h2>
+                            <p>Métricas y análisis del sistema</p>
+                        </div>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number" id="totalLicenses">0</div>
+                                <div class="stat-label">Total Licencias</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="totalUsers">0</div>
+                                <div class="stat-label">Usuarios Registrados</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="activeLicenses">0</div>
+                                <div class="stat-label">Licencias Activas</div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <span class="card-icon">📈</span>
+                                    Resumen General
+                                </h3>
+                            </div>
+                            <div id="statisticsContent">
+                                <p>Las estadísticas se cargan automáticamente...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="form-group">
-                    <label for="licenseType">Tipo de Licencia</label>
-                    <select id="licenseType" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
-                        <option value="prueba">Prueba - 3 días</option>
-                        <option value="mensual">Mensual - 30 días</option>
-                        <option value="trimestral">Trimestral - 90 días</option>
-                        <option value="semestral">Semestral - 180 días</option>
-                        <option value="anual">Anual - 365 días</option>
-                        <option value="vitalicia">Vitalicia - Sin expiración</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="maxDevices">Máximo de Dispositivos</label>
-                    <input type="number" id="maxDevices" value="1" min="1" max="10" required>
-                </div>
-
-                <button type="submit" class="btn btn-primary">Generar Licencia</button>
-            </form>
-
-            <div id="licenseResult" style="display: none;">
-                <div class="license-card">
-                    <h3>✅ Licencia Generada Exitosamente</h3>
-                    <div class="license-info" id="licenseDetails"></div>
-                    <div class="license-key" id="licenseKeyDisplay"></div>
-                    <button class="btn btn-success" onclick="copiarLicencia()">📋 Copiar Licencia</button>
-                    <button class="btn btn-secondary" onclick="descargarLicencia()">💾 Descargar Licencia</button>
-                </div>
-            </div>
-
-            <div class="licenses-list">
-                <h3 style="margin-top: 30px; color: #667eea;">📋 Licencias Generadas</h3>
-                <div id="licensesList"></div>
-            </div>
-
-            <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e0e0e0;">
-                <h3 style="margin-bottom: 20px; color: #e67e22;">👥 Administración de Usuarios</h3>
-                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Gestiona los usuarios registrados y resetea contraseñas</p>
-                <button class="btn btn-primary" onclick="cargarUsuarios()" style="margin-bottom: 15px;">🔄 Cargar Usuarios</button>
-                <div id="usuariosList" style="margin-top: 15px;"></div>
             </div>
         </div>
     </div>
@@ -580,9 +865,90 @@
         function mostrarGenerador() {
             document.getElementById('loginSection').classList.remove('active');
             document.getElementById('generatorSection').classList.add('active');
-            document.getElementById('logoutBtn').style.display = 'block';
-            document.getElementById('backBtn').style.display = 'block';
+            showSection('generator');
             cargarLicencias();
+        }
+
+        function showSection(sectionName) {
+            // Ocultar todas las secciones
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(section => section.style.display = 'none');
+            
+            // Remover clase active de todos los nav-links
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => link.classList.remove('active'));
+            
+            // Mostrar sección seleccionada
+            const targetSection = document.getElementById('section-' + sectionName);
+            if (targetSection) {
+                targetSection.style.display = 'block';
+            }
+            
+            // Agregar clase active al nav-link correspondiente
+            const activeNavLink = document.querySelector(`[onclick="showSection('${sectionName}')"]`);
+            if (activeNavLink) {
+                activeNavLink.classList.add('active');
+            }
+            
+            // Cargar datos específicos según la sección
+            if (sectionName === 'licenses') {
+                cargarLicencias();
+            } else if (sectionName === 'users') {
+                cargarUsuarios();
+            } else if (sectionName === 'statistics') {
+                cargarEstadisticas();
+            }
+        }
+
+        function cargarEstadisticas() {
+            // Obtener estadísticas del sistema
+            const licenciasLocal = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
+            const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+            
+            document.getElementById('totalLicenses').textContent = licenciasLocal.length;
+            document.getElementById('totalUsers').textContent = usuariosLocal.length;
+            
+            // Calcular licencias activas (no vencidas)
+            const ahora = new Date();
+            const licenciasActivas = licenciasLocal.filter(lic => {
+                if (lic.type === 'vitalicia') return true;
+                const expiracion = new Date(lic.expirationDate);
+                return expiracion > ahora;
+            });
+            
+            document.getElementById('activeLicenses').textContent = licenciasActivas.length;
+            
+            // Generar contenido de estadísticas
+            let estadisticasHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <h4 style="color: #667eea; margin-bottom: 10px;">📋 Por Tipo de Licencia</h4>
+                        <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
+            `;
+            
+            const tiposLicencia = {};
+            licenciasLocal.forEach(lic => {
+                tiposLicencia[lic.type] = (tiposLicencia[lic.type] || 0) + 1;
+            });
+            
+            Object.entries(tiposLicencia).forEach(([tipo, cantidad]) => {
+                estadisticasHTML += `<p><strong>${tipo}:</strong> ${cantidad}</p>`;
+            });
+            
+            estadisticasHTML += `
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="color: #667eea; margin-bottom: 10px;">📊 Estado General</h4>
+                        <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
+                            <p><strong>Licencias Vencidas:</strong> ${licenciasLocal.length - licenciasActivas.length}</p>
+                            <p><strong>Dispositivos Máximos:</strong> ${licenciasLocal.reduce((acc, lic) => acc + (lic.maxDevices || 1), 0)}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('statisticsContent').innerHTML = estadisticasHTML;
         }
 
         async function generarLicencia(event) {

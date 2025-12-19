@@ -889,15 +889,15 @@
                 fechaExpiracion.setDate(fechaExpiracion.getDate() + dias);
             }
 
-            // Generar código de licencia único
+            // Generar codigo de licencia unico
             const licenseKey = generarCodigoLicencia(clientName, licenseType);
 
             const licencia = {
-                clientName,
-                clientEmail,
-                licenseType,
-                licenseKey,
-                maxDevices,
+                clientName: clientName,
+                clientEmail: clientEmail,
+                licenseType: licenseType,
+                licenseKey: licenseKey,
+                maxDevices: maxDevices,
                 fechaCreacion: fechaCreacion.toISOString(),
                 fechaExpiracion: fechaExpiracion ? fechaExpiracion.toISOString() : null,
                 activa: true,

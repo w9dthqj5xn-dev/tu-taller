@@ -44,6 +44,20 @@
                     Continuar con Google
                 </button>
                 
+                <div id="google-config-help" style="display: none; margin-top: 10px; padding: 12px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; font-size: 13px; color: #856404;">
+                    <strong>⚙️ Configuración pendiente:</strong><br>
+                    Para habilitar Google Sign-In, el administrador debe:
+                    <ol style="margin: 8px 0; padding-left: 20px;">
+                        <li>Ir a <a href="https://console.firebase.google.com" target="_blank">Firebase Console</a></li>
+                        <li>Abrir proyecto "licencias-taller"</li>
+                        <li>Ir a Authentication > Sign-in method</li>
+                        <li>Habilitar "Google" como proveedor</li>
+                        <li>Agregar "tu-taller.netlify.app" a dominios autorizados</li>
+                    </ol>
+                    <button onclick="document.getElementById('google-config-help').style.display='none'" style="padding: 4px 8px; font-size: 11px; background: #856404; color: white; border: none; border-radius: 4px; cursor: pointer;">Cerrar</button>
+                    <button onclick="testFirebaseConfig()" style="padding: 4px 8px; font-size: 11px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">🔍 Probar Config</button>
+                </div>
+                
                 <button type="button" class="login-btn" onclick="mostrarActivacionLicencia()" style="background: linear-gradient(135deg, #28a745, #20c997); margin-top: 10px;">🔐 Activar Licencia</button>
                 <div class="login-footer">
                     <p><small>© 2025 Todos los derechos reservados<br><strong>Ing. Carlos Jiménez</strong></small></p>

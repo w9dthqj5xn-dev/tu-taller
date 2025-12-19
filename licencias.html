@@ -542,18 +542,20 @@
 
         function iniciarSesion(event) {
             event.preventDefault();
-            const usuario = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            const usuario = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
 
             console.log('=== DEBUG LOGIN ===');
-            console.log('Usuario ingresado:', usuario);
-            console.log('Password ingresado:', password);
-            console.log('Usuario esperado:', CREDENCIALES.usuario);
-            console.log('Password esperado:', CREDENCIALES.password);
+            console.log('Usuario ingresado:', `"${usuario}"`);
+            console.log('Password ingresado:', `"${password}"`);
+            console.log('Usuario esperado:', `"${CREDENCIALES.usuario}"`);
+            console.log('Password esperado:', `"${CREDENCIALES.password}"`);
+            console.log('Longitud usuario:', usuario.length, 'vs', CREDENCIALES.usuario.length);
+            console.log('Longitud password:', password.length, 'vs', CREDENCIALES.password.length);
             console.log('Coincide usuario:', usuario === CREDENCIALES.usuario);
             console.log('Coincide password:', password === CREDENCIALES.password);
 
-            if (usuario === 'carlosjimenezlic' && password === 'Layla1896') {
+            if (usuario === CREDENCIALES.usuario && password === CREDENCIALES.password) {
                 console.log('✅ Login exitoso');
                 localStorage.setItem('licenciasSession', 'activa');
                 mostrarGenerador();

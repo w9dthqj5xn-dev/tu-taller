@@ -45,6 +45,16 @@ function verificarLicenciaActiva() {
 // === GOOGLE SIGN-IN ===
 async function signInWithGoogle() {
     try {
+        // Verificar si Firebase Auth está disponible
+        if (!window.firebase || !firebase.auth) {
+            throw new Error('Firebase Auth no está cargado correctamente');
+        }
+
+        // Verificar si el proveedor de Google está configurado
+        if (!googleProvider) {
+            throw new Error('Google Provider no está configurado');
+        }
+
         // Mostrar loading
         const btn = document.querySelector('.google-signin-btn');
         const originalText = btn.innerHTML;
@@ -119,15 +129,49 @@ async function signInWithGoogle() {
 
     } catch (error) {
         console.error('Error en Google Sign-In:', error);
+        console.error('Código del error:', error.code);
+        console.error('Mensaje del error:', error.message);
         
         let mensaje = '❌ Error al iniciar sesión con Google';
+        let detalles = '';
+        
         if (error.code === 'auth/popup-closed-by-user') {
             mensaje = '⚠️ Ventana cerrada. Intenta nuevamente.';
         } else if (error.code === 'auth/popup-blocked') {
             mensaje = '🚫 Pop-up bloqueado. Permite pop-ups para este sitio.';
+        } else if (error.code === 'auth/operation-not-allowed') {
+            mensaje = '🔧 Google Sign-In no está configurado';
+            detalles = 'El administrador debe habilitar Google Authentication en Firebase Console';
+        } else if (error.code === 'auth/unauthorized-domain') {
+            mensaje = '🌐 Dominio no autorizado';
+            detalles = 'El dominio tu-taller.netlify.app debe agregarse a dominios autorizados en Firebase';
+        } else if (error.code === 'auth/configuration-not-found') {
+            mensaje = '⚙️ Configuración faltante';
+            detalles = 'Falta configurar OAuth en Google Cloud Console';
+        } else {
+            mensaje = `❌ Error: ${error.message}`;
+            detalles = `Código: ${error.code}`;
         }
         
-        mostrarMensaje(mensaje, 'error');
+        // Mostrar error detallado en consola para debugging
+        console.log('🔍 Para solucionar:');
+        console.log('1. Ve a https://console.firebase.google.com');
+        console.log('2. Selecciona tu proyecto licencias-taller');
+        console.log('3. Ve a Authentication > Sign-in method');
+        console.log('4. Habilita Google como proveedor');
+        console.log('5. Agrega tu-taller.netlify.app a dominios autorizados');
+        
+        mostrarMensaje(mensaje + (detalles ? `\n${detalles}` : ''), 'error');
+
+        // Mostrar instrucciones de configuración si es un error de configuración
+        if (error.code === 'auth/operation-not-allowed' || 
+            error.code === 'auth/unauthorized-domain' || 
+            error.code === 'auth/configuration-not-found') {
+            const helpDiv = document.getElementById('google-config-help');
+            if (helpDiv) {
+                helpDiv.style.display = 'block';
+            }
+        }
 
         // Restaurar botón
         const btn = document.querySelector('.google-signin-btn');
@@ -192,6 +236,45 @@ function mostrarMensaje(mensaje, tipo = 'info') {
         toast.style.animation = 'slideInRight 0.3s ease reverse';
         setTimeout(() => toast.remove(), 300);
     }, 4000);
+}
+
+// Función de prueba para verificar configuración de Firebase
+function testFirebaseConfig() {
+    console.log('🔍 Probando configuración de Firebase...');
+    
+    const tests = {
+        firebase: !!window.firebase,
+        auth: !!window.firebase?.auth,
+        firestore: !!window.firebase?.firestore,
+        googleProvider: !!window.googleProvider,
+        projectId: firebase.app().options.projectId,
+        authDomain: firebase.app().options.authDomain
+    };
+    
+    console.table(tests);
+    
+    let mensaje = '🔍 Prueba de configuración:\n';
+    mensaje += `✅ Firebase: ${tests.firebase ? 'OK' : 'FALLO'}\n`;
+    mensaje += `✅ Auth: ${tests.auth ? 'OK' : 'FALLO'}\n`;
+    mensaje += `✅ Firestore: ${tests.firestore ? 'OK' : 'FALLO'}\n`;
+    mensaje += `✅ Google Provider: ${tests.googleProvider ? 'OK' : 'FALLO'}\n`;
+    mensaje += `📱 Proyecto: ${tests.projectId}\n`;
+    mensaje += `🌐 Dominio: ${tests.authDomain}`;
+    
+    alert(mensaje);
+    
+    // También probar conexión a Firestore
+    if (tests.firestore) {
+        db.collection('test').limit(1).get()
+            .then(() => {
+                console.log('✅ Conexión a Firestore exitosa');
+                mostrarMensaje('✅ Conexión a Firebase exitosa', 'success');
+            })
+            .catch((error) => {
+                console.error('❌ Error de conexión a Firestore:', error);
+                mostrarMensaje('❌ Error de conexión a Firebase', 'error');
+            });
+    }
 }
 
 document.getElementById('loginForm').addEventListener('submit', (e) => {

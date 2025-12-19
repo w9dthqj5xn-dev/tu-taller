@@ -521,7 +521,6 @@
                 <h3 style="margin-bottom: 20px; color: #e67e22;">👥 Administración de Usuarios</h3>
                 <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Gestiona los usuarios registrados y resetea contraseñas</p>
                 <button class="btn btn-primary" onclick="cargarUsuarios()" style="margin-bottom: 15px;">🔄 Cargar Usuarios</button>
-                <button class="btn btn-secondary" onclick="crearUsuariosPrueba()" style="margin-bottom: 15px; margin-left: 10px;">🧪 Crear Usuarios de Prueba</button>
                 <div id="usuariosList" style="margin-top: 15px;"></div>
             </div>
         </div>
@@ -804,15 +803,11 @@
             container.innerHTML = '<p style="text-align: center; padding: 20px;">🔄 Cargando usuarios...</p>';
             
             try {
-                console.log('🔄 Iniciando carga de usuarios...');
-                
                 // Cargar usuarios desde localStorage
                 const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-                console.log('👥 Usuarios en localStorage:', usuariosLocal.length);
                 
                 // Cargar usuarios desde Firebase
                 const usuariosFirebase = [];
-                console.log('🔥 Conectando con Firebase...');
                 
                 // Verificar si Firebase está inicializado
                 if (!window.firebase || !db) {
@@ -820,7 +815,6 @@
                 }
                 
                 const usuariosSnapshot = await db.collection('usuarios').get();
-                console.log('🔥 Documentos en Firebase:', usuariosSnapshot.size);
                 
                 usuariosSnapshot.forEach(doc => {
                     const data = doc.data();
@@ -833,7 +827,6 @@
                         origen: 'Firebase'
                     });
                 });
-                console.log('🔥 Usuarios procesados de Firebase:', usuariosFirebase.length);
 
                 // Combinar usuarios únicos (priorizar Firebase)
                 const todosUsuarios = [...usuariosFirebase];
@@ -847,11 +840,7 @@
                     }
                 });
                 
-                console.log('👥 Total usuarios combinados:', todosUsuarios.length);
-                console.log('👥 Usuarios completos:', todosUsuarios);
-                
                 if (todosUsuarios.length === 0) {
-                    console.log('⚠️ No hay usuarios para mostrar');
                     container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay usuarios registrados</p>';
                     return;
                 }
@@ -902,50 +891,17 @@
                 `;
                 
                 const finalHtml = statsHtml + html;
-                console.log('🎨 HTML generado:', finalHtml.length, 'caracteres');
-                console.log('🎨 Contenedor encontrado:', !!container);
-                
                 container.innerHTML = finalHtml;
-                console.log('✅ Usuarios mostrados exitosamente');
 
             } catch (error) {
-                console.error('❌ Error al cargar usuarios:', error);
-                console.error('❌ Detalles del error:', error.message);
-                console.error('❌ Stack:', error.stack);
-                
+                console.error('Error al cargar usuarios:', error);
                 container.innerHTML = `
                     <div style="text-align: center; color: #dc3545; padding: 20px; background: #fff5f5; border-radius: 6px; border: 1px solid #fed7d7;">
                         <h4>❌ Error al cargar usuarios</h4>
                         <p><strong>Error:</strong> ${error.message}</p>
-                        <p style="font-size: 12px; margin-top: 10px;">Revisa la consola (F12) para más detalles</p>
                         <button onclick="cargarUsuarios()" style="margin-top: 10px; padding: 6px 12px;">🔄 Reintentar</button>
                     </div>
                 `;
-            }
-        }
-
-        async function crearUsuariosPrueba() {
-            console.log('🧪 Creando usuarios de prueba...');
-            
-            const usuariosPrueba = [
-                { usuario: 'usuario1', email: 'user1@test.com', licenseKey: 'TT-001-XXXXX-XXXXX-XXXX', fechaCreacion: new Date().toISOString() },
-                { usuario: 'usuario2', email: 'user2@test.com', licenseKey: 'TT-002-XXXXX-XXXXX-XXXX', fechaCreacion: new Date().toISOString() },
-                { usuario: 'taller_carlos', email: 'carlos@taller.com', licenseKey: 'TT-003-XXXXX-XXXXX-XXXX', fechaCreacion: new Date().toISOString() }
-            ];
-            
-            // Guardar en localStorage
-            localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosPrueba));
-            
-            // Guardar en Firebase
-            try {
-                for (const usuario of usuariosPrueba) {
-                    await db.collection('usuarios').add(usuario);
-                }
-                alert('✅ Usuarios de prueba creados exitosamente!\n\nYa puedes usar "Cargar Usuarios" para verlos.');
-                console.log('✅ Usuarios de prueba guardados en localStorage y Firebase');
-            } catch (error) {
-                alert('⚠️ Usuarios creados en localStorage, pero error en Firebase: ' + error.message);
-                console.error('❌ Error al guardar en Firebase:', error);
             }
         }
 

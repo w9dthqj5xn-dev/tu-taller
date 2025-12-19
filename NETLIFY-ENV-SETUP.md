@@ -18,6 +18,7 @@ Mover las credenciales de Firebase a variables de entorno.
 
 ### 3. Agrega estas variables de entorno:
 
+#### Firebase Configuration:
 ```
 FIREBASE_API_KEY = ***REMOVED***
 FIREBASE_AUTH_DOMAIN = licencias-taller.firebaseapp.com
@@ -28,11 +29,24 @@ FIREBASE_APP_ID = 1:269860282658:web:bc419fe695e7da84fb057b
 FIREBASE_MEASUREMENT_ID = G-P8WGN2YR21
 ```
 
-### 4. Para cada variable:
+#### Administrador de Licencias (PERSONALIZA ESTAS):
+```
+LICENSE_ADMIN_USER = admin_licencias
+LICENSE_ADMIN_PASSWORD = SecurePass2025!
+```
+
+**⚠️ IMPORTANTE**: Cambia el usuario y contraseña por valores únicos y seguros.
+
+### 4. Para cada variable (total: 9 variables):
 - Clic en "Add variable"
 - Key: Nombre de la variable (ej: FIREBASE_API_KEY)
 - Value: El valor correspondiente
 - Clic en "Create variable"
+
+**🔐 RECOMENDACIÓN DE SEGURIDAD:**
+Para las credenciales del admin de licencias, usa valores únicos:
+- `LICENSE_ADMIN_USER`: Tu usuario preferido (ej: carlos_admin, taller_admin)
+- `LICENSE_ADMIN_PASSWORD`: Una contraseña fuerte única
 
 ### 5. Crear script de build
 Netlify inyectará las variables automáticamente durante el build.

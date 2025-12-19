@@ -1,0 +1,364 @@
+/* ================================================
+   RESPONSIVE DESIGN - MEDIA QUERIES
+   Archivo: responsive.css
+   ================================================ */
+
+/* Mobile Portrait - hasta 480px */
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .login-container {
+        margin: 20px;
+        padding: 30px 20px;
+        max-width: none;
+    }
+
+    .login-header h1 {
+        font-size: 1.8em;
+    }
+
+    .login-icon {
+        font-size: 3em;
+    }
+
+    .container {
+        margin: 0;
+        border-radius: 0;
+        min-height: 100vh;
+    }
+
+    header {
+        padding: 20px 15px;
+        border-radius: 0;
+    }
+
+    header h1 {
+        font-size: 1.8em;
+        margin-bottom: 15px;
+    }
+
+    nav {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .nav-btn {
+        width: 100%;
+        padding: 14px;
+        font-size: 15px;
+        text-align: center;
+    }
+
+    main {
+        padding: 20px 15px;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+
+    .stat-card {
+        padding: 20px;
+    }
+
+    .stat-number {
+        font-size: 2.2em;
+    }
+
+    .form-container {
+        padding: 20px 15px;
+        margin-bottom: 20px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .form-actions button {
+        width: 100%;
+        padding: 16px;
+        font-size: 15px;
+    }
+
+    .search-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .search-container input {
+        width: 100%;
+    }
+
+    .search-container button {
+        width: 100%;
+        padding: 14px;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        min-width: 600px;
+        font-size: 13px;
+    }
+
+    th, td {
+        padding: 8px 12px;
+        white-space: nowrap;
+    }
+
+    .orden-card {
+        padding: 16px;
+        margin-bottom: 15px;
+    }
+
+    .orden-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .orden-info {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .orden-numero {
+        font-size: 1.1em;
+    }
+
+    .btn-primary, .btn-secondary, .btn-success, .btn-danger {
+        width: 100%;
+        margin-bottom: 8px;
+        padding: 14px;
+        font-size: 15px;
+    }
+
+    .filters {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filters select {
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+    }
+
+    .empty-state {
+        padding: 40px 15px;
+    }
+
+    .pago-card {
+        margin-bottom: 15px;
+        padding: 15px;
+    }
+
+    .reporte-section {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .chart-container {
+        padding: 15px;
+    }
+}
+
+/* Mobile Landscape - 481px a 768px */
+@media (min-width: 481px) and (max-width: 768px) {
+    .container {
+        margin: 20px;
+        border-radius: 20px;
+    }
+
+    header {
+        padding: 25px 20px;
+    }
+
+    header h1 {
+        font-size: 2.2em;
+    }
+
+    nav {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .nav-btn {
+        padding: 12px 18px;
+        font-size: 14px;
+    }
+
+    main {
+        padding: 25px 20px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+    }
+
+    .form-container {
+        padding: 25px 20px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .orden-info {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    table {
+        font-size: 14px;
+    }
+
+    th, td {
+        padding: 10px 14px;
+    }
+}
+
+/* Tablet - 769px a 1024px */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .container {
+        margin: 30px;
+        max-width: none;
+    }
+
+    header {
+        padding: 30px;
+    }
+
+    nav {
+        gap: 8px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .orden-info {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Desktop Large - más de 1024px */
+@media (min-width: 1025px) {
+    .container {
+        max-width: 1400px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Mejoras para dispositivos touch */
+@media (hover: none) and (pointer: coarse) {
+    .nav-btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-success,
+    .btn-danger {
+        min-height: 48px;
+        padding: 16px 24px;
+        font-size: 16px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        min-height: 48px;
+        padding: 14px 16px;
+        font-size: 16px;
+    }
+
+    .search-container input {
+        min-height: 48px;
+        padding: 14px 18px;
+        font-size: 16px;
+    }
+}
+
+/* Orientación landscape para móviles */
+@media (max-width: 768px) and (orientation: landscape) {
+    header {
+        padding: 15px 20px;
+    }
+
+    header h1 {
+        font-size: 1.6em;
+        margin-bottom: 10px;
+    }
+
+    nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .nav-btn {
+        padding: 10px 16px;
+        font-size: 13px;
+        min-width: auto;
+    }
+
+    main {
+        padding: 20px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-number {
+        font-size: 2em;
+    }
+}
+
+/* Mejoras adicionales para accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .login-icon {
+        animation: none;
+    }
+}

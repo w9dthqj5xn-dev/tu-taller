@@ -11,6 +11,7 @@
     
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
 </head>
@@ -33,6 +34,16 @@
                     <input type="password" id="loginPassword" placeholder="Ingresa tu contraseña" required autocomplete="current-password">
                 </div>
                 <button type="submit" class="login-btn">Iniciar Sesión</button>
+                
+                <div class="auth-divider">
+                    <span>o</span>
+                </div>
+                
+                <button type="button" class="google-signin-btn" onclick="signInWithGoogle()">
+                    <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" width="20" height="20">
+                    Continuar con Google
+                </button>
+                
                 <button type="button" class="login-btn" onclick="mostrarActivacionLicencia()" style="background: linear-gradient(135deg, #28a745, #20c997); margin-top: 10px;">🔐 Activar Licencia</button>
                 <div class="login-footer">
                     <p><small>© 2025 Todos los derechos reservados<br><strong>Ing. Carlos Jiménez</strong></small></p>

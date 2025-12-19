@@ -1892,14 +1892,15 @@
                 
                 // Cargar usuarios desde Firebase
                 const usuariosFirebase = [];
+                const usuariosGoogle = [];
                 
                 // Verificar si Firebase está inicializado
                 if (!window.firebase || !db) {
                     throw new Error('Firebase no está inicializado correctamente');
                 }
                 
+                // Usuarios normales de Firebase
                 const usuariosSnapshot = await db.collection('usuarios').get();
-                
                 usuariosSnapshot.forEach(doc => {
                     const data = doc.data();
                     usuariosFirebase.push({
@@ -1912,11 +1913,29 @@
                     });
                 });
 
-                // Combinar usuarios únicos (priorizar Firebase)
-                const todosUsuarios = [...usuariosFirebase];
+                // Usuarios de Google
+                const googleSnapshot = await db.collection('usuarios-google').get();
+                googleSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    usuariosGoogle.push({
+                        id: doc.id,
+                        usuario: data.nombre || data.email.split('@')[0],
+                        email: data.email,
+                        licenseKey: 'Google Auth',
+                        fechaCreacion: data.fechaRegistro,
+                        ultimoAcceso: data.ultimoAcceso,
+                        foto: data.foto,
+                        proveedor: 'Google',
+                        origen: 'Google'
+                    });
+                });
+
+                // Combinar usuarios únicos (priorizar Firebase, luego Google, luego Local)
+                const todosUsuarios = [...usuariosFirebase, ...usuariosGoogle];
                 usuariosLocal.forEach(userLocal => {
                     const existeEnFirebase = usuariosFirebase.find(userFB => userFB.usuario === userLocal.usuario);
-                    if (!existeEnFirebase) {
+                    const existeEnGoogle = usuariosGoogle.find(userG => userG.email === userLocal.email);
+                    if (!existeEnFirebase && !existeEnGoogle) {
                         todosUsuarios.push({
                             ...userLocal,
                             origen: 'Local'
@@ -1937,28 +1956,59 @@
                 });
 
                 // Crear tabla de usuarios
-                let html = '<table><thead><tr><th>Usuario</th><th>Email</th><th>Licencia</th><th>Origen</th><th>Fecha Creación</th><th>Nueva Contraseña</th><th>Acciones</th></tr></thead><tbody>';
+                let html = '<table><thead><tr><th>Usuario</th><th>Email</th><th>Licencia/Tipo</th><th>Origen</th><th>Fecha</th><th>Nueva Contraseña</th><th>Acciones</th></tr></thead><tbody>';
 
                 todosUsuarios.forEach((usuario, index) => {
                     const licencia = licenciasMap[usuario.licenseKey];
-                    const clienteName = licencia ? licencia.clientName : 'Sin información';
-                    const fechaCreacion = usuario.fechaCreacion || 'No disponible';
+                    let clienteName = 'Sin información';
+                    let tipoUsuario = '';
+                    
+                    if (usuario.origen === 'Google') {
+                        clienteName = 'Google Authentication';
+                        tipoUsuario = '🔍 Google';
+                    } else {
+                        clienteName = licencia ? licencia.clientName : 'Sin información';
+                        tipoUsuario = '🔑 Licencia';
+                    }
+                    
+                    const fechaCreacion = usuario.fechaCreacion || usuario.ultimoAcceso || 'No disponible';
                     const origen = usuario.origen || 'Desconocido';
+                    
+                    // Colores por origen
+                    let origenStyle = '';
+                    if (origen === 'Google') {
+                        origenStyle = '#e3f2fd; color: #1565c0'; // Azul Google
+                    } else if (origen === 'Firebase') {
+                        origenStyle = '#e8f5e8; color: #2e7d32'; // Verde Firebase
+                    } else {
+                        origenStyle = '#fff3e0; color: #ef6c00'; // Naranja Local
+                    }
+                    
+                    // Mostrar foto de perfil para usuarios de Google
+                    const userIcon = usuario.foto ? 
+                        `<img src="${usuario.foto}" alt="Foto" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; vertical-align: middle;">` : 
+                        '';
                     
                     html += `
                         <tr>
-                            <td data-label="Usuario"><strong>${usuario.usuario}</strong></td>
+                            <td data-label="Usuario">${userIcon}<strong>${usuario.usuario}</strong></td>
                             <td data-label="Email">${usuario.email || '-'}</td>
-                            <td data-label="Licencia">${clienteName}</td>
-                            <td data-label="Origen"><span style="padding: 2px 6px; border-radius: 3px; font-size: 10px; background: ${origen === 'Firebase' ? '#e8f5e8; color: #2e7d32' : '#fff3e0; color: #ef6c00'}">${origen}</span></td>
+                            <td data-label="Licencia">${tipoUsuario} ${clienteName}</td>
+                            <td data-label="Origen"><span style="padding: 2px 6px; border-radius: 3px; font-size: 10px; background: ${origenStyle}">${origen}</span></td>
                             <td data-label="Fecha" style="font-size: 11px;">${fechaCreacion}</td>
                             <td data-label="Nueva Contraseña">
-                                <input type="text" id="newPass_${index}" placeholder="Nueva contraseña" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                                ${usuario.origen === 'Google' ? 
+                                    '<span style="color: #999; font-size: 11px;">🔒 Google Auth</span>' :
+                                    `<input type="text" id="newPass_${index}" placeholder="Nueva contraseña" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">`
+                                }
                             </td>
                             <td data-label="Acciones">
                                 <div class="license-actions" style="gap: 8px;">
-                                    <button class="btn-editar" onclick="resetearContrasena(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Resetear</button>
-                                    <button class="btn-eliminar" onclick="eliminarUsuario(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Eliminar</button>
+                                    ${usuario.origen === 'Google' ? 
+                                        `<button class="btn-secondary" style="padding: 6px 10px; font-size: 11px;" disabled>🔒 Google</button>` :
+                                        `<button class="btn-editar" onclick="resetearContrasena(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Resetear</button>`
+                                    }
+                                    <button class="btn-eliminar" onclick="eliminarUsuario(${index}, '${usuario.usuario}', '${origen}')" style="padding: 6px 10px; font-size: 11px;">Eliminar</button>
                                 </div>
                             </td>
                         </tr>
@@ -1968,11 +2018,13 @@
                 html += '</tbody></table>';
                 
                 // Mostrar estadísticas
+                const usuariosLocales = todosUsuarios.length - usuariosFirebase.length - usuariosGoogle.length;
                 const statsHtml = `
                     <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 12px;">
                         📊 <strong>Total de usuarios:</strong> ${todosUsuarios.length} 
                         | 🔥 Firebase: ${usuariosFirebase.length} 
-                        | 💾 Local: ${todosUsuarios.length - usuariosFirebase.length}
+                        | 🔍 Google: ${usuariosGoogle.length}
+                        | 💾 Local: ${usuariosLocales}
                     </div>
                 `;
                 

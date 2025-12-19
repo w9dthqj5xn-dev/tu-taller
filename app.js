@@ -47,49 +47,22 @@ document.addEventListener('DOMContentLoaded', () => {
     mostrarInfoLicencia();
 });
 
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
+document.getElementById('loginForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
     
-    // Obtener usuarios registrados localmente
+    // Obtener usuarios registrados
     const usuariosRegistrados = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
     
-    // Verificar si existe un usuario registrado localmente
-    let usuarioEncontrado = usuariosRegistrados.find(u => u.usuario === username && u.password === password);
+    // Verificar si existe un usuario registrado
+    const usuarioEncontrado = usuariosRegistrados.find(u => u.usuario === username && u.password === password);
     
     // También permitir credenciales admin por defecto
     const esAdmin = (username === 'admin' && password === 'admin123');
     
-    // Si no encontró localmente, verificar en Firebase
-    if (!usuarioEncontrado && !esAdmin && typeof db !== 'undefined' && db) {
-        try {
-            const snapshot = await db.collection('usuarios')
-                .where('usuario', '==', username)
-                .where('password', '==', password)
-                .get();
-            
-            if (!snapshot.empty) {
-                // Usuario encontrado en Firebase
-                usuarioEncontrado = snapshot.docs[0].data();
-                
-                // Guardar en localStorage para uso offline
-                usuariosRegistrados.push({
-                    usuario: usuarioEncontrado.usuario,
-                    password: usuarioEncontrado.password,
-                    licenseKey: usuarioEncontrado.licenseKey,
-                    nombreTaller: usuarioEncontrado.nombreTaller || 'Taller de Reparaciones',
-                    fechaRegistro: new Date().toISOString()
-                });
-                localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosRegistrados));
-            }
-        } catch (error) {
-            console.warn('No se pudo verificar en Firebase:', error);
-        }
-    }
-    
     if (usuarioEncontrado || esAdmin) {
-        const nombreTaller = usuarioEncontrado ? (usuarioEncontrado.nombreTaller || 'Taller de Reparaciones') : 'Taller de Reparaciones';
+        const nombreTaller = usuarioEncontrado ? usuarioEncontrado.nombreTaller : 'Taller de Reparaciones';
         localStorage.setItem('sesionActiva', 'true');
         localStorage.setItem('usuario', username);
         localStorage.setItem('nombreTaller', nombreTaller);
@@ -314,41 +287,6 @@ async function registrarUsuario(event) {
     
     usuariosRegistrados.push(nuevoUsuario);
     localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosRegistrados));
-    
-    // También guardar en Firebase para sincronización multi-dispositivo
-    try {
-        if (typeof db !== 'undefined' && db) {
-            // Crear documento con los datos del usuario
-            const usuarioFirebase = {
-                usuario,
-                password,
-                licenseKey: licenciaTemporal.licenseKey,
-                nombreTaller,
-                email: '',
-                fechaCreacion: new Date().toISOString(),
-                estado: 'activo'
-            };
-            
-            // Verificar si el usuario ya existe en Firebase
-            const snapshot = await db.collection('usuarios')
-                .where('usuario', '==', usuario)
-                .get();
-                
-            if (snapshot.empty) {
-                // Crear nuevo documento en Firebase
-                await db.collection('usuarios').add(usuarioFirebase);
-                console.log('✅ Usuario guardado en Firebase:', usuario);
-            } else {
-                // Si ya existe, solo actualizar
-                await snapshot.docs[0].ref.update(usuarioFirebase);
-                console.log('✅ Usuario actualizado en Firebase:', usuario);
-            }
-        }
-    } catch (error) {
-        console.warn('⚠️ No se guardó en Firebase:', error);
-        // Continuar de todas formas - el usuario se guardó en localStorage
-    }
-    
     localStorage.removeItem('licenciaTemporal');
     
     // Iniciar sesión automáticamente
@@ -1776,7 +1714,7 @@ function imprimirRecibo(ordenId) {
     const clientes = Storage.get('clientes');
     const orden = ordenes.find(o => o.id === ordenId);
     const cliente = clientes.find(c => c.id === orden.clienteId);
-    const recibo = `<div style="font-family: Arial, sans-serif; max-width: 300px; font-size: 11px; margin: 0 auto; padding: 20px; border: 2px solid #333;"><div style="text-align: center; margin-bottom: 20px;"><h2 style="margin: 0;">�� TALLER DE REPARACIONES</h2><p style="margin: 5px 0;">ORDEN DE SERVICIO</p></div><hr style="border: 1px solid #333;"><div style="margin: 6px 0;"><p style="margin: 2px 0;"><strong>Orden:</strong> #${orden.numero}</p><p><strong>Fecha:</strong> ${new Date(orden.fechaIngreso).toLocaleDateString()}</p>${orden.fechaEstimada ? `<p><strong>Entrega estimada:</strong> ${new Date(orden.fechaEstimada).toLocaleDateString()}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 4px 0; font-size: 12px;">DATOS DEL CLIENTE</h3><p><strong>Nombre:</strong> ${cliente.nombre} ${cliente.apellido}</p><p><strong>Celular:</strong> ${cliente.celular}</p>${cliente.email ? `<p><strong>Email:</strong> ${cliente.email}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">DATOS DEL EQUIPO</h3><p><strong>Tipo:</strong> ${orden.tipoDispositivo}</p><p><strong>Marca:</strong> ${orden.marca}</p><p><strong>Modelo:</strong> ${orden.modelo}</p>${orden.imei ? `<p><strong>IMEI/Serie:</strong> ${orden.imei}</p>` : ''}${orden.accesorios ? `<p><strong>Accesorios:</strong> ${orden.accesorios}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">PROBLEMA REPORTADO</h3><p>${orden.problema}</p></div>${orden.notas ? `<hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">NOTAS</h3><p>${orden.notas}</p></div>` : ''}<hr style="border: 1px solid #333;"><div style="margin: 15px 0;">${orden.presupuesto ? `<p><strong>Presupuesto:</strong> <span style="font-size: 1.3em;">$${orden.presupuesto.toFixed(2)}</span></p><p><strong>Anticipo:</strong> $${(orden.anticipo || 0).toFixed(2)}</p><p><strong>Saldo:</strong> $${((orden.presupuesto || 0) - (orden.anticipo || 0)).toFixed(2)}</p>` : '<p><em>Presupuesto pendiente</em></p>'}${orden.tieneGarantia !== false ? `<p><strong>Garantía:</strong> ${orden.garantia} días</p>` : '<p><strong>Garantía:</strong> ❌ Sin garantía</p>'}</div><hr style="border: 1px solid #333;"><div style="margin: 8px 0; padding: 6px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 3px;"><p style="margin: 0; font-size: 9px; text-align: center; font-weight: bold; color: #856404;">⚠️ POLÍTICAS DEL TALLER</p><p style="margin: 10px 0 0; font-size: 0.8em; text-align: justify; line-height: 1.4;">Luego de su equipo ser arreglado tiene un plazo de 15 días para retirarlo. Si pasa de un mes pasa al taller de repuesto si no está pago.</p></div><div style="margin-top: 12px;"><p style="margin: 15px 0 3px;">_____________________</p><p style="margin: 0; font-size: 10px;">Firma del Cliente</p></div><div style="margin-top: 20px; text-align: center; font-size: 0.9em;"><p><strong>Estado:</strong> ${orden.estado}</p><p>¡Gracias por su confianza!</p></div></div>`;
+    const recibo = `<div style="font-family: Arial, sans-serif; max-width: 300px; font-size: 11px; margin: 0 auto; padding: 20px; border: 2px solid #333;"><div style="text-align: center; margin-bottom: 20px;"><h2 style="margin: 0;">�� TALLER DE REPARACIONES</h2><p style="margin: 5px 0;">ORDEN DE SERVICIO</p></div><hr style="border: 1px solid #333;"><div style="margin: 6px 0;"><p style="margin: 2px 0;"><strong>Orden:</strong> #${orden.numero}</p><p><strong>Fecha:</strong> ${new Date(orden.fechaIngreso).toLocaleDateString()}</p>${orden.fechaEstimada ? `<p><strong>Entrega estimada:</strong> ${new Date(orden.fechaEstimada).toLocaleDateString()}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 4px 0; font-size: 12px;">DATOS DEL CLIENTE</h3><p><strong>Nombre:</strong> ${cliente.nombre} ${cliente.apellido}</p><p><strong>Celular:</strong> ${cliente.celular}</p>${cliente.email ? `<p><strong>Email:</strong> ${cliente.email}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">DATOS DEL EQUIPO</h3><p><strong>Tipo:</strong> ${orden.tipoDispositivo}</p><p><strong>Marca:</strong> ${orden.marca}</p><p><strong>Modelo:</strong> ${orden.modelo}</p>${orden.imei ? `<p><strong>IMEI/Serie:</strong> ${orden.imei}</p>` : ''}${orden.accesorios ? `<p><strong>Accesorios:</strong> ${orden.accesorios}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">PROBLEMA REPORTADO</h3><p>${orden.problema}</p></div>${orden.notas ? `<hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">NOTAS</h3><p>${orden.notas}</p></div>` : ''}<hr style="border: 1px solid #333;"><div style="margin: 15px 0;">${orden.presupuesto ? `<p><strong>Presupuesto:</strong> <span style="font-size: 1.3em;">$${orden.presupuesto.toFixed(2)}</span></p>${orden.costoPiezas > 0 ? `<p><strong>Costo Piezas:</strong> $${orden.costoPiezas.toFixed(2)}</p>` : ''}<p><strong>Anticipo:</strong> $${(orden.anticipo || 0).toFixed(2)}</p><p><strong>Saldo:</strong> $${((orden.presupuesto || 0) - (orden.anticipo || 0)).toFixed(2)}</p>` : '<p><em>Presupuesto pendiente</em></p>'}${orden.tieneGarantia !== false ? `<p><strong>Garantía:</strong> ${orden.garantia} días</p>` : '<p><strong>Garantía:</strong> ❌ Sin garantía</p>'}</div><hr style="border: 1px solid #333;"><div style="margin: 8px 0; padding: 6px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 3px;"><p style="margin: 0; font-size: 9px; text-align: center; font-weight: bold; color: #856404;">⚠️ POLÍTICAS DEL TALLER</p><p style="margin: 10px 0 0; font-size: 0.8em; text-align: justify; line-height: 1.4;">Luego de su equipo ser arreglado tiene un plazo de 15 días para retirarlo. Si pasa de un mes pasa al taller de repuesto si no está pago.</p></div><div style="margin-top: 12px;"><p style="margin: 15px 0 3px;">_____________________</p><p style="margin: 0; font-size: 10px;">Firma del Cliente</p></div><div style="margin-top: 20px; text-align: center; font-size: 0.9em;"><p><strong>Estado:</strong> ${orden.estado}</p><p>¡Gracias por su confianza!</p></div></div>`;
     const ventana = window.open('', '', 'width=800,height=600');
     ventana.document.write('<html><head><title>Orden de Servicio</title></head><body>');
     ventana.document.write(recibo);

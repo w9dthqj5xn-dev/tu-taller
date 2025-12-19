@@ -30,8 +30,6 @@
             max-width: 600px;
             padding: 40px;
             animation: slideIn 0.5s ease;
-            max-height: 95vh;
-            overflow-y: auto;
         }
 
         @keyframes slideIn {
@@ -433,268 +431,12 @@
             background: #fff3cd;
             color: #856404;
         }
-
-        /* ===== RESPONSIVE DESIGN ===== */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            .container {
-                max-width: 100%;
-                padding: 20px;
-                border-radius: 16px;
-            }
-
-            .header {
-                margin-bottom: 20px;
-                margin-top: 20px;
-            }
-
-            .header h1 {
-                font-size: 1.5em;
-            }
-
-            .header p {
-                font-size: 12px;
-            }
-
-            .form-group {
-                margin-bottom: 15px;
-            }
-
-            .form-group input {
-                padding: 10px 12px;
-                font-size: 16px;
-            }
-
-            .btn {
-                padding: 12px;
-                font-size: 14px;
-                width: 100%;
-            }
-
-            .logout-btn, .back-btn {
-                padding: 6px 12px;
-                font-size: 11px;
-                top: 10px;
-            }
-
-            .license-key {
-                font-size: 14px;
-                padding: 12px;
-            }
-
-            table {
-                font-size: 12px;
-            }
-
-            table thead th {
-                padding: 8px 10px;
-                font-size: 12px;
-            }
-
-            table tbody td {
-                padding: 8px 10px;
-                font-size: 12px;
-            }
-
-            .license-item {
-                padding: 12px;
-                margin-bottom: 8px;
-            }
-
-            .license-item h4 {
-                font-size: 14px;
-            }
-
-            .license-item p {
-                font-size: 12px;
-            }
-
-            .license-actions {
-                gap: 5px;
-            }
-
-            .btn-renovar, .btn-eliminar, .btn-suspender, .btn-activar, .btn-editar {
-                padding: 6px 10px;
-                font-size: 11px;
-            }
-
-            .alert {
-                font-size: 12px;
-                padding: 10px 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 8px;
-            }
-
-            .container {
-                padding: 15px;
-                border-radius: 12px;
-            }
-
-            .header {
-                margin-bottom: 15px;
-                margin-top: 15px;
-            }
-
-            .header h1 {
-                font-size: 1.2em;
-            }
-
-            .header p {
-                font-size: 11px;
-            }
-
-            .form-group {
-                margin-bottom: 12px;
-            }
-
-            .form-group label {
-                font-size: 13px;
-            }
-
-            .form-group input {
-                padding: 10px;
-                font-size: 14px;
-            }
-
-            .btn {
-                padding: 11px;
-                font-size: 13px;
-            }
-
-            .logout-btn, .back-btn {
-                padding: 5px 10px;
-                font-size: 10px;
-                top: 8px;
-            }
-
-            .logout-btn {
-                right: 8px;
-            }
-
-            .back-btn {
-                left: 8px;
-            }
-
-            .license-key {
-                font-size: 12px;
-                padding: 10px;
-                margin: 10px 0;
-            }
-
-            table {
-                font-size: 11px;
-                display: block;
-                overflow-x: auto;
-            }
-
-            table thead {
-                display: none;
-            }
-
-            table tbody, table tr, table td {
-                display: block;
-                width: 100%;
-            }
-
-            table tbody tr {
-                margin-bottom: 15px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-                padding: 10px;
-            }
-
-            table tbody td {
-                padding: 8px 0;
-                text-align: left;
-                border: none;
-            }
-
-            table tbody td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                color: #e67e22;
-                display: inline-block;
-                min-width: 100px;
-            }
-
-            .license-item {
-                padding: 10px;
-                margin-bottom: 10px;
-            }
-
-            .license-item h4 {
-                font-size: 13px;
-            }
-
-            .license-item p {
-                font-size: 11px;
-            }
-
-            .license-actions {
-                gap: 4px;
-                flex-direction: column;
-            }
-
-            .btn-renovar, .btn-eliminar, .btn-suspender, .btn-activar, .btn-editar {
-                padding: 8px;
-                font-size: 12px;
-                width: 100%;
-            }
-
-            .licenses-list {
-                max-height: 300px;
-            }
-
-            .license-row {
-                flex-direction: column;
-                padding: 8px;
-                gap: 5px;
-            }
-
-            .alert {
-                font-size: 11px;
-                padding: 8px 10px;
-            }
-
-            .form-group input {
-                width: 100%;
-                min-height: 40px;
-            }
-        }
-
-        /* Ultra pequeños */
-        @media (max-width: 320px) {
-            .container {
-                padding: 12px;
-            }
-
-            .header h1 {
-                font-size: 1.1em;
-            }
-
-            .btn {
-                padding: 10px;
-                font-size: 12px;
-            }
-
-            .logout-btn, .back-btn {
-                padding: 4px 8px;
-                font-size: 9px;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <button id="backBtn" class="back-btn" style="display: none;" onclick="volverLogin()">&larr; Volver</button>
-        <button id="logoutBtn" class="logout-btn" style="display: none;" onclick="cerrarSesion()">Cerrar Sesion</button>
+        <button id="backBtn" class="back-btn" style="display: none;" onclick="volverLogin()">← Volver</button>
+        <button id="logoutBtn" class="logout-btn" style="display: none;" onclick="cerrarSesion()">Cerrar Sesión</button>
         
         <!-- Login Section -->
         <div id="loginSection" class="login-section active">
@@ -717,7 +459,6 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary">Acceder</button>
-                <button type="button" class="btn btn-secondary" onclick="llenarDemoCredenciales()" style="margin-top: 10px; display: block; width: 100%;">Demo (Cargar credenciales)</button>
             </form>
         </div>
 
@@ -779,10 +520,7 @@
             <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e0e0e0;">
                 <h3 style="margin-bottom: 20px; color: #e67e22;">👥 Administración de Usuarios</h3>
                 <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Gestiona los usuarios registrados y resetea contraseñas</p>
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <button class="btn btn-primary" onclick="cargarUsuarios()" style="flex: 1;">🔄 Cargar Usuarios</button>
-                    <button class="btn btn-secondary" onclick="crearUsuarioPrueba()" style="flex: 1;">➕ Usuario de Prueba</button>
-                </div>
+                <button class="btn btn-primary" onclick="cargarUsuarios()" style="margin-bottom: 15px;">🔄 Cargar Usuarios</button>
                 <div id="usuariosList" style="margin-top: 15px;"></div>
             </div>
         </div>
@@ -828,12 +566,6 @@
                     errorDiv.style.display = 'none';
                 }, 5000);
             }
-        }
-
-        function llenarDemoCredenciales() {
-            document.getElementById('username').value = 'carlosjimenezlic';
-            document.getElementById('password').value = 'Layla1896';
-            console.log('✅ Credenciales de demo cargadas');
         }
 
         function cerrarSesion() {
@@ -889,15 +621,15 @@
                 fechaExpiracion.setDate(fechaExpiracion.getDate() + dias);
             }
 
-            // Generar codigo de licencia unico
+            // Generar código de licencia único
             const licenseKey = generarCodigoLicencia(clientName, licenseType);
 
             const licencia = {
-                clientName: clientName,
-                clientEmail: clientEmail,
-                licenseType: licenseType,
-                licenseKey: licenseKey,
-                maxDevices: maxDevices,
+                clientName,
+                clientEmail,
+                licenseType,
+                licenseKey,
+                maxDevices,
                 fechaCreacion: fechaCreacion.toISOString(),
                 fechaExpiracion: fechaExpiracion ? fechaExpiracion.toISOString() : null,
                 activa: true,
@@ -905,11 +637,8 @@
             };
 
             try {
-                // Guardar licencia en Firebase (si está disponible)
-                if (typeof db !== 'undefined' && db) {
-                    await db.collection('licencias').add(licencia);
-                    console.log('✅ Licencia guardada en Firebase');
-                }
+                // Guardar licencia en Firebase
+                await db.collection('licencias').add(licencia);
                 
                 // También guardar en localStorage como respaldo
                 let licencias = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
@@ -923,7 +652,7 @@
                 // Limpiar formulario
                 document.getElementById('licenseForm').reset();
                 
-                alert('✅ Licencia generada correctamente');
+                alert('✅ Licencia generada y guardada en Firebase correctamente');
             } catch (error) {
                 console.error('Error al generar licencia:', error);
                 alert('❌ Error al guardar licencia. Por favor intenta de nuevo.');
@@ -1049,13 +778,13 @@
                         ${lic.fechaExpiracion ? `<p><strong>Expira:</strong> ${new Date(lic.fechaExpiracion).toLocaleDateString()}</p>` : '<p><strong>Sin expiración</strong></p>'}
                         ${suspendida ? '<p style="color: #856404; font-weight: bold;">⚠️ Licencia suspendida temporalmente</p>' : ''}
                         <div class="license-actions">
-                            <button class="btn-editar" onclick="editarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Editar</button>
-                            <button class="btn-renovar" onclick="renovarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Renovar</button>
+                            <button class="btn-editar" onclick="editarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">✏️ Editar</button>
+                            <button class="btn-renovar" onclick="renovarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">🔄 Renovar</button>
                             ${suspendida ? 
-                                `<button class="btn-activar" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Activar</button>` :
-                                `<button class="btn-suspender" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Suspender</button>`
+                                `<button class="btn-activar" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">▶️ Activar</button>` :
+                                `<button class="btn-suspender" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">⏸️ Suspender</button>`
                             }
-                            <button class="btn-eliminar" onclick="eliminarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">Eliminar</button>
+                            <button class="btn-eliminar" onclick="eliminarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">🗑️ Eliminar</button>
                         </div>
                     </div>
                 `;
@@ -1078,75 +807,41 @@
 
         async function cargarUsuarios() {
             const container = document.getElementById('usuariosList');
-            container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">⏳ Cargando usuarios...</p>';
             
             try {
-                console.log('🔍 Iniciando cargarUsuarios()...');
-                
-                let usuariosLocal = [];
-                
-                // Primero, intentar cargar desde localStorage (más rápido y confiable)
-                const localStorageData = localStorage.getItem('usuariosRegistrados');
-                console.log('📂 localStorage "usuariosRegistrados" disponible:', !!localStorageData);
-                
-                if (localStorageData) {
-                    usuariosLocal = JSON.parse(localStorageData);
-                    console.log('✅ Usuarios desde localStorage:', usuariosLocal.length);
-                }
-                
-                // Si no hay en localStorage, intentar Firebase
-                if (usuariosLocal.length === 0 && typeof db !== 'undefined' && db) {
-                    try {
-                        console.log('🔗 Intentando cargar desde Firebase...');
-                        const snapshot = await db.collection('usuarios').get();
-                        usuariosLocal = snapshot.docs.map(doc => ({
-                            id: doc.id,
-                            ...doc.data()
-                        }));
-                        console.log('✅ Usuarios desde Firebase:', usuariosLocal.length);
-                    } catch (error) {
-                        console.error('❌ Error al cargar de Firebase:', error);
-                    }
-                }
+                // Cargar usuarios desde Firebase (si existen) o localStorage
+                const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
                 
                 if (usuariosLocal.length === 0) {
-                    container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">📭 No hay usuarios registrados</p>';
-                    console.log('ℹ️ No hay usuarios para mostrar');
+                    container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay usuarios registrados</p>';
                     return;
                 }
 
-                // Obtener datos de licencias
-                let licenciasMap = {};
-                if (typeof db !== 'undefined' && db) {
-                    try {
-                        const licenciasSnapshot = await db.collection('licencias').get();
-                        licenciasSnapshot.forEach(doc => {
-                            licenciasMap[doc.data().licenseKey] = doc.data();
-                        });
-                        console.log('✅ Licencias cargadas:', Object.keys(licenciasMap).length);
-                    } catch (error) {
-                        console.warn('⚠️ No se pudo cargar licencias:', error);
-                    }
-                }
+                // Obtener datos de licencias para mostrar información adicional
+                const licenciasSnapshot = await db.collection('licencias').get();
+                const licenciasMap = {};
+                licenciasSnapshot.forEach(doc => {
+                    licenciasMap[doc.data().licenseKey] = doc.data();
+                });
 
-                // Crear tabla
-                let html = '<table style="width: 100%; border-collapse: collapse;"><thead><tr style="background-color: #e67e22; color: white;"><th style="padding: 10px; text-align: left;">Usuario</th><th style="padding: 10px; text-align: left;">Email</th><th style="padding: 10px; text-align: left;">Licencia</th><th style="padding: 10px; text-align: left;">Nueva Contraseña</th><th style="padding: 10px; text-align: center;">Acciones</th></tr></thead><tbody>';
+                // Crear tabla de usuarios
+                let html = '<table><thead><tr><th>Usuario</th><th>Email</th><th>Licencia</th><th>Nueva Contraseña</th><th>Acciones</th></tr></thead><tbody>';
 
                 usuariosLocal.forEach((usuario, index) => {
                     const licencia = licenciasMap[usuario.licenseKey];
                     const clienteName = licencia ? licencia.clientName : 'Sin información';
                     
                     html += `
-                        <tr style="border-bottom: 1px solid #ddd;">
-                            <td style="padding: 10px;"><strong>${usuario.usuario}</strong></td>
-                            <td style="padding: 10px;">${usuario.email || '-'}</td>
-                            <td style="padding: 10px;">${clienteName}</td>
-                            <td style="padding: 10px;">
-                                <input type="text" id="newPass_${index}" placeholder="Nueva contraseña" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                        <tr>
+                            <td><strong>${usuario.usuario}</strong></td>
+                            <td>${usuario.email || '-'}</td>
+                            <td>${clienteName}</td>
+                            <td>
+                                <input type="text" id="newPass_${index}" placeholder="Nueva contraseña" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
                             </td>
-                            <td style="padding: 10px; text-align: center;">
-                                <button onclick="resetearContrasena('${usuario.usuario}', ${index})" style="padding: 6px 10px; font-size: 11px; background-color: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Resetear</button>
-                                <button onclick="eliminarUsuario('${usuario.usuario}', ${index})" style="padding: 6px 10px; font-size: 11px; background-color: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">Eliminar</button>
+                            <td>
+                                <button class="btn-editar" onclick="resetearContrasena(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Resetear</button>
+                                <button class="btn-eliminar" onclick="eliminarUsuario(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Eliminar</button>
                             </td>
                         </tr>
                     `;
@@ -1154,16 +849,14 @@
 
                 html += '</tbody></table>';
                 container.innerHTML = html;
-                console.log('✅ Tabla renderizada con', usuariosLocal.length, 'usuarios');
 
             } catch (error) {
-                console.error('❌ Error en cargarUsuarios():', error);
-                container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">❌ Error: ' + error.message + '</p>';
+                console.error('Error al cargar usuarios:', error);
+                container.innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">❌ Error al cargar usuarios</p>';
             }
         }
-        }
 
-        async function resetearContrasena(nombreUsuario, index) {
+        async function resetearContrasena(index, nombreUsuario) {
             const nuevaPass = document.getElementById(`newPass_${index}`).value;
             
             if (!nuevaPass || nuevaPass.trim().length < 4) {
@@ -1176,86 +869,81 @@
             }
 
             try {
-                // Actualizar en Firebase
-                if (typeof db !== 'undefined' && db) {
-                    try {
-                        const snapshot = await db.collection('usuarios')
-                            .where('usuario', '==', nombreUsuario)
-                            .get();
-
-                        if (snapshot.empty) {
-                            alert('❌ Usuario no encontrado en Firebase');
-                            return;
-                        }
-
-                        await snapshot.docs[0].ref.update({
-                            password: nuevaPass,
-                            fechaReseteo: new Date().toISOString(),
-                            resetadoPor: 'admin',
-                            estado: 'activo'
-                        });
-                        
-                        console.log('✅ Contraseña actualizada en Firebase');
-                    } catch (firebaseError) {
-                        console.error('Error en Firebase:', firebaseError);
-                        throw firebaseError;
-                    }
-                }
-                
-                // También actualizar en localStorage como respaldo
+                // Obtener usuarios del localStorage
                 const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-                const usuarioLocal = usuariosLocal.find(u => u.usuario === nombreUsuario);
-                if (usuarioLocal) {
-                    usuarioLocal.password = nuevaPass;
-                    usuarioLocal.fechaReseteo = new Date().toISOString();
+                
+                if (index >= 0 && index < usuariosLocal.length) {
+                    usuariosLocal[index].password = nuevaPass;
+                    usuariosLocal[index].fechaReseteo = new Date().toISOString();
+                    
+                    // Guardar en localStorage
                     localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosLocal));
-                }
+                    
+                    // También guardar en Firebase en una colección de usuarios
+                    const usuarioFirebase = {
+                        usuario: usuariosLocal[index].usuario,
+                        email: usuariosLocal[index].email,
+                        password: nuevaPass,
+                        licenseKey: usuariosLocal[index].licenseKey,
+                        fechaCreacion: usuariosLocal[index].fechaCreacion,
+                        fechaReseteo: new Date().toISOString(),
+                        resetadoPor: 'admin',
+                        estado: 'activo'
+                    };
 
-                alert(`✅ Contraseña actualizada correctamente\n\nUsuario: ${nombreUsuario}\nNueva contraseña: ${nuevaPass}`);
-                document.getElementById(`newPass_${index}`).value = '';
-                await cargarUsuarios();
+                    // Buscar si ya existe el usuario en Firebase
+                    const snapshot = await db.collection('usuarios')
+                        .where('usuario', '==', usuariosLocal[index].usuario)
+                        .get();
+
+                    if (snapshot.empty) {
+                        // Crear nuevo documento
+                        await db.collection('usuarios').add(usuarioFirebase);
+                    } else {
+                        // Actualizar documento existente
+                        await snapshot.docs[0].ref.update(usuarioFirebase);
+                    }
+
+                    alert(`✅ Contraseña actualizada correctamente\n\nUsuario: ${nombreUsuario}\nNueva contraseña: ${nuevaPass}`);
+                    document.getElementById(`newPass_${index}`).value = '';
+                    await cargarUsuarios();
+                }
             } catch (error) {
                 console.error('Error al resetear contraseña:', error);
-                alert(`❌ Error al actualizar la contraseña:\n${error.message}`);
+                alert('❌ Error al actualizar la contraseña');
             }
         }
 
-        async function eliminarUsuario(nombreUsuario, index) {
+        async function eliminarUsuario(index, nombreUsuario) {
             if (!confirm(`¿Estás seguro de eliminar al usuario ${nombreUsuario}?\n\nEsta acción no se puede deshacer.`)) {
                 return;
             }
 
             try {
-                // Eliminar de Firebase
-                if (typeof db !== 'undefined' && db) {
-                    try {
-                        const snapshot = await db.collection('usuarios')
-                            .where('usuario', '==', nombreUsuario)
-                            .get();
-
-                        snapshot.forEach(doc => {
-                            doc.ref.delete();
-                        });
-                        
-                        console.log('✅ Usuario eliminado de Firebase');
-                    } catch (firebaseError) {
-                        console.warn('No se pudo eliminar de Firebase:', firebaseError);
-                    }
-                }
-                
-                // También eliminar de localStorage
                 const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-                const indiceLocal = usuariosLocal.findIndex(u => u.usuario === nombreUsuario);
-                if (indiceLocal >= 0) {
-                    usuariosLocal.splice(indiceLocal, 1);
+                
+                if (index >= 0 && index < usuariosLocal.length) {
+                    const usuarioAEliminar = usuariosLocal[index];
+                    usuariosLocal.splice(index, 1);
+                    
+                    // Guardar cambios en localStorage
                     localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosLocal));
-                }
+                    
+                    // Eliminar de Firebase
+                    const snapshot = await db.collection('usuarios')
+                        .where('usuario', '==', usuarioAEliminar.usuario)
+                        .get();
 
-                alert('✅ Usuario eliminado correctamente');
-                await cargarUsuarios();
+                    snapshot.forEach(doc => {
+                        doc.ref.delete();
+                    });
+
+                    alert('✅ Usuario eliminado correctamente');
+                    await cargarUsuarios();
+                }
             } catch (error) {
                 console.error('Error al eliminar usuario:', error);
-                alert(`❌ Error al eliminar el usuario:\n${error.message}`);
+                alert('❌ Error al eliminar el usuario');
             }
         }
 
@@ -1303,39 +991,6 @@ soporte@tutaller.com
             a.download = `Licencia_${ultimaLicencia.clientName.replace(/\s+/g, '_')}_${Date.now()}.txt`;
             a.click();
             URL.revokeObjectURL(url);
-        }
-
-        // Función para crear un usuario de prueba
-        function crearUsuarioPrueba() {
-            const usuarioPrueba = {
-                id: Date.now(),
-                usuario: 'usuario_prueba_' + Date.now(),
-                password: '12345678',
-                licenseKey: 'TT-TEST-00000000-00000-0000',
-                nombreTaller: 'Taller de Prueba',
-                email: 'prueba@taller.local',
-                fechaRegistro: new Date().toISOString(),
-                estado: 'activo'
-            };
-
-            try {
-                // Guardar en localStorage
-                let usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-                usuariosLocal.push(usuarioPrueba);
-                localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosLocal));
-
-                console.log('✅ Usuario de prueba creado en localStorage');
-                console.log('Usuario:', usuarioPrueba.usuario);
-                console.log('Contraseña:', usuarioPrueba.password);
-
-                alert(`✅ Usuario de prueba creado exitosamente\n\nUsuario: ${usuarioPrueba.usuario}\nContraseña: ${usuarioPrueba.password}`);
-                
-                // Recargar la tabla de usuarios
-                cargarUsuarios();
-            } catch (error) {
-                console.error('Error al crear usuario de prueba:', error);
-                alert('❌ Error al crear usuario de prueba: ' + error.message);
-            }
         }
     </script>
     

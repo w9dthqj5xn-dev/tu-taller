@@ -506,6 +506,321 @@
             font-size: 18px;
         }
 
+        /* ================================================
+           RESPONSIVE DESIGN - MEDIA QUERIES
+           ================================================ */
+
+        /* Mobile Portrait - hasta 480px */
+        @media (max-width: 480px) {
+            .login-section.active {
+                padding: 20px 15px;
+                max-width: 100%;
+                min-height: 100vh;
+            }
+
+            .login-section .header h1 {
+                font-size: 2rem;
+                margin-bottom: 12px;
+            }
+
+            .login-section .header p {
+                font-size: 1rem;
+            }
+
+            #loginForm {
+                padding: 30px 20px;
+                border-radius: 20px;
+            }
+
+            .form-group input {
+                padding: 16px 20px;
+                font-size: 16px;
+            }
+
+            .btn-primary {
+                padding: 16px 24px;
+                font-size: 15px;
+            }
+
+            .dashboard {
+                flex-direction: column;
+                height: auto;
+                max-height: none;
+            }
+
+            .sidebar {
+                width: 100%;
+                padding: 20px 15px;
+                position: fixed;
+                top: 0;
+                left: -100%;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+
+            .sidebar.show {
+                left: 0;
+            }
+
+            .main-content {
+                padding: 80px 15px 20px;
+                width: 100%;
+            }
+
+            .content-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .license-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                z-index: 1001;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 12px;
+                border-radius: 10px;
+                font-size: 18px;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            }
+
+            /* Tablas responsivas en móvil */
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+                font-size: 12px;
+            }
+
+            table thead {
+                display: none;
+            }
+
+            table tbody {
+                display: block;
+            }
+
+            table tbody tr {
+                display: block;
+                background: white;
+                margin-bottom: 15px;
+                padding: 15px;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                border-left: 4px solid #667eea;
+                position: relative;
+            }
+
+            table tbody td {
+                display: block;
+                border: none;
+                padding: 8px 0;
+                text-align: left;
+                position: relative;
+                padding-left: 40%;
+            }
+
+            table tbody td:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 0;
+                width: 35%;
+                font-weight: 700;
+                color: #374151;
+                text-transform: uppercase;
+                font-size: 10px;
+                letter-spacing: 1px;
+            }
+
+            .license-actions {
+                justify-content: center;
+                margin-top: 15px;
+            }
+
+            .license-actions button {
+                font-size: 11px;
+                padding: 8px 12px;
+            }
+        }
+
+        /* Mobile Landscape - 481px a 768px */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .login-section.active {
+                padding: 30px 20px;
+                max-width: 450px;
+            }
+
+            .login-section .header h1 {
+                font-size: 2.5rem;
+            }
+
+            #loginForm {
+                padding: 40px 30px;
+            }
+
+            .dashboard {
+                height: auto;
+                max-height: none;
+            }
+
+            .sidebar {
+                width: 250px;
+            }
+
+            .main-content {
+                padding: 30px 25px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .license-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+
+            .mobile-menu-toggle {
+                display: none;
+            }
+        }
+
+        /* Tablet - 769px a 1024px */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .dashboard {
+                height: 100vh;
+            }
+
+            .sidebar {
+                width: 260px;
+            }
+
+            .main-content {
+                padding: 30px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .license-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .mobile-menu-toggle {
+                display: none;
+            }
+        }
+
+        /* Desktop Large - más de 1024px */
+        @media (min-width: 1025px) {
+            .container {
+                max-width: 1400px;
+            }
+
+            .dashboard {
+                height: 100vh;
+            }
+
+            .sidebar {
+                width: 300px;
+            }
+
+            .main-content {
+                padding: 40px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .license-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .mobile-menu-toggle {
+                display: none;
+            }
+        }
+
+        /* Desktop Extra Large - más de 1440px */
+        @media (min-width: 1441px) {
+            .container {
+                max-width: 1600px;
+            }
+
+            .license-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        /* Responsive utilities */
+        .mobile-menu-toggle {
+            display: none;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        /* Mejoras para touch devices */
+        @media (hover: none) and (pointer: coarse) {
+            .btn {
+                min-height: 48px;
+                padding: 16px 24px;
+            }
+
+            .nav-link {
+                padding: 16px 20px;
+                min-height: 48px;
+            }
+
+            .form-group input {
+                min-height: 48px;
+                padding: 16px 20px;
+            }
+        }
+
         .alert-success {
             background: #d4edda;
             color: #155724;
@@ -817,6 +1132,12 @@
 
         <!-- Dashboard Section -->
         <div id="generatorSection" class="generator-section">
+            <!-- Mobile menu toggle -->
+            <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
+            
+            <!-- Sidebar overlay for mobile -->
+            <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+            
             <div class="dashboard">
                 <!-- Sidebar -->
                 <div class="sidebar">
@@ -1101,7 +1422,46 @@
             } else if (sectionName === 'statistics') {
                 cargarEstadisticas();
             }
+
+            // Cerrar sidebar en móvil después de seleccionar sección
+            closeSidebar();
         }
+
+        // Funciones para el menú móvil
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+        }
+
+        function closeSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            sidebar.classList.remove('show');
+            overlay.classList.remove('show');
+        }
+
+        // Cerrar sidebar al hacer clic en enlaces de navegación en móvil
+        document.addEventListener('DOMContentLoaded', () => {
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth <= 480) {
+                        setTimeout(closeSidebar, 150);
+                    }
+                });
+            });
+
+            // Cerrar sidebar al redimensionar ventana
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 480) {
+                    closeSidebar();
+                }
+            });
+        });
 
         function cargarEstadisticas() {
             // Obtener estadísticas del sistema
@@ -1510,17 +1870,19 @@
                     
                     html += `
                         <tr>
-                            <td><strong>${usuario.usuario}</strong></td>
-                            <td>${usuario.email || '-'}</td>
-                            <td>${clienteName}</td>
-                            <td><span style="padding: 2px 6px; border-radius: 3px; font-size: 10px; background: ${origen === 'Firebase' ? '#e8f5e8; color: #2e7d32' : '#fff3e0; color: #ef6c00'}">${origen}</span></td>
-                            <td style="font-size: 11px;">${fechaCreacion}</td>
-                            <td>
+                            <td data-label="Usuario"><strong>${usuario.usuario}</strong></td>
+                            <td data-label="Email">${usuario.email || '-'}</td>
+                            <td data-label="Licencia">${clienteName}</td>
+                            <td data-label="Origen"><span style="padding: 2px 6px; border-radius: 3px; font-size: 10px; background: ${origen === 'Firebase' ? '#e8f5e8; color: #2e7d32' : '#fff3e0; color: #ef6c00'}">${origen}</span></td>
+                            <td data-label="Fecha" style="font-size: 11px;">${fechaCreacion}</td>
+                            <td data-label="Nueva Contraseña">
                                 <input type="text" id="newPass_${index}" placeholder="Nueva contraseña" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
                             </td>
-                            <td>
-                                <button class="btn-editar" onclick="resetearContrasena(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Resetear</button>
-                                <button class="btn-eliminar" onclick="eliminarUsuario(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Eliminar</button>
+                            <td data-label="Acciones">
+                                <div class="license-actions" style="gap: 8px;">
+                                    <button class="btn-editar" onclick="resetearContrasena(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Resetear</button>
+                                    <button class="btn-eliminar" onclick="eliminarUsuario(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Eliminar</button>
+                                </div>
                             </td>
                         </tr>
                     `;

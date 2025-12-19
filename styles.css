@@ -25,6 +25,7 @@ body {
     bottom: 0;
     background: linear-gradient(135deg, #1a2332 0%, #2c3e50 50%, #34495e 100%);
     z-index: 9999;
+    overflow-y: auto;
 }
 
 .login-container {
@@ -36,6 +37,9 @@ body {
     width: 100%;
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
     animation: slideIn 0.5s ease;
+    margin: auto;
+    max-height: 95vh;
+    overflow-y: auto;
 }
 
 @keyframes slideIn {

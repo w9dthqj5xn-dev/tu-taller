@@ -905,8 +905,11 @@
             };
 
             try {
-                // Guardar licencia en Firebase
-                await db.collection('licencias').add(licencia);
+                // Guardar licencia en Firebase (si está disponible)
+                if (typeof db !== 'undefined' && db) {
+                    await db.collection('licencias').add(licencia);
+                    console.log('✅ Licencia guardada en Firebase');
+                }
                 
                 // También guardar en localStorage como respaldo
                 let licencias = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
@@ -920,7 +923,7 @@
                 // Limpiar formulario
                 document.getElementById('licenseForm').reset();
                 
-                alert('✅ Licencia generada y guardada en Firebase correctamente');
+                alert('✅ Licencia generada correctamente');
             } catch (error) {
                 console.error('Error al generar licencia:', error);
                 alert('❌ Error al guardar licencia. Por favor intenta de nuevo.');

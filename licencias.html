@@ -512,6 +512,9 @@
 
         /* Mobile Portrait - hasta 480px */
         @media (max-width: 480px) {
+            .generator-section .mobile-menu-toggle {
+                display: block !important;
+            }
             .login-section.active {
                 padding: 20px 15px;
                 max-width: 100%;
@@ -549,7 +552,7 @@
             }
 
             .sidebar {
-                width: 100%;
+                width: 280px;
                 padding: 20px 15px;
                 position: fixed;
                 top: 0;
@@ -557,6 +560,8 @@
                 height: 100vh;
                 z-index: 1000;
                 transition: left 0.3s ease;
+                background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+                box-shadow: 2px 0 20px rgba(0,0,0,0.3);
             }
 
             .sidebar.show {
@@ -668,6 +673,9 @@
 
         /* Mobile Landscape - 481px a 768px */
         @media (min-width: 481px) and (max-width: 768px) {
+            .generator-section .mobile-menu-toggle {
+                display: block !important;
+            }
             .login-section.active {
                 padding: 30px 20px;
                 max-width: 450px;
@@ -686,12 +694,28 @@
                 max-height: none;
             }
 
+            .dashboard {
+                flex-direction: column;
+            }
+
             .sidebar {
-                width: 250px;
+                width: 100%;
+                padding: 20px 15px;
+                position: fixed;
+                top: 0;
+                left: -100%;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+
+            .sidebar.show {
+                left: 0;
             }
 
             .main-content {
-                padding: 30px 25px;
+                padding: 80px 25px 25px;
+                width: 100%;
             }
 
             .stats-grid {
@@ -707,10 +731,6 @@
             .license-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 20px;
-            }
-
-            .mobile-menu-toggle {
-                display: none;
             }
         }
 
@@ -786,6 +806,28 @@
         /* Responsive utilities */
         .mobile-menu-toggle {
             display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu-toggle:hover {
+            background: #5a67d8;
+            transform: scale(1.1);
+        }
+
+        .mobile-menu-toggle:active {
+            transform: scale(0.95);
         }
 
         .sidebar-overlay {
@@ -795,12 +837,15 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
             z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .sidebar-overlay.show {
             display: block;
+            opacity: 1;
         }
 
         /* Mejoras para touch devices */
@@ -1432,16 +1477,28 @@
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.querySelector('.sidebar-overlay');
             
-            sidebar.classList.toggle('show');
-            overlay.classList.toggle('show');
+            if (sidebar && overlay) {
+                sidebar.classList.toggle('show');
+                overlay.classList.toggle('show');
+                
+                // Prevenir scroll del body cuando el menú está abierto
+                if (sidebar.classList.contains('show')) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                }
+            }
         }
 
         function closeSidebar() {
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.querySelector('.sidebar-overlay');
             
-            sidebar.classList.remove('show');
-            overlay.classList.remove('show');
+            if (sidebar && overlay) {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+                document.body.style.overflow = '';
+            }
         }
 
         // Cerrar sidebar al hacer clic en enlaces de navegación en móvil
@@ -1449,18 +1506,38 @@
             const navLinks = document.querySelectorAll('.nav-link');
             navLinks.forEach(link => {
                 link.addEventListener('click', () => {
-                    if (window.innerWidth <= 480) {
-                        setTimeout(closeSidebar, 150);
+                    if (window.innerWidth <= 768) {
+                        setTimeout(closeSidebar, 100);
                     }
                 });
             });
 
             // Cerrar sidebar al redimensionar ventana
             window.addEventListener('resize', () => {
-                if (window.innerWidth > 480) {
+                if (window.innerWidth > 768) {
                     closeSidebar();
                 }
             });
+
+            // Agregar funcionalidad de swipe para cerrar el menú
+            let startX = 0;
+            const sidebar = document.querySelector('.sidebar');
+            
+            if (sidebar) {
+                sidebar.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                }, { passive: true });
+                
+                sidebar.addEventListener('touchend', (e) => {
+                    const endX = e.changedTouches[0].clientX;
+                    const diffX = startX - endX;
+                    
+                    // Si se hace swipe hacia la izquierda, cerrar menú
+                    if (diffX > 50) {
+                        closeSidebar();
+                    }
+                }, { passive: true });
+            }
         });
 
         function cargarEstadisticas() {

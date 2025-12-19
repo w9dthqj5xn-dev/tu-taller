@@ -1046,13 +1046,13 @@
                         ${lic.fechaExpiracion ? `<p><strong>Expira:</strong> ${new Date(lic.fechaExpiracion).toLocaleDateString()}</p>` : '<p><strong>Sin expiración</strong></p>'}
                         ${suspendida ? '<p style="color: #856404; font-weight: bold;">⚠️ Licencia suspendida temporalmente</p>' : ''}
                         <div class="license-actions">
-                            <button class="btn-editar" onclick="editarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">✏️ Editar</button>
-                            <button class="btn-renovar" onclick="renovarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">🔄 Renovar</button>
+                            <button class="btn-editar" onclick="editarLicenciaFirebase(&quot;${lic.licenseKey}&quot;).then(r => r && cargarLicencias())">✏️ Editar</button>
+                            <button class="btn-renovar" onclick="renovarLicenciaFirebase(&quot;${lic.licenseKey}&quot;).then(r => r && cargarLicencias())">🔄 Renovar</button>
                             ${suspendida ? 
-                                `<button class="btn-activar" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">▶️ Activar</button>` :
-                                `<button class="btn-suspender" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">⏸️ Suspender</button>`
+                                `<button class="btn-activar" onclick="toggleSuspenderLicenciaFirebase(&quot;${lic.licenseKey}&quot;).then(r => r && cargarLicencias())">▶️ Activar</button>` :
+                                `<button class="btn-suspender" onclick="toggleSuspenderLicenciaFirebase(&quot;${lic.licenseKey}&quot;).then(r => r && cargarLicencias())">⏸️ Suspender</button>`
                             }
-                            <button class="btn-eliminar" onclick="eliminarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())">🗑️ Eliminar</button>
+                            <button class="btn-eliminar" onclick="eliminarLicenciaFirebase(&quot;${lic.licenseKey}&quot;).then(r => r && cargarLicencias())">🗑️ Eliminar</button>
                         </div>
                     </div>
                 `;
@@ -1142,8 +1142,8 @@
                                 <input type="text" id="newPass_${index}" placeholder="Nueva contraseña" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
                             </td>
                             <td style="padding: 10px; text-align: center;">
-                                <button onclick="resetearContrasena('${usuario.usuario}', ${index})" style="padding: 6px 10px; font-size: 11px; background-color: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Resetear</button>
-                                <button onclick="eliminarUsuario('${usuario.usuario}', ${index})" style="padding: 6px 10px; font-size: 11px; background-color: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">Eliminar</button>
+                                <button onclick="resetearContrasena(&quot;${usuario.usuario}&quot;, ${index})" style="padding: 6px 10px; font-size: 11px; background-color: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">Resetear</button>
+                                <button onclick="eliminarUsuario(&quot;${usuario.usuario}&quot;, ${index})" style="padding: 6px 10px; font-size: 11px; background-color: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">Eliminar</button>
                             </td>
                         </tr>
                     `;

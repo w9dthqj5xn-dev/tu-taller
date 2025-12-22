@@ -1608,24 +1608,31 @@ function generarReportes() {
         return fecha >= fechaInicio && o.estado === 'Entregado';
     });
     let ingresosTotales = 0;
-    let tiempoTotal = 0;
-    let ordenesConTiempo = 0;
     ordenesFiltradas.forEach(orden => {
         ingresosTotales += orden.presupuesto || 0;
-        if (orden.fechaEntrega && orden.fechaIngreso) {
-            const inicio = new Date(orden.fechaIngreso);
-            const fin = new Date(orden.fechaEntrega);
-            const dias = (fin - inicio) / (1000 * 60 * 60 * 24);
-            tiempoTotal += dias;
-            ordenesConTiempo++;
-        }
     });
     const promedioPorOrden = ordenesFiltradas.length > 0 ? ingresosTotales / ordenesFiltradas.length : 0;
-    const tiempoPromedio = ordenesConTiempo > 0 ? tiempoTotal / ordenesConTiempo : 0;
+    
+    // Calcular ganancia neta para las tarjetas superiores
+    let gananciaNetaTotal = 0;
+    ordenesFiltradas.forEach(orden => {
+        const presupuesto = orden.presupuesto || 0;
+        const costoPiezas = orden.costoPiezas || 0;
+        
+        let costoRepuestosOrden = 0;
+        if (orden.repuestos && orden.repuestos.length > 0) {
+            orden.repuestos.forEach(repuesto => {
+                costoRepuestosOrden += (repuesto.precio * repuesto.cantidad);
+            });
+        }
+        
+        gananciaNetaTotal += (presupuesto - costoPiezas - costoRepuestosOrden);
+    });
+    
     document.getElementById('reporteIngresos').textContent = `$${ingresosTotales.toFixed(2)}`;
     document.getElementById('reporteCompletadas').textContent = ordenesFiltradas.length;
     document.getElementById('reportePromedio').textContent = `$${promedioPorOrden.toFixed(2)}`;
-    document.getElementById('reporteTiempo').textContent = `${Math.round(tiempoPromedio)}d`;
+    document.getElementById('reporteGananciaNeta').textContent = `$${gananciaNetaTotal.toFixed(2)}`;
     const dispositivos = {};
     ordenesFiltradas.forEach(orden => {
         const key = `${orden.marca} ${orden.modelo}`;

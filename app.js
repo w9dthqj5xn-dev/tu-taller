@@ -1646,7 +1646,7 @@ function generarReportes() {
     // Desglose de ganancias
     let gananciaReal = 0;
     let costosTotalesPiezas = 0;
-    let costosRepuestos = 0;
+    let costosTotalesRepuestos = 0;
     let anticiposTotales = 0;
     
     ordenesFiltradas.forEach(orden => {
@@ -1654,30 +1654,30 @@ function generarReportes() {
         const costoPiezas = orden.costoPiezas || 0;
         
         // Calcular costo de repuestos del inventario
-        let costoRepuestos = 0;
+        let costoRepuestosOrden = 0;
         if (orden.repuestos && orden.repuestos.length > 0) {
             orden.repuestos.forEach(repuesto => {
-                costoRepuestos += (repuesto.precio * repuesto.cantidad);
+                costoRepuestosOrden += (repuesto.precio * repuesto.cantidad);
             });
         }
         
         // Ganancia Real = Presupuesto - (Costo Piezas + Costo Repuestos)
-        const gananciaOrden = presupuesto - costoPiezas - costoRepuestos;
+        const gananciaOrden = presupuesto - costoPiezas - costoRepuestosOrden;
         
         gananciaReal += gananciaOrden;
         costosTotalesPiezas += costoPiezas;
-        costosRepuestos += costoRepuestos;
+        costosTotalesRepuestos += costoRepuestosOrden;
         anticiposTotales += orden.anticipo || 0;
     });
     
     const porcentajeGanancia = ingresosTotales > 0 ? (gananciaReal / ingresosTotales * 100) : 0;
     const porcentajeCostosPiezas = ingresosTotales > 0 ? (costosTotalesPiezas / ingresosTotales * 100) : 0;
-    const porcentajeCostosRepuestos = ingresosTotales > 0 ? (costosRepuestos / ingresosTotales * 100) : 0;
+    const porcentajeCostosRepuestos = ingresosTotales > 0 ? (costosTotalesRepuestos / ingresosTotales * 100) : 0;
     
     let htmlGanancias = '<table><thead><tr><th>Concepto</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
     htmlGanancias += `<tr style="background: #c8e6c9; font-weight: bold;"><td><strong>💰 TOTAL COBRADO</strong></td><td><strong>$${ingresosTotales.toFixed(2)}</strong></td><td>100%</td></tr>`;
     htmlGanancias += `<tr style="background: #ffebee;"><td><strong>🔧 Costos Piezas Externas</strong></td><td><strong>-$${costosTotalesPiezas.toFixed(2)}</strong></td><td>-${porcentajeCostosPiezas.toFixed(1)}%</td></tr>`;
-    htmlGanancias += `<tr style="background: #fce4ec;"><td><strong>📦 Costos Repuestos</strong></td><td><strong>-$${costosRepuestos.toFixed(2)}</strong></td><td>-${porcentajeCostosRepuestos.toFixed(1)}%</td></tr>`;
+    htmlGanancias += `<tr style="background: #fce4ec;"><td><strong>📦 Costos Repuestos</strong></td><td><strong>-$${costosTotalesRepuestos.toFixed(2)}</strong></td><td>-${porcentajeCostosRepuestos.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #e8f5e9; font-weight: bold; font-size: 1.1em;"><td><strong>✅ GANANCIA NETA</strong></td><td><strong>$${gananciaReal.toFixed(2)}</strong></td><td>${porcentajeGanancia.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #fff9c4;"><td><strong>💵 Anticipos Recibidos</strong></td><td><strong>$${anticiposTotales.toFixed(2)}</strong></td><td>${ingresosTotales > 0 ? (anticiposTotales / ingresosTotales * 100).toFixed(1) : 0}%</td></tr>`;
     htmlGanancias += '</tbody></table>';

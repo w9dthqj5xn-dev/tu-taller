@@ -1683,6 +1683,20 @@ function generarReportes() {
     htmlGanancias += '</tbody></table>';
     document.getElementById('desgloseganancias').innerHTML = htmlGanancias;
     
+    // Resumen de Ingresos sin inversiones
+    const saldosPendientes = ingresosTotales - anticiposTotales;
+    const porcentajeSaldo = ingresosTotales > 0 ? (saldosPendientes / ingresosTotales * 100) : 0;
+    const porcentajeAnticipos = ingresosTotales > 0 ? (anticiposTotales / ingresosTotales * 100) : 0;
+    
+    let htmlIngresos = '<table><thead><tr><th>Concepto</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
+    htmlIngresos += `<tr style="background: #e3f2fd;"><td><strong>💰 Total Cobrado</strong></td><td><strong>$${ingresosTotales.toFixed(2)}</strong></td><td>100%</td></tr>`;
+    htmlIngresos += `<tr style="background: #c8e6c9;"><td><strong>✅ Anticipos Recibidos</strong></td><td><strong>$${anticiposTotales.toFixed(2)}</strong></td><td>${porcentajeAnticipos.toFixed(1)}%</td></tr>`;
+    htmlIngresos += `<tr style="background: #fff9c4;"><td><strong>⏳ Saldo Pendiente</strong></td><td><strong>$${saldosPendientes.toFixed(2)}</strong></td><td>${porcentajeSaldo.toFixed(1)}%</td></tr>`;
+    htmlIngresos += `<tr style="background: #f3e5f5;"><td><strong>📊 Promedio por Orden</strong></td><td><strong>$${promedioPorOrden.toFixed(2)}</strong></td><td>-</td></tr>`;
+    htmlIngresos += `<tr style="background: #e8eaf6;"><td><strong>📦 Órdenes Completadas</strong></td><td><strong>${ordenesFiltradas.length}</strong></td><td>-</td></tr>`;
+    htmlIngresos += '</tbody></table>';
+    document.getElementById('resumenIngresos').innerHTML = htmlIngresos;
+    
     const clientesReparaciones = {};
     ordenesFiltradas.forEach(orden => {
         clientesReparaciones[orden.clienteId] = (clientesReparaciones[orden.clienteId] || 0) + 1;

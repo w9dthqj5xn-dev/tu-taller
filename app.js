@@ -277,7 +277,7 @@ function testFirebaseConfig() {
     }
 }
 
-document.getElementById('loginForm').addEventListener('submit', (e) => {
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
@@ -296,6 +296,10 @@ document.getElementById('loginForm').addEventListener('submit', (e) => {
         localStorage.setItem('sesionActiva', 'true');
         localStorage.setItem('usuario', username);
         localStorage.setItem('nombreTaller', nombreTaller);
+        
+        // Cargar datos desde Firebase
+        await cargarDatosUsuario(username);
+        
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
         actualizarDashboard();
@@ -304,6 +308,37 @@ document.getElementById('loginForm').addEventListener('submit', (e) => {
         document.getElementById('loginPassword').value = '';
     }
 });
+
+// Función para cargar datos del usuario desde Firebase
+async function cargarDatosUsuario(usuario) {
+    try {
+        console.log('🔄 Cargando datos desde Firebase para:', usuario);
+        
+        // Cargar clientes, órdenes y repuestos desde Firebase
+        const clientes = await Storage.loadFromFirebase(usuario, 'clientes');
+        const ordenes = await Storage.loadFromFirebase(usuario, 'ordenes');
+        const repuestos = await Storage.loadFromFirebase(usuario, 'repuestos');
+        
+        // Si se cargaron datos, actualizar localStorage
+        if (clientes.length > 0) {
+            Storage.set('clientes', clientes);
+            console.log('✅ Clientes cargados:', clientes.length);
+        }
+        if (ordenes.length > 0) {
+            Storage.set('ordenes', ordenes);
+            console.log('✅ Órdenes cargadas:', ordenes.length);
+        }
+        if (repuestos.length > 0) {
+            Storage.set('repuestos', repuestos);
+            console.log('✅ Repuestos cargados:', repuestos.length);
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error al cargar datos del usuario:', error);
+        return false;
+    }
+}
 
 // === SISTEMA DE LICENCIAS ===
 function mostrarActivacionLicencia() {
@@ -670,7 +705,7 @@ function cargarDatosDemo() {
     location.reload();
 }
 
-// Sistema de almacenamiento
+// Sistema de almacenamiento con Firebase
 class Storage {
     static get(key) {
         const data = localStorage.getItem(key);
@@ -687,6 +722,64 @@ class Storage {
         localStorage.removeItem('clientes');
         localStorage.removeItem('ordenes');
         localStorage.removeItem('repuestos');
+    }
+    
+    // Métodos para Firebase
+    static async syncToFirebase(usuario, key, data) {
+        try {
+            if (!usuario) return false;
+            const collectionName = `${key}_${usuario}`;
+            
+            // Limpiar colección anterior
+            const snapshot = await db.collection(collectionName).get();
+            const deletePromises = snapshot.docs.map(doc => doc.ref.delete());
+            await Promise.all(deletePromises);
+            
+            // Guardar nuevos datos
+            const savePromises = data.map(item => 
+                db.collection(collectionName).add(item)
+            );
+            await Promise.all(savePromises);
+            
+            return true;
+        } catch (error) {
+            console.error(`Error al sincronizar ${key} con Firebase:`, error);
+            return false;
+        }
+    }
+    
+    static async loadFromFirebase(usuario, key) {
+        try {
+            if (!usuario) return [];
+            const collectionName = `${key}_${usuario}`;
+            
+            const snapshot = await db.collection(collectionName).get();
+            const data = [];
+            snapshot.forEach(doc => {
+                data.push({ ...doc.data(), firebaseId: doc.id });
+            });
+            
+            // Guardar en localStorage como caché
+            if (data.length > 0) {
+                localStorage.setItem(key, JSON.stringify(data));
+            }
+            
+            return data;
+        } catch (error) {
+            console.error(`Error al cargar ${key} desde Firebase:`, error);
+            return this.get(key); // Fallback a localStorage
+        }
+    }
+    
+    static async saveAndSync(key, data) {
+        // Guardar localmente
+        this.set(key, data);
+        
+        // Sincronizar con Firebase si hay usuario activo
+        const usuario = localStorage.getItem('usuario');
+        if (usuario) {
+            await this.syncToFirebase(usuario, key, data);
+        }
     }
 }
 
@@ -729,7 +822,7 @@ function cancelarFormCliente() {
     document.getElementById('clienteForm').reset();
 }
 
-document.getElementById('clienteForm').addEventListener('submit', (e) => {
+document.getElementById('clienteForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const clientes = Storage.get('clientes');
     const id = document.getElementById('clienteId').value;
@@ -748,7 +841,10 @@ document.getElementById('clienteForm').addEventListener('submit', (e) => {
     } else {
         clientes.push(cliente);
     }
-    Storage.set('clientes', clientes);
+    
+    // Guardar y sincronizar con Firebase
+    await Storage.saveAndSync('clientes', clientes);
+    
     cancelarFormCliente();
     cargarClientes();
     alert('Cliente guardado exitosamente');
@@ -785,7 +881,10 @@ function eliminarCliente(id) {
     if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
     let clientes = Storage.get('clientes');
     clientes = clientes.filter(c => c.id !== id);
-    Storage.set('clientes', clientes);
+    
+    // Guardar y sincronizar con Firebase
+    Storage.saveAndSync('clientes', clientes);
+    
     cargarClientes();
 }
 
@@ -1136,7 +1235,7 @@ function limpiarNumero(valor) {
     return parseFloat(limpio) || 0;
 }
 
-document.getElementById('ordenForm').addEventListener('submit', (e) => {
+document.getElementById('ordenForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     console.log('Formulario enviado!');
     
@@ -1199,10 +1298,10 @@ document.getElementById('ordenForm').addEventListener('submit', (e) => {
                 itemInventario.stock -= repuesto.cantidad;
             }
         });
-        Storage.set('repuestos', inventario);
+        await Storage.saveAndSync('repuestos', inventario);
     }
     
-    Storage.set('ordenes', ordenes);
+    await Storage.saveAndSync('ordenes', ordenes);
     console.log('Orden guardada, total ordenes:', ordenes.length);
     
     cancelarFormOrden();
@@ -1325,7 +1424,7 @@ function eliminarOrden(id) {
     if (!confirm('¿Estás seguro de eliminar esta orden?')) return;
     let ordenes = Storage.get('ordenes');
     ordenes = ordenes.filter(o => o.id !== id);
-    Storage.set('ordenes', ordenes);
+    await Storage.saveAndSync('ordenes', ordenes);
     cargarOrdenes();
 }
 
@@ -1421,7 +1520,7 @@ function cancelarFormRepuesto() {
     document.getElementById('repuestoForm').reset();
 }
 
-document.getElementById('repuestoForm').addEventListener('submit', (e) => {
+document.getElementById('repuestoForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const repuestos = Storage.get('repuestos');
     const id = document.getElementById('repuestoId').value;
@@ -1462,7 +1561,7 @@ document.getElementById('repuestoForm').addEventListener('submit', (e) => {
     } else {
         repuestos.push(repuesto);
     }
-    Storage.set('repuestos', repuestos);
+    await Storage.saveAndSync('repuestos', repuestos);
     cancelarFormRepuesto();
     filtrarInventario();
     alert(`Repuesto guardado exitosamente\nCódigo SKU: ${codigoSKU}`);
@@ -1576,7 +1675,7 @@ function eliminarRepuesto(id) {
     if (!confirm('¿Estás seguro de eliminar este repuesto?')) return;
     let repuestos = Storage.get('repuestos');
     repuestos = repuestos.filter(r => r.id !== id);
-    Storage.set('repuestos', repuestos);
+    Storage.saveAndSync('repuestos', repuestos);
     filtrarInventario();
 }
 

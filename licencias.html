@@ -1173,6 +1173,44 @@
 
                 <button type="submit" class="btn btn-primary">Acceder al Sistema</button>
             </form>
+
+            <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #e5e7eb;">
+                <p style="text-align: center; color: #6b7280; margin-bottom: 15px; font-weight: 600;">¿Eres cliente? Consulta tu licencia</p>
+                <button type="button" class="btn btn-secondary" onclick="mostrarConsultaLicencia()" style="width: 100%; background: #10b981;">🔍 Consultar Mi Licencia</button>
+            </div>
+        </div>
+
+        <!-- Consulta de Licencia Section -->
+        <div id="consultaLicenciaSection" class="login-section" style="display: none;">
+            <div class="header">
+                <h1>🔍 Consultar Licencia</h1>
+                <p>Ingresa tu clave de licencia para ver los detalles</p>
+            </div>
+
+            <div id="consultaError" style="display: none;" class="alert alert-error"></div>
+            <div id="consultaSuccess" style="display: none;" class="alert alert-success"></div>
+
+            <form id="consultaForm" onsubmit="consultarLicencia(event)">
+                <div class="form-group">
+                    <label for="licenseKeyConsulta">Clave de Licencia</label>
+                    <input type="text" id="licenseKeyConsulta" required placeholder="TT-XXX-XXXXXXXX-XXXXXX-XXXX" style="font-family: 'Courier New', monospace;">
+                </div>
+
+                <button type="submit" class="btn btn-primary">🔍 Consultar</button>
+                <button type="button" class="btn btn-secondary" onclick="volverLogin()" style="margin-top: 10px; width: 100%;">← Volver al Login</button>
+            </form>
+
+            <div id="licenseDataView" style="display: none; margin-top: 30px;">
+                <div class="card">
+                    <div class="card-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <h3 class="card-title" style="color: white;">
+                            <span class="card-icon">✅</span>
+                            Información de tu Licencia
+                        </h3>
+                    </div>
+                    <div id="licenseDataContent" style="padding: 20px;"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Dashboard Section -->
@@ -2178,6 +2216,195 @@ soporte@tutaller.com
             a.download = `Licencia_${ultimaLicencia.clientName.replace(/\s+/g, '_')}_${Date.now()}.txt`;
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        // ====== FUNCIONES DE CONSULTA DE LICENCIA ======
+        
+        function mostrarConsultaLicencia() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('consultaLicenciaSection').style.display = 'block';
+            document.getElementById('backBtn').style.display = 'block';
+        }
+
+        function volverLogin() {
+            document.getElementById('consultaLicenciaSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('backBtn').style.display = 'none';
+            
+            // Limpiar formulario y resultados
+            document.getElementById('consultaForm').reset();
+            document.getElementById('licenseDataView').style.display = 'none';
+            document.getElementById('consultaError').style.display = 'none';
+            document.getElementById('consultaSuccess').style.display = 'none';
+        }
+
+        async function consultarLicencia(event) {
+            event.preventDefault();
+            
+            const licenseKey = document.getElementById('licenseKeyConsulta').value.trim();
+            const errorDiv = document.getElementById('consultaError');
+            const successDiv = document.getElementById('consultaSuccess');
+            const dataView = document.getElementById('licenseDataView');
+            const dataContent = document.getElementById('licenseDataContent');
+            
+            // Ocultar mensajes previos
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            dataView.style.display = 'none';
+            
+            try {
+                // Buscar licencia en Firebase
+                const snapshot = await db.collection('licencias')
+                    .where('licenseKey', '==', licenseKey)
+                    .get();
+                
+                if (snapshot.empty) {
+                    errorDiv.textContent = '❌ Licencia no encontrada. Verifica la clave e intenta nuevamente.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                const licencia = snapshot.docs[0].data();
+                
+                // Verificar estado de la licencia
+                const ahora = new Date();
+                const fechaExp = licencia.fechaExpiracion ? new Date(licencia.fechaExpiracion) : null;
+                const estaExpirada = fechaExp && fechaExp < ahora;
+                const diasRestantes = fechaExp ? Math.ceil((fechaExp - ahora) / (1000 * 60 * 60 * 24)) : null;
+                
+                // Obtener usuarios registrados con esta licencia
+                const usuariosSnapshot = await db.collection('usuarios')
+                    .where('licenseKey', '==', licenseKey)
+                    .get();
+                
+                const usuariosRegistrados = [];
+                usuariosSnapshot.forEach(doc => {
+                    const userData = doc.data();
+                    usuariosRegistrados.push({
+                        usuario: userData.usuario,
+                        email: userData.email,
+                        fechaCreacion: userData.fechaCreacion
+                    });
+                });
+                
+                const tipoTexto = {
+                    prueba: 'Prueba (3 días)',
+                    mensual: 'Mensual (30 días)',
+                    trimestral: 'Trimestral (90 días)',
+                    semestral: 'Semestral (180 días)',
+                    anual: 'Anual (365 días)',
+                    vitalicia: 'Vitalicia (Sin expiración)'
+                };
+                
+                // Determinar estado y clase
+                let estadoHTML = '';
+                let estadoClase = '';
+                
+                if (licencia.suspendida) {
+                    estadoHTML = '<span class="status-badge status-suspended">⏸️ SUSPENDIDA</span>';
+                    estadoClase = 'status-suspended';
+                } else if (estaExpirada) {
+                    estadoHTML = '<span class="status-badge status-expired">⏰ EXPIRADA</span>';
+                    estadoClase = 'status-expired';
+                } else if (!licencia.activa) {
+                    estadoHTML = '<span class="status-badge status-inactive">❌ INACTIVA</span>';
+                    estadoClase = 'status-inactive';
+                } else {
+                    estadoHTML = '<span class="status-badge status-active">✅ ACTIVA</span>';
+                    estadoClase = 'status-active';
+                }
+                
+                // Mostrar información de la licencia
+                dataContent.innerHTML = `
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        ${estadoHTML}
+                    </div>
+                    
+                    <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 10px 0; color: #374151;">🔑 Clave de Licencia</h4>
+                        <p style="font-family: 'Courier New', monospace; background: white; padding: 12px; border-radius: 6px; border: 2px solid #10b981; font-size: 14px; font-weight: 600; color: #059669; word-break: break-all; margin: 0;">
+                            ${licencia.licenseKey}
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div style="background: #eff6ff; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #6b7280; font-weight: 600;">👤 CLIENTE</p>
+                            <p style="margin: 0; font-size: 16px; color: #1f2937; font-weight: 600;">${licencia.clientName}</p>
+                        </div>
+                        
+                        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #6b7280; font-weight: 600;">📧 EMAIL</p>
+                            <p style="margin: 0; font-size: 14px; color: #1f2937; word-break: break-all;">${licencia.clientEmail}</p>
+                        </div>
+                        
+                        <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #6b7280; font-weight: 600;">📋 TIPO</p>
+                            <p style="margin: 0; font-size: 14px; color: #1f2937; font-weight: 600;">${tipoTexto[licencia.licenseType]}</p>
+                        </div>
+                        
+                        <div style="background: #fce7f3; padding: 15px; border-radius: 8px; border-left: 4px solid #ec4899;">
+                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #6b7280; font-weight: 600;">📱 DISPOSITIVOS</p>
+                            <p style="margin: 0; font-size: 16px; color: #1f2937; font-weight: 600;">${usuariosRegistrados.length} / ${licencia.maxDevices}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 15px 0; color: #374151;">📅 Fechas Importantes</h4>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; padding: 10px; background: white; border-radius: 6px;">
+                                <span style="color: #6b7280; font-weight: 600;">Fecha de Creación:</span>
+                                <span style="color: #1f2937; font-weight: 600;">${new Date(licencia.fechaCreacion).toLocaleDateString('es-ES')}</span>
+                            </div>
+                            ${licencia.fechaExpiracion ? `
+                                <div style="display: flex; justify-content: space-between; padding: 10px; background: white; border-radius: 6px;">
+                                    <span style="color: #6b7280; font-weight: 600;">Fecha de Expiración:</span>
+                                    <span style="color: ${estaExpirada ? '#dc2626' : '#059669'}; font-weight: 600;">${new Date(licencia.fechaExpiracion).toLocaleDateString('es-ES')}</span>
+                                </div>
+                                ${!estaExpirada ? `
+                                    <div style="display: flex; justify-content: space-between; padding: 10px; background: #ecfdf5; border-radius: 6px; border: 1px solid #10b981;">
+                                        <span style="color: #059669; font-weight: 600;">⏳ Días Restantes:</span>
+                                        <span style="color: #059669; font-weight: 700; font-size: 18px;">${diasRestantes} días</span>
+                                    </div>
+                                ` : ''}
+                            ` : `
+                                <div style="display: flex; justify-content: space-between; padding: 10px; background: #ecfdf5; border-radius: 6px; border: 1px solid #10b981;">
+                                    <span style="color: #059669; font-weight: 600;">♾️ Licencia Vitalicia</span>
+                                    <span style="color: #059669; font-weight: 700;">Sin expiración</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                    
+                    ${usuariosRegistrados.length > 0 ? `
+                        <div style="background: #f9fafb; padding: 15px; border-radius: 8px;">
+                            <h4 style="margin: 0 0 15px 0; color: #374151;">👥 Dispositivos Registrados</h4>
+                            <div style="display: grid; gap: 10px;">
+                                ${usuariosRegistrados.map(user => `
+                                    <div style="background: white; padding: 12px; border-radius: 6px; border-left: 3px solid #3b82f6;">
+                                        <p style="margin: 0 0 5px 0; color: #1f2937; font-weight: 600;">👤 ${user.usuario}</p>
+                                        <p style="margin: 0; color: #6b7280; font-size: 12px;">📧 ${user.email}</p>
+                                        <p style="margin: 5px 0 0 0; color: #9ca3af; font-size: 11px;">Registrado: ${new Date(user.fechaCreacion).toLocaleDateString('es-ES')}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : `
+                        <div style="background: #fef3c7; padding: 15px; border-radius: 8px; text-align: center;">
+                            <p style="margin: 0; color: #92400e; font-weight: 600;">⚠️ No hay dispositivos registrados con esta licencia</p>
+                        </div>
+                    `}
+                `;
+                
+                successDiv.textContent = '✅ Licencia encontrada correctamente';
+                successDiv.style.display = 'block';
+                dataView.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error al consultar licencia:', error);
+                errorDiv.textContent = '❌ Error al consultar la licencia. Intenta nuevamente.';
+                errorDiv.style.display = 'block';
+            }
         }
     </script>
     

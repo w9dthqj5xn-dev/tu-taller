@@ -9,40 +9,41 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Colección de licencias - Solo lectura para usuarios autenticados
+    // Colección de licencias - SOLO autenticados
     match /licencias/{licenseId} {
       allow read: if request.auth != null;
       allow write: if false; // Solo el admin desde backend
     }
     
-    // Colección de usuarios - Lectura limitada para login
+    // Colección de usuarios - RESTRINGIDO para login
     match /usuarios/{userId} {
-      // Permitir lectura para verificar credenciales en login
-      // Limitado: solo se puede leer, no modificar
-      allow read: if true;
+      // Solo permitir lectura si el documento coincide con el email de quien consulta
+      // Esto permite el login pero previene enumerar todos los usuarios
+      allow read: if userId == request.resource.data.usuario || 
+                     userId == request.auth.token.email.split('@')[0];
       allow write: if false; // Solo el admin puede crear usuarios
     }
     
-    // Colección de usuarios Google - Solo pueden ver su propio perfil
+    // Colección de usuarios Google - Solo su propio perfil
     match /usuarios-google/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Datos de usuarios (clientes, órdenes, repuestos) - Solo su propia data
+    // Datos de usuarios (clientes, órdenes, repuestos) - REQUIERE AUTENTICACIÓN
     match /usuarios-data/{usuario}/{collection}/{document} {
       // Solo puede acceder si el email del usuario autenticado coincide
       allow read, write: if request.auth != null && 
-                            (request.auth.token.email == usuario);
+                            request.auth.token.email == usuario;
     }
     
-    // Subcollecciones de usuarios-data (para permitir list)
+    // Subcollecciones de usuarios-data - REQUIERE AUTENTICACIÓN
     match /usuarios-data/{usuario}/{collection=**} {
       allow read, write: if request.auth != null && 
                             request.auth.token.email == usuario;
     }
     
-    // Denegar todo lo demás por defecto
+    // Denegar TODO lo demás por defecto
     match /{document=**} {
       allow read, write: if false;
     }

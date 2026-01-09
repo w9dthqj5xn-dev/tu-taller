@@ -1887,6 +1887,9 @@
                                 <div>
                                     <p style="margin: 4px 0; font-size: 14px;"><strong>📅 Creada:</strong> ${new Date(lic.fechaCreacion || lic.creationDate).toLocaleDateString()}</p>
                                     ${lic.fechaExpiracion || lic.expirationDate ? `<p style="margin: 4px 0; font-size: 14px;"><strong>⏰ Expira:</strong> ${new Date(lic.fechaExpiracion || lic.expirationDate).toLocaleDateString()}</p>` : '<p style="margin: 4px 0; font-size: 14px;"><strong>♾️ Sin expiración</strong></p>'}
+                                </div>
+                            </div>
+
                             ${!lic.esUsuarioGoogle ? `
                                 <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
                                     <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #374151;">🔑 Clave de Licencia:</p>

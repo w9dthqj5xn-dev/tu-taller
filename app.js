@@ -311,30 +311,43 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
     
-    // Obtener usuarios registrados
-    const usuariosRegistrados = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-    
-    // Verificar si existe un usuario registrado
-    const usuarioEncontrado = usuariosRegistrados.find(u => u.usuario === username && u.password === password);
-    
-    // También permitir credenciales admin por defecto
-    const esAdmin = (username === 'admin' && password === 'admin123');
-    
-    if (usuarioEncontrado || esAdmin) {
-        const nombreTaller = usuarioEncontrado ? usuarioEncontrado.nombreTaller : 'Taller de Reparaciones';
-        localStorage.setItem('sesionActiva', 'true');
-        localStorage.setItem('usuario', username);
-        localStorage.setItem('nombreTaller', nombreTaller);
+    try {
+        // Buscar usuario en Firebase Firestore
+        const snapshot = await db.collection('usuarios')
+            .where('usuario', '==', username)
+            .get();
         
-        // Cargar datos desde Firebase
-        await cargarDatosUsuario(username);
+        let usuarioEncontrado = null;
+        if (!snapshot.empty) {
+            const userData = snapshot.docs[0].data();
+            // Verificar contraseña
+            if (userData.password === password) {
+                usuarioEncontrado = userData;
+            }
+        }
         
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        actualizarDashboard();
-    } else {
-        alert('❌ Usuario o contraseña incorrectos');
-        document.getElementById('loginPassword').value = '';
+        // También permitir credenciales admin por defecto
+        const esAdmin = (username === 'admin' && password === 'admin123');
+        
+        if (usuarioEncontrado || esAdmin) {
+            const nombreTaller = usuarioEncontrado ? (usuarioEncontrado.nombreTaller || 'Taller de Reparaciones') : 'Taller de Reparaciones';
+            localStorage.setItem('sesionActiva', 'true');
+            localStorage.setItem('usuario', username);
+            localStorage.setItem('nombreTaller', nombreTaller);
+            
+            // Cargar datos desde Firebase
+            await cargarDatosUsuario(username);
+            
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            actualizarDashboard();
+        } else {
+            alert('❌ Usuario o contraseña incorrectos');
+            document.getElementById('loginPassword').value = '';
+        }
+    } catch (error) {
+        console.error('Error al iniciar sesión:', error);
+        alert('❌ Error al verificar credenciales. Por favor intenta de nuevo.');
     }
 });
 
@@ -558,43 +571,54 @@ async function registrarUsuario(event) {
         return;
     }
     
-    // Verificar si el usuario ya existe en localStorage
-    const usuariosRegistrados = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-    const usuarioExistente = usuariosRegistrados.find(u => u.usuario === usuario);
-    
-    if (usuarioExistente) {
-        errorDiv.textContent = '❌ Este nombre de usuario ya está en uso. Elige otro.';
+    try {
+        // Verificar si el usuario ya existe en Firebase
+        const snapshot = await db.collection('usuarios')
+            .where('usuario', '==', usuario)
+            .get();
+        
+        if (!snapshot.empty) {
+            errorDiv.textContent = '❌ Este nombre de usuario ya está en uso. Elige otro.';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        // Crear nuevo usuario vinculado a la licencia
+        const nuevoUsuario = {
+            id: Date.now(),
+            nombreTaller,
+            usuario,
+            password,
+            email: licenciaTemporal.clientEmail || '',
+            licenseKey: licenciaTemporal.licenseKey,
+            fechaRegistro: new Date().toISOString(),
+            fechaCreacion: new Date().toISOString(),
+            licencia: licenciaTemporal,
+            estado: 'activo'
+        };
+        
+        // Guardar en Firebase
+        await db.collection('usuarios').add(nuevoUsuario);
+        
+        localStorage.removeItem('licenciaTemporal');
+        
+        // Iniciar sesión automáticamente
+        localStorage.setItem('sesionActiva', 'true');
+        localStorage.setItem('usuario', usuario);
+        localStorage.setItem('nombreTaller', nombreTaller);
+        
+        // Ocultar modal y mostrar app
+        document.getElementById('modalRegistro').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        
+        alert(`✅ ¡Bienvenido ${nombreTaller}! Tu cuenta ha sido creada exitosamente.`);
+        actualizarDashboard();
+    } catch (error) {
+        console.error('Error al registrar usuario:', error);
+        errorDiv.textContent = '❌ Error al crear la cuenta. Por favor intenta de nuevo.';
         errorDiv.style.display = 'block';
-        return;
     }
-    
-    // Crear nuevo usuario vinculado a la licencia
-    const nuevoUsuario = {
-        id: Date.now(),
-        nombreTaller,
-        usuario,
-        password,
-        licenseKey: licenciaTemporal.licenseKey,
-        fechaRegistro: new Date().toISOString(),
-        licencia: licenciaTemporal
-    };
-    
-    usuariosRegistrados.push(nuevoUsuario);
-    localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosRegistrados));
-    localStorage.removeItem('licenciaTemporal');
-    
-    // Iniciar sesión automáticamente
-    localStorage.setItem('sesionActiva', 'true');
-    localStorage.setItem('usuario', usuario);
-    localStorage.setItem('nombreTaller', nombreTaller);
-    
-    // Ocultar modal y mostrar app
-    document.getElementById('modalRegistro').style.display = 'none';
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    
-    alert(`✅ ¡Bienvenido ${nombreTaller}! Tu cuenta ha sido creada exitosamente.`);
-    actualizarDashboard();
 }
 
 // Exportar funciones de licencias inmediatamente

@@ -2,3 +2,5 @@
 
 Sistema web completo para gestión de talleres con Firebase y Netlify.
 ✅ Sistema configurado y funcionando
+
+🚀 Deploy automático configurado

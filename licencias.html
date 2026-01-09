@@ -2077,18 +2077,8 @@
                     });
                 });
 
-                // Combinar usuarios únicos (priorizar Firebase, luego Google, luego Local)
+                // Combinar todos los usuarios de Firebase
                 const todosUsuarios = [...usuariosFirebase, ...usuariosGoogle];
-                usuariosLocal.forEach(userLocal => {
-                    const existeEnFirebase = usuariosFirebase.find(userFB => userFB.usuario === userLocal.usuario);
-                    const existeEnGoogle = usuariosGoogle.find(userG => userG.email === userLocal.email);
-                    if (!existeEnFirebase && !existeEnGoogle) {
-                        todosUsuarios.push({
-                            ...userLocal,
-                            origen: 'Local'
-                        });
-                    }
-                });
                 
                 if (todosUsuarios.length === 0) {
                     container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay usuarios registrados</p>';

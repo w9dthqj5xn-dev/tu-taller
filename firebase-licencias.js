@@ -196,3 +196,82 @@ async function eliminarLicenciaFirebase(licenseKey) {
         return false;
     }
 }
+
+// ====== FUNCIONES PARA USUARIOS DE GOOGLE ======
+
+// Suspender/Activar usuario de Google
+async function toggleSuspenderUsuarioGoogle(email) {
+    try {
+        const snapshot = await db.collection('usuarios-google')
+            .where('email', '==', email)
+            .get();
+        
+        if (snapshot.empty) {
+            alert('❌ Usuario de Google no encontrado');
+            return false;
+        }
+        
+        const doc = snapshot.docs[0];
+        const usuario = doc.data();
+        const estaSuspendido = usuario.suspendido === true;
+        
+        if (estaSuspendido) {
+            if (!confirm(`¿Activar el acceso de ${usuario.nombre || usuario.email}?\n\nEl usuario podrá volver a usar el sistema con su cuenta de Google.`)) {
+                return false;
+            }
+            await doc.ref.update({
+                suspendido: false,
+                fechaActivacion: new Date().toISOString()
+            });
+            alert('✅ Usuario activado correctamente');
+        } else {
+            if (!confirm(`¿Suspender el acceso de ${usuario.nombre || usuario.email}?\n\nEl usuario no podrá acceder al sistema hasta que sea reactivado.`)) {
+                return false;
+            }
+            await doc.ref.update({
+                suspendido: true,
+                fechaSuspension: new Date().toISOString()
+            });
+            alert('⚠️ Usuario suspendido. No podrá acceder al sistema.');
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error('Error al suspender/activar usuario de Google:', error);
+        alert('❌ Error al actualizar usuario');
+        return false;
+    }
+}
+
+// Eliminar usuario de Google
+async function eliminarUsuarioGoogle(email) {
+    try {
+        const snapshot = await db.collection('usuarios-google')
+            .where('email', '==', email)
+            .get();
+        
+        if (snapshot.empty) {
+            alert('❌ Usuario de Google no encontrado');
+            return false;
+        }
+        
+        const doc = snapshot.docs[0];
+        const usuario = doc.data();
+        
+        if (!confirm(`¿Está seguro de eliminar el usuario de Google?\n\nUsuario: ${usuario.nombre || usuario.email}\nEmail: ${email}\n\nEsta acción no se puede deshacer.`)) {
+            return false;
+        }
+        
+        await doc.ref.delete();
+        
+        alert('✅ Usuario de Google eliminado correctamente');
+        return true;
+        
+    } catch (error) {
+        console.error('Error al eliminar usuario de Google:', error);
+        alert('❌ Error al eliminar usuario');
+        return false;
+    }
+}
+

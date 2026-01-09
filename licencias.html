@@ -1784,8 +1784,32 @@
                     });
                 });
 
+                // Cargar usuarios de Google y crear "licencias virtuales" para ellos
+                const googleSnapshot = await db.collection('usuarios-google').get();
+                const usuariosGoogle = [];
+                
+                googleSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Crear una "licencia virtual" para cada usuario de Google
+                    usuariosGoogle.push({
+                        id: doc.id,
+                        clientName: data.nombre || data.email.split('@')[0],
+                        clientEmail: data.email,
+                        licenseKey: data.email, // Usar email como identificador
+                        licenseType: 'vitalicia',
+                        maxDevices: 99,
+                        fechaCreacion: data.fechaRegistro || new Date().toISOString(),
+                        fechaExpiracion: null,
+                        suspendida: data.suspendido || false,
+                        origen: 'Google',
+                        esUsuarioGoogle: true,
+                        foto: data.foto,
+                        ultimoAcceso: data.ultimoAcceso
+                    });
+                });
+
                 // Combinar licencias únicas (priorizar Firebase)
-                const todasLicencias = [...licenciasFirebase];
+                const todasLicencias = [...licenciasFirebase, ...usuariosGoogle];
                 licenciasLocal.forEach(licLocal => {
                     const existeEnFirebase = licenciasFirebase.find(licFB => licFB.licenseKey === licLocal.licenseKey);
                     if (!existeEnFirebase) {
@@ -1818,7 +1842,8 @@
                     <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 12px;">
                         📊 <strong>Total de licencias:</strong> ${todasLicencias.length} 
                         | 🔥 Firebase: ${licenciasFirebase.length} 
-                        | 💾 Local: ${todasLicencias.length - licenciasFirebase.length}
+                        | 🔵 Google: ${usuariosGoogle.length}
+                        | 💾 Local: ${todasLicencias.length - licenciasFirebase.length - usuariosGoogle.length}
                     </div>
                 `;
             
@@ -1841,13 +1866,16 @@
                     const origen = lic.origen || 'Desconocido';
                     
                     return `
-                        <div class="license-item ${claseEstado}" style="margin-bottom: 15px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #667eea;">
+                        <div class="license-item ${claseEstado}" style="margin-bottom: 15px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid ${origen === 'Google' ? '#4285f4' : '#667eea'};">
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
-                                <div>
-                                    <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 1.1em;">${lic.clientName}</h4>
-                                    <span style="padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; ${estado.includes('ACTIVA') ? 'background: #dcfce7; color: #166534;' : estado.includes('SUSPENDIDA') ? 'background: #fef3c7; color: #92400e;' : 'background: #fee2e2; color: #b91c1c;'}">${estado}</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    ${lic.foto ? `<img src="${lic.foto}" alt="${lic.clientName}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">` : ''}
+                                    <div>
+                                        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 1.1em;">${lic.clientName}</h4>
+                                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; ${estado.includes('ACTIVA') ? 'background: #dcfce7; color: #166534;' : estado.includes('SUSPENDIDA') ? 'background: #fef3c7; color: #92400e;' : 'background: #fee2e2; color: #b91c1c;'}">${estado}</span>
+                                    </div>
                                 </div>
-                                <span style="padding: 2px 6px; border-radius: 3px; font-size: 10px; background: ${origen === 'Firebase' ? '#e8f5e8; color: #2e7d32' : '#fff3e0; color: #ef6c00'}">${origen}</span>
+                                <span style="padding: 2px 6px; border-radius: 3px; font-size: 10px; background: ${origen === 'Google' ? '#e8f0fe; color: #1967d2' : origen === 'Firebase' ? '#e8f5e8; color: #2e7d32' : '#fff3e0; color: #ef6c00'}">${origen === 'Google' ? '🔵 Google' : origen}</span>
                             </div>
                             
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
@@ -1859,15 +1887,20 @@
                                 <div>
                                     <p style="margin: 4px 0; font-size: 14px;"><strong>📅 Creada:</strong> ${new Date(lic.fechaCreacion || lic.creationDate).toLocaleDateString()}</p>
                                     ${lic.fechaExpiracion || lic.expirationDate ? `<p style="margin: 4px 0; font-size: 14px;"><strong>⏰ Expira:</strong> ${new Date(lic.fechaExpiracion || lic.expirationDate).toLocaleDateString()}</p>` : '<p style="margin: 4px 0; font-size: 14px;"><strong>♾️ Sin expiración</strong></p>'}
+                            ${!lic.esUsuarioGoogle ? `
+                                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                                    <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #374151;">🔑 Clave de Licencia:</p>
+                                    <p style="margin: 0; font-family: 'Courier New', monospace; background: white; padding: 8px; border-radius: 4px; border: 1px solid #e5e7eb; word-break: break-all; font-size: 12px;">${lic.licenseKey}</p>
                                 </div>
-                            </div>
+                            ` : ''}
 
-                            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
-                                <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #374151;">🔑 Clave de Licencia:</p>
-                                <p style="margin: 0; font-family: 'Courier New', monospace; background: white; padding: 8px; border-radius: 4px; border: 1px solid #e5e7eb; word-break: break-all; font-size: 12px;">${lic.licenseKey}</p>
-                            </div>
-
-                            ${usuarioRegistrado ? `
+                            ${lic.esUsuarioGoogle ? `
+                                <div style="background: #e8f0fe; border: 1px solid #aecbfa; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                                    <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #1967d2;">🔵 Autenticación Google</p>
+                                    <p style="margin: 4px 0; font-size: 12px; color: #185abc;">✓ Acceso directo con cuenta de Google</p>
+                                    ${lic.ultimoAcceso ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #185abc;">📅 Último acceso: ${new Date(lic.ultimoAcceso).toLocaleDateString()}</p>` : ''}
+                                </div>
+                            ` : usuarioRegistrado ? `
                                 <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
                                     <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #166534;">✅ Licencia Activada</p>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -1883,10 +1916,13 @@
                             `}
 
                             <div class="license-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button class="btn-editar" onclick="editarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer;">✏️ Editar</button>
-                                <button class="btn-renovar" onclick="renovarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">🔄 Renovar</button>
+                                ${!lic.esUsuarioGoogle ? `<button class="btn-editar" onclick="editarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer;">✏️ Editar</button>` : ''}
+                                ${!lic.esUsuarioGoogle ? `<button class="btn-renovar" onclick="renovarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">🔄 Renovar</button>` : ''}
                                 ${suspendida ? 
-                                    `<button class="btn-activar" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">▶️ Activar</button>` :
+                                    `<button class="btn-activar" onclick="${lic.esUsuarioGoogle ? 'toggleSuspenderUsuarioGoogle' : 'toggleSuspenderLicenciaFirebase'}('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">▶️ Activar</button>` :
+                                    `<button class="btn-suspender" onclick="${lic.esUsuarioGoogle ? 'toggleSuspenderUsuarioGoogle' : 'toggleSuspenderLicenciaFirebase'}('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #f97316; color: white; border: none; border-radius: 6px; cursor: pointer;">⏸️ Suspender</button>`
+                                }
+                                <button class="btn-eliminar" onclick="${lic.esUsuarioGoogle ? 'eliminarUsuarioGoogle' : 'eliminarLicenciaFirebase'}ciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">▶️ Activar</button>` :
                                     `<button class="btn-suspender" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #f97316; color: white; border: none; border-radius: 6px; cursor: pointer;">⏸️ Suspender</button>`
                                 }
                                 <button class="btn-eliminar" onclick="eliminarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">🗑️ Eliminar</button>

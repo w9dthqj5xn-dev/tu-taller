@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firebase Auth</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test de Firebase Authentication</h1>
+    
+    <div id="results"></div>
+    
+    <button onclick="testAuth()">🧪 Probar Autenticación</button>
+    <button onclick="testGoogleSignIn()">📱 Probar Google Sign-In</button>
+    
+    <script src="env.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        function addResult(message, type = 'success') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            resultsDiv.appendChild(div);
+        }
+        
+        function testAuth() {
+            resultsDiv.innerHTML = '';
+            addResult('🔍 Iniciando pruebas...', 'warning');
+            
+            // Test 1: Variables de entorno
+            if (window.ENV) {
+                addResult('✅ ENV cargado correctamente', 'success');
+                addResult(`API Key: ${window.ENV.FIREBASE_API_KEY?.substring(0, 10)}...`, 'success');
+            } else {
+                addResult('❌ ENV no encontrado', 'error');
+                return;
+            }
+            
+            // Test 2: Firebase cargado
+            if (typeof firebase !== 'undefined') {
+                addResult('✅ Firebase SDK cargado', 'success');
+            } else {
+                addResult('❌ Firebase SDK no cargado', 'error');
+                return;
+            }
+            
+            // Test 3: Inicializar Firebase
+            try {
+                const firebaseConfig = {
+                    apiKey: window.ENV.FIREBASE_API_KEY,
+                    authDomain: window.ENV.FIREBASE_AUTH_DOMAIN,
+                    projectId: window.ENV.FIREBASE_PROJECT_ID,
+                    storageBucket: window.ENV.FIREBASE_STORAGE_BUCKET,
+                    messagingSenderId: window.ENV.FIREBASE_MESSAGING_SENDER_ID,
+                    appId: window.ENV.FIREBASE_APP_ID,
+                    measurementId: window.ENV.FIREBASE_MEASUREMENT_ID
+                };
+                
+                firebase.initializeApp(firebaseConfig);
+                addResult('✅ Firebase inicializado correctamente', 'success');
+            } catch (error) {
+                if (error.code === 'app/duplicate-app') {
+                    addResult('⚠️ Firebase ya estaba inicializado', 'warning');
+                } else {
+                    addResult(`❌ Error al inicializar Firebase: ${error.message}`, 'error');
+                    return;
+                }
+            }
+            
+            // Test 4: Firebase Auth disponible
+            if (firebase.auth) {
+                addResult('✅ Firebase Auth disponible', 'success');
+                const auth = firebase.auth();
+                addResult(`✅ Auth instance creada`, 'success');
+            } else {
+                addResult('❌ Firebase Auth no disponible', 'error');
+                return;
+            }
+            
+            // Test 5: Google Provider
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                addResult('✅ Google Provider creado correctamente', 'success');
+                addResult(`Provider ID: ${provider.providerId}`, 'success');
+            } catch (error) {
+                addResult(`❌ Error al crear Google Provider: ${error.message}`, 'error');
+            }
+            
+            addResult('✅ TODOS LOS TESTS PASARON', 'success');
+        }
+        
+        async function testGoogleSignIn() {
+            addResult('🚀 Intentando Google Sign-In...', 'warning');
+            
+            try {
+                const auth = firebase.auth();
+                const provider = new firebase.auth.GoogleAuthProvider();
+                
+                const result = await auth.signInWithPopup(provider);
+                addResult(`✅ Login exitoso: ${result.user.displayName}`, 'success');
+                addResult(`Email: ${result.user.email}`, 'success');
+                
+                // Cerrar sesión automáticamente
+                await auth.signOut();
+                addResult('✅ Sesión cerrada', 'success');
+                
+            } catch (error) {
+                addResult(`❌ Error: ${error.code}`, 'error');
+                addResult(`Mensaje: ${error.message}`, 'error');
+                
+                if (error.code === 'auth/popup-closed-by-user') {
+                    addResult('ℹ️ Usuario cerró el popup', 'warning');
+                } else if (error.code === 'auth/operation-not-allowed') {
+                    addResult('❌ Google Sign-In NO ESTÁ HABILITADO en Firebase Console', 'error');
+                    addResult('👉 Ve a: https://console.firebase.google.com', 'warning');
+                    addResult('👉 Proyecto: licencias-taller > Authentication > Sign-in method', 'warning');
+                    addResult('👉 Habilita "Google" como proveedor', 'warning');
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    addResult('❌ Dominio no autorizado', 'error');
+                    addResult('👉 Agrega tu-taller.netlify.app a dominios autorizados', 'warning');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

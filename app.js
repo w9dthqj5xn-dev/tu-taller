@@ -199,9 +199,6 @@ async function signInWithGoogle() {
     }
 }
 
-// Hacer la función disponible globalmente
-window.signInWithGoogle = signInWithGoogle;
-
 document.addEventListener('DOMContentLoaded', () => {
     verificarSesion();
     mostrarInfoLicencia();
@@ -2180,3 +2177,27 @@ document.getElementById('busqueda').addEventListener('keypress', (e) => {
 
 // Inicializar
 actualizarDashboard();
+
+// === EXPORTAR FUNCIONES AL SCOPE GLOBAL ===
+// Necesario para que funcionen los onclick en HTML
+window.signInWithGoogle = signInWithGoogle;
+window.mostrarActivacionLicencia = mostrarActivacionLicencia;
+window.ocultarActivacionLicencia = ocultarActivacionLicencia;
+window.activarLicencia = activarLicencia;
+window.registrarUsuario = registrarUsuario;
+window.testFirebaseConfig = testFirebaseConfig;
+window.cerrarSesion = cerrarSesion;
+window.mostrarFormCliente = mostrarFormCliente;
+window.cancelarFormCliente = cancelarFormCliente;
+window.mostrarFormOrden = mostrarFormOrden;
+window.cancelarFormOrden = cancelarFormOrden;
+window.mostrarFormClienteRapido = mostrarFormClienteRapido;
+window.cancelarClienteRapido = cancelarClienteRapido;
+window.guardarClienteRapido = guardarClienteRapido;
+window.agregarRepuestoOrden = agregarRepuestoOrden;
+window.mostrarFormRepuesto = mostrarFormRepuesto;
+window.cancelarFormRepuesto = cancelarFormRepuesto;
+window.filtrarInventario = filtrarInventario;
+window.exportarDatos = exportarDatos;
+window.imprimirReporte = imprimirReporte;
+window.buscar = buscar;

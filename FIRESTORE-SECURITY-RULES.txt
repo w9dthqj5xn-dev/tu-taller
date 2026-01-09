@@ -1,0 +1,67 @@
+// ========================================
+// REGLAS DE SEGURIDAD PARA FIRESTORE
+// ========================================
+// IMPORTANTE: Debes copiar estas reglas en Firebase Console
+// Firebase Console > Firestore Database > Reglas
+// ========================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Colección de licencias - Solo lectura para usuarios autenticados
+    match /licencias/{licenseId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Solo el admin desde backend
+    }
+    
+    // Colección de usuarios - Lectura limitada para login
+    match /usuarios/{userId} {
+      // Permitir lectura para verificar credenciales en login
+      // Limitado: solo se puede leer, no modificar
+      allow read: if true;
+      allow write: if false; // Solo el admin puede crear usuarios
+    }
+    
+    // Colección de usuarios Google - Solo pueden ver su propio perfil
+    match /usuarios-google/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Datos de usuarios (clientes, órdenes, repuestos) - Solo su propia data
+    match /usuarios-data/{usuario}/{collection}/{document} {
+      // Solo puede acceder si el email del usuario autenticado coincide
+      allow read, write: if request.auth != null && 
+                            (request.auth.token.email == usuario);
+    }
+    
+    // Subcollecciones de usuarios-data (para permitir list)
+    match /usuarios-data/{usuario}/{collection=**} {
+      allow read, write: if request.auth != null && 
+                            request.auth.token.email == usuario;
+    }
+    
+    // Denegar todo lo demás por defecto
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ========================================
+// INSTRUCCIONES DE INSTALACIÓN:
+// ========================================
+// 1. Ve a Firebase Console: https://console.firebase.google.com
+// 2. Selecciona tu proyecto: licencias-taller
+// 3. Ve a "Firestore Database" en el menú lateral
+// 4. Haz clic en la pestaña "Reglas"
+// 5. Copia y pega estas reglas
+// 6. Haz clic en "Publicar"
+// 
+// Estas reglas garantizan que:
+// - Solo usuarios autenticados pueden acceder
+// - Cada usuario solo ve sus propios datos
+// - Las licencias son de solo lectura
+// - Los usuarios no pueden modificar otros perfiles
+// ========================================

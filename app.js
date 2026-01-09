@@ -1088,6 +1088,33 @@ function guardarClienteRapido() {
     
     // Ocultar el formulario
     cancelarClienteRapido();
+}
+
+function crearClienteFinal() {
+    const clientes = Storage.get('clientes');
+    const timestamp = new Date().getTime();
+    
+    const clienteFinal = {
+        id: Storage.getNextId('clientes'),
+        nombre: 'Cliente',
+        apellido: 'Final',
+        celular: `CF-${timestamp}`,
+        email: '',
+        direccion: '',
+        fechaRegistro: new Date().toISOString()
+    };
+    
+    clientes.push(clienteFinal);
+    Storage.set('clientes', clientes);
+    
+    // Recargar el select de clientes
+    cargarClientesSelect();
+    
+    // Seleccionar automáticamente el cliente final
+    document.getElementById('ordenCliente').value = clienteFinal.id;
+    
+    // Ocultar el formulario rápido si estaba abierto
+    cancelarClienteRapido();
     
     alert(`✅ Cliente "${nombre} ${apellido}" agregado exitosamente`);
 }
@@ -2341,6 +2368,7 @@ window.cancelarFormOrden = cancelarFormOrden;
 window.mostrarFormClienteRapido = mostrarFormClienteRapido;
 window.cancelarClienteRapido = cancelarClienteRapido;
 window.guardarClienteRapido = guardarClienteRapido;
+window.crearClienteFinal = crearClienteFinal;
 window.agregarRepuestoOrden = agregarRepuestoOrden;
 window.mostrarFormRepuesto = mostrarFormRepuesto;
 window.cancelarFormRepuesto = cancelarFormRepuesto;

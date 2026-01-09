@@ -192,10 +192,15 @@ async function signInWithGoogle() {
 
         // Restaurar botón
         const btn = document.querySelector('.google-signin-btn');
-        btn.innerHTML = '<img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" width="20" height="20"> Continuar con Google';
-        btn.disabled = false;
+        if (btn) {
+            btn.innerHTML = '<img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" width="20" height="20"> Continuar con Google';
+            btn.disabled = false;
+        }
     }
 }
+
+// Hacer la función disponible globalmente
+window.signInWithGoogle = signInWithGoogle;
 
 document.addEventListener('DOMContentLoaded', () => {
     verificarSesion();

@@ -976,13 +976,6 @@ document.getElementById('clienteForm').addEventListener('submit', async (e) => {
 });
 
 function cargarClientes() {
-    // Verificar que hay sesión activa
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion !== 'true') {
-        console.warn('Intento de cargar datos sin autenticación');
-        return;
-    }
-    
     const clientes = Storage.get('clientes');
     const container = document.getElementById('listaClientes');
     if (clientes.length === 0) {
@@ -1334,12 +1327,6 @@ function cancelarFormOrden() {
 }
 
 function cargarClientesSelect() {
-    // Verificar que hay sesión activa
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion !== 'true') {
-        return;
-    }
-    
     const clientes = Storage.get('clientes');
     const select = document.getElementById('ordenCliente');
     select.innerHTML = '<option value="">Seleccionar cliente...</option>';
@@ -1487,24 +1474,11 @@ function generarNumeroOrden() {
 }
 
 function cargarOrdenes() {
-    // Verificar que hay sesión activa
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion !== 'true') {
-        console.warn('Intento de cargar órdenes sin autenticación');
-        return;
-    }
-    
     cargarClientesSelect();
     filtrarOrdenes();
 }
 
 function filtrarOrdenes() {
-    // Verificar que hay sesión activa
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion !== 'true') {
-        return;
-    }
-    
     let ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
     const filtroEstado = document.getElementById('filtroEstado').value;

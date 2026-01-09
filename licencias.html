@@ -1539,6 +1539,68 @@
             }
         }
 
+        // Función para migrar datos de localStorage a Firebase
+        async function migrarDatosLocalAFirebase() {
+            try {
+                console.log('🔄 Iniciando migración de datos locales a Firebase...');
+                
+                // Migrar licencias
+                const licenciasLocal = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
+                if (licenciasLocal.length > 0) {
+                    console.log(`📋 Encontradas ${licenciasLocal.length} licencias locales`);
+                    
+                    for (const licencia of licenciasLocal) {
+                        // Verificar si ya existe en Firebase
+                        const snapshot = await db.collection('licencias')
+                            .where('licenseKey', '==', licencia.licenseKey)
+                            .get();
+                        
+                        if (snapshot.empty) {
+                            // No existe, agregarla
+                            await db.collection('licencias').add(licencia);
+                            console.log(`✅ Licencia migrada: ${licencia.clientName}`);
+                        }
+                    }
+                }
+                
+                // Migrar usuarios
+                const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+                if (usuariosLocal.length > 0) {
+                    console.log(`👥 Encontrados ${usuariosLocal.length} usuarios locales`);
+                    
+                    for (const usuario of usuariosLocal) {
+                        // Verificar si ya existe en Firebase
+                        const snapshot = await db.collection('usuarios')
+                            .where('usuario', '==', usuario.usuario)
+                            .get();
+                        
+                        if (snapshot.empty) {
+                            // No existe, agregarlo
+                            await db.collection('usuarios').add(usuario);
+                            console.log(`✅ Usuario migrado: ${usuario.usuario}`);
+                        }
+                    }
+                }
+                
+                console.log('✅ Migración completada exitosamente');
+                
+                // Mostrar notificación si se migraron datos
+                if (licenciasLocal.length > 0 || usuariosLocal.length > 0) {
+                    const totalMigrados = licenciasLocal.length + usuariosLocal.length;
+                    alert(`✅ Migración completada\n\n${licenciasLocal.length} licencias migradas\n${usuariosLocal.length} usuarios migrados\n\nTotal: ${totalMigrados} registros`);
+                    
+                    // Recargar datos
+                    await cargarEstadisticas();
+                    await cargarLicencias();
+                    await cargarUsuarios();
+                }
+                
+            } catch (error) {
+                console.error('❌ Error en la migración:', error);
+                alert('⚠️ Hubo un problema al migrar algunos datos. Por favor contacta al soporte.');
+            }
+        }
+
         // Cerrar sidebar al hacer clic en enlaces de navegación en móvil
         document.addEventListener('DOMContentLoaded', () => {
             const navLinks = document.querySelectorAll('.nav-link');
@@ -1576,6 +1638,11 @@
                     }
                 }, { passive: true });
             }
+            
+            // Ejecutar migración automáticamente al cargar
+            setTimeout(() => {
+                migrarDatosLocalAFirebase();
+            }, 2000);
         });
 
         async function cargarEstadisticas() {

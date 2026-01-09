@@ -525,15 +525,30 @@
             <section id="reportes" class="section">
                 <h2>Reportes y Estadísticas</h2>
                 
-                <div class="filters" style="margin-bottom: 20px;">
-                    <label>Período:</label>
-                    <select id="periodoReporte" onchange="generarReportes()">
-                        <option value="hoy">Hoy</option>
-                        <option value="semana">Esta Semana</option>
-                        <option value="mes" selected>Este Mes</option>
-                        <option value="año">Este Año</option>
-                        <option value="todo">Todo el Tiempo</option>
-                    </select>
+                <div class="filters" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
+                    <div>
+                        <label>Período:</label>
+                        <select id="periodoReporte" onchange="cambiarTipoReporte()" style="margin-left: 10px; padding: 8px;">
+                            <option value="hoy" selected>Hoy</option>
+                            <option value="semana">Esta Semana</option>
+                            <option value="mes">Este Mes</option>
+                            <option value="año">Este Año</option>
+                            <option value="personalizado">Rango Personalizado</option>
+                            <option value="todo">Todo el Tiempo</option>
+                        </select>
+                    </div>
+                    
+                    <div id="rangoFechas" style="display: none; flex: 1; display: flex; gap: 10px; align-items: center;">
+                        <div>
+                            <label>Desde:</label>
+                            <input type="date" id="fechaInicio" style="margin-left: 5px; padding: 8px;">
+                        </div>
+                        <div>
+                            <label>Hasta:</label>
+                            <input type="date" id="fechaFin" style="margin-left: 5px; padding: 8px;">
+                        </div>
+                        <button class="btn-primary" onclick="generarReportes()" style="padding: 8px 15px;">🔍 Buscar</button>
+                    </div>
                 </div>
 
                 <div class="stats-grid">

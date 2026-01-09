@@ -1803,31 +1803,76 @@ function eliminarRepuesto(id) {
 }
 
 // REPORTES
+function cambiarTipoReporte() {
+    const periodo = document.getElementById('periodoReporte').value;
+    const rangoFechas = document.getElementById('rangoFechas');
+    
+    if (periodo === 'personalizado') {
+        rangoFechas.style.display = 'flex';
+        // Establecer fechas por defecto (última semana)
+        const hoy = new Date();
+        const hace7dias = new Date();
+        hace7dias.setDate(hace7dias.getDate() - 7);
+        
+        document.getElementById('fechaFin').valueAsDate = hoy;
+        document.getElementById('fechaInicio').valueAsDate = hace7dias;
+    } else {
+        rangoFechas.style.display = 'none';
+        generarReportes();
+    }
+}
+
 function generarReportes() {
     const periodo = document.getElementById('periodoReporte').value;
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
     const ahora = new Date();
     let fechaInicio;
+    let fechaFin = new Date();
+    
     switch(periodo) {
         case 'hoy':
-            fechaInicio = new Date(ahora.setHours(0, 0, 0, 0));
+            fechaInicio = new Date(ahora);
+            fechaInicio.setHours(0, 0, 0, 0);
+            fechaFin.setHours(23, 59, 59, 999);
             break;
         case 'semana':
-            fechaInicio = new Date(ahora.setDate(ahora.getDate() - 7));
+            // Calcular el inicio de la semana actual (lunes)
+            fechaInicio = new Date(ahora);
+            const diaSemana = fechaInicio.getDay();
+            const diasHastaLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+            fechaInicio.setDate(fechaInicio.getDate() + diasHastaLunes);
+            fechaInicio.setHours(0, 0, 0, 0);
             break;
         case 'mes':
-            fechaInicio = new Date(ahora.setMonth(ahora.getMonth() - 1));
+            fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+            fechaInicio.setHours(0, 0, 0, 0);
             break;
         case 'año':
-            fechaInicio = new Date(ahora.setFullYear(ahora.getFullYear() - 1));
+            fechaInicio = new Date(ahora.getFullYear(), 0, 1);
+            fechaInicio.setHours(0, 0, 0, 0);
+            break;
+        case 'personalizado':
+            const fechaInicioInput = document.getElementById('fechaInicio').value;
+            const fechaFinInput = document.getElementById('fechaFin').value;
+            
+            if (!fechaInicioInput || !fechaFinInput) {
+                alert('❌ Por favor selecciona ambas fechas');
+                return;
+            }
+            
+            fechaInicio = new Date(fechaInicioInput);
+            fechaInicio.setHours(0, 0, 0, 0);
+            fechaFin = new Date(fechaFinInput);
+            fechaFin.setHours(23, 59, 59, 999);
             break;
         default:
             fechaInicio = new Date(0);
     }
+    
     const ordenesFiltradas = ordenes.filter(o => {
         const fecha = new Date(o.fechaCreacion);
-        return fecha >= fechaInicio && o.estado === 'Entregado';
+        return fecha >= fechaInicio && fecha <= fechaFin && o.estado === 'Entregado';
     });
     let ingresosTotales = 0;
     ordenesFiltradas.forEach(orden => {
@@ -1966,6 +2011,10 @@ function exportarDatos() {
 function imprimirReporte() {
     window.print();
 }
+
+// Exportar funciones de reportes
+window.cambiarTipoReporte = cambiarTipoReporte;
+window.generarReportes = generarReportes;
 
 // IMPRESIÓN
 async function enviarWhatsApp(ordenId) {

@@ -169,12 +169,13 @@ async function toggleSuspenderLicenciaFirebase(licenseKey) {
 // Eliminar licencia
 async function eliminarLicenciaFirebase(licenseKey) {
     try {
+        // Buscar licencia en Firebase
         const snapshot = await db.collection('licencias')
             .where('licenseKey', '==', licenseKey)
             .get();
         
         if (snapshot.empty) {
-            alert('❌ Licencia no encontrada');
+            alert('❌ Licencia no encontrada en Firebase');
             return false;
         }
         
@@ -187,7 +188,7 @@ async function eliminarLicenciaFirebase(licenseKey) {
         
         await doc.ref.delete();
         
-        alert('✅ Licencia eliminada correctamente');
+        alert('✅ Licencia eliminada correctamente de Firebase');
         return true;
         
     } catch (error) {

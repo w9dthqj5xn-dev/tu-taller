@@ -1578,55 +1578,76 @@
             }
         });
 
-        function cargarEstadisticas() {
-            // Obtener estadísticas del sistema
-            const licenciasLocal = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
-            const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-            
-            document.getElementById('totalLicenses').textContent = licenciasLocal.length;
-            document.getElementById('totalUsers').textContent = usuariosLocal.length;
-            
-            // Calcular licencias activas (no vencidas)
-            const ahora = new Date();
-            const licenciasActivas = licenciasLocal.filter(lic => {
-                if (lic.type === 'vitalicia') return true;
-                const expiracion = new Date(lic.expirationDate);
-                return expiracion > ahora;
-            });
-            
-            document.getElementById('activeLicenses').textContent = licenciasActivas.length;
-            
-            // Generar contenido de estadísticas
-            let estadisticasHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    <div>
-                        <h4 style="color: #667eea; margin-bottom: 10px;">📋 Por Tipo de Licencia</h4>
-                        <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-            `;
-            
-            const tiposLicencia = {};
-            licenciasLocal.forEach(lic => {
-                tiposLicencia[lic.type] = (tiposLicencia[lic.type] || 0) + 1;
-            });
-            
-            Object.entries(tiposLicencia).forEach(([tipo, cantidad]) => {
-                estadisticasHTML += `<p><strong>${tipo}:</strong> ${cantidad}</p>`;
-            });
-            
-            estadisticasHTML += `
+        async function cargarEstadisticas() {
+            try {
+                // Cargar todas las licencias desde Firebase
+                const snapshot = await db.collection('licencias').get();
+                const licenciasFirebase = [];
+                snapshot.forEach(doc => {
+                    licenciasFirebase.push(doc.data());
+                });
+                
+                // Cargar usuarios de Google
+                const googleSnapshot = await db.collection('usuarios-google').get();
+                const usuariosGoogle = [];
+                googleSnapshot.forEach(doc => {
+                    usuariosGoogle.push(doc.data());
+                });
+                
+                const totalLicencias = licenciasFirebase.length + usuariosGoogle.length;
+                const totalUsuarios = usuariosGoogle.length;
+                
+                document.getElementById('totalLicenses').textContent = totalLicencias;
+                document.getElementById('totalUsers').textContent = totalUsuarios;
+                
+                // Calcular licencias activas (no vencidas ni suspendidas)
+                const ahora = new Date();
+                const licenciasActivas = licenciasFirebase.filter(lic => {
+                    if (lic.suspendida) return false;
+                    if (lic.licenseType === 'vitalicia') return true;
+                    if (!lic.fechaExpiracion) return true;
+                    const expiracion = new Date(lic.fechaExpiracion);
+                    return expiracion > ahora;
+                });
+                
+                document.getElementById('activeLicenses').textContent = licenciasActivas.length + usuariosGoogle.filter(u => !u.suspendido).length;
+                
+                // Generar contenido de estadísticas
+                let estadisticasHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div>
+                            <h4 style="color: #667eea; margin-bottom: 10px;">📋 Por Tipo de Licencia</h4>
+                            <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
+                `;
+                
+                const tiposLicencia = {};
+                licenciasFirebase.forEach(lic => {
+                    tiposLicencia[lic.licenseType] = (tiposLicencia[lic.licenseType] || 0) + 1;
+                });
+                
+                Object.entries(tiposLicencia).forEach(([tipo, cantidad]) => {
+                    estadisticasHTML += `<p><strong>${tipo}:</strong> ${cantidad}</p>`;
+                });
+                
+                estadisticasHTML += `
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="color: #667eea; margin-bottom: 10px;">📊 Estado General</h4>
+                            <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
+                                <p><strong>Usuarios Google:</strong> ${usuariosGoogle.length}</p>
+                                <p><strong>Licencias Vencidas:</strong> ${licenciasFirebase.length - licenciasActivas.length}</p>
+                                <p><strong>Dispositivos Máximos:</strong> ${licenciasFirebase.reduce((acc, lic) => acc + (lic.maxDevices || 1), 0)}</p>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <h4 style="color: #667eea; margin-bottom: 10px;">📊 Estado General</h4>
-                        <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-                            <p><strong>Licencias Vencidas:</strong> ${licenciasLocal.length - licenciasActivas.length}</p>
-                            <p><strong>Dispositivos Máximos:</strong> ${licenciasLocal.reduce((acc, lic) => acc + (lic.maxDevices || 1), 0)}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('statisticsContent').innerHTML = estadisticasHTML;
+                `;
+                
+                document.getElementById('statisticsContent').innerHTML = estadisticasHTML;
+            } catch (error) {
+                console.error('Error al cargar estadísticas:', error);
+                document.getElementById('statisticsContent').innerHTML = '<p style="color: #ef4444;">❌ Error al cargar estadísticas</p>';
+            }
         }
 
         async function generarLicencia(event) {
@@ -1672,17 +1693,13 @@
             };
 
             try {
-                // Guardar licencia en Firebase
+                // Guardar licencia solo en Firebase
                 await db.collection('licencias').add(licencia);
-                
-                // También guardar en localStorage como respaldo
-                let licencias = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
-                licencias.unshift(licencia);
-                localStorage.setItem('licenciasGeneradas', JSON.stringify(licencias));
 
                 // Mostrar resultado
                 mostrarResultado(licencia);
                 await cargarLicencias();
+                await cargarEstadisticas();
 
                 // Limpiar formulario
                 document.getElementById('licenseForm').reset();
@@ -1757,13 +1774,10 @@
             const container = document.getElementById('licensesList');
             
             // Mostrar loading mientras carga
-            container.innerHTML = '<p style="text-align: center; padding: 20px;">🔄 Cargando licencias...</p>';
+            container.innerHTML = '<p style="text-align: center; padding: 20px;">🔄 Cargando licencias desde Firebase...</p>';
             
             try {
-                // Cargar licencias desde localStorage
-                const licenciasLocal = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
-                
-                // Cargar licencias desde Firebase
+                // Cargar licencias solo desde Firebase
                 const licenciasFirebase = [];
                 
                 // Verificar si Firebase está inicializado
@@ -1808,17 +1822,8 @@
                     });
                 });
 
-                // Combinar licencias únicas (priorizar Firebase)
+                // Todas las licencias desde Firebase
                 const todasLicencias = [...licenciasFirebase, ...usuariosGoogle];
-                licenciasLocal.forEach(licLocal => {
-                    const existeEnFirebase = licenciasFirebase.find(licFB => licFB.licenseKey === licLocal.licenseKey);
-                    if (!existeEnFirebase) {
-                        todasLicencias.push({
-                            ...licLocal,
-                            origen: 'Local'
-                        });
-                    }
-                });
                 
                 if (todasLicencias.length === 0) {
                     container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay licencias generadas</p>';
@@ -1834,8 +1839,12 @@
                     vitalicia: 'Vitalicia'
                 };
 
-                // Obtener usuarios registrados desde localStorage (solo para info)
-                const usuariosRegistrados = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+                // Cargar usuarios registrados desde Firebase
+                const usuariosSnapshot = await db.collection('usuarios').get();
+                const usuariosRegistrados = [];
+                usuariosSnapshot.forEach(doc => {
+                    usuariosRegistrados.push(doc.data());
+                });
                 
                 // Generar HTML con estadísticas
                 let html = `
@@ -1843,7 +1852,6 @@
                         📊 <strong>Total de licencias:</strong> ${todasLicencias.length} 
                         | 🔥 Firebase: ${licenciasFirebase.length} 
                         | 🔵 Google: ${usuariosGoogle.length}
-                        | 💾 Local: ${todasLicencias.length - licenciasFirebase.length - usuariosGoogle.length}
                     </div>
                 `;
             
@@ -1958,13 +1966,10 @@
             const container = document.getElementById('usuariosList');
             
             // Mostrar loading mientras carga
-            container.innerHTML = '<p style="text-align: center; padding: 20px;">🔄 Cargando usuarios...</p>';
+            container.innerHTML = '<p style="text-align: center; padding: 20px;">🔄 Cargando usuarios desde Firebase...</p>';
             
             try {
-                // Cargar usuarios desde localStorage
-                const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-                
-                // Cargar usuarios desde Firebase
+                // Cargar usuarios solo desde Firebase
                 const usuariosFirebase = [];
                 const usuariosGoogle = [];
                 
@@ -1980,6 +1985,7 @@
                     usuariosFirebase.push({
                         id: doc.id,
                         usuario: data.usuario,
+                        password: data.password,
                         email: data.email,
                         licenseKey: data.licenseKey,
                         fechaCreacion: data.fechaCreacion,
@@ -2130,45 +2136,27 @@
             }
 
             try {
-                // Obtener usuarios del localStorage
-                const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-                
-                if (index >= 0 && index < usuariosLocal.length) {
-                    usuariosLocal[index].password = nuevaPass;
-                    usuariosLocal[index].fechaReseteo = new Date().toISOString();
-                    
-                    // Guardar en localStorage
-                    localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosLocal));
-                    
-                    // También guardar en Firebase en una colección de usuarios
-                    const usuarioFirebase = {
-                        usuario: usuariosLocal[index].usuario,
-                        email: usuariosLocal[index].email,
-                        password: nuevaPass,
-                        licenseKey: usuariosLocal[index].licenseKey,
-                        fechaCreacion: usuariosLocal[index].fechaCreacion,
-                        fechaReseteo: new Date().toISOString(),
-                        resetadoPor: 'admin',
-                        estado: 'activo'
-                    };
+                // Buscar el usuario en Firebase
+                const snapshot = await db.collection('usuarios')
+                    .where('usuario', '==', nombreUsuario)
+                    .get();
 
-                    // Buscar si ya existe el usuario en Firebase
-                    const snapshot = await db.collection('usuarios')
-                        .where('usuario', '==', usuariosLocal[index].usuario)
-                        .get();
-
-                    if (snapshot.empty) {
-                        // Crear nuevo documento
-                        await db.collection('usuarios').add(usuarioFirebase);
-                    } else {
-                        // Actualizar documento existente
-                        await snapshot.docs[0].ref.update(usuarioFirebase);
-                    }
-
-                    alert(`✅ Contraseña actualizada correctamente\n\nUsuario: ${nombreUsuario}\nNueva contraseña: ${nuevaPass}`);
-                    document.getElementById(`newPass_${index}`).value = '';
-                    await cargarUsuarios();
+                if (snapshot.empty) {
+                    alert('❌ Usuario no encontrado en Firebase');
+                    return;
                 }
+                
+                // Actualizar la contraseña en Firebase
+                const doc = snapshot.docs[0];
+                await doc.ref.update({
+                    password: nuevaPass,
+                    fechaReseteo: new Date().toISOString(),
+                    resetadoPor: 'admin'
+                });
+
+                alert(`✅ Contraseña actualizada correctamente\n\nUsuario: ${nombreUsuario}\nNueva contraseña: ${nuevaPass}`);
+                document.getElementById(`newPass_${index}`).value = '';
+                await cargarUsuarios();
             } catch (error) {
                 console.error('Error al resetear contraseña:', error);
                 alert('❌ Error al actualizar la contraseña');
@@ -2181,38 +2169,45 @@
             }
 
             try {
-                const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-                
-                if (index >= 0 && index < usuariosLocal.length) {
-                    const usuarioAEliminar = usuariosLocal[index];
-                    usuariosLocal.splice(index, 1);
-                    
-                    // Guardar cambios en localStorage
-                    localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosLocal));
-                    
-                    // Eliminar de Firebase
-                    const snapshot = await db.collection('usuarios')
-                        .where('usuario', '==', usuarioAEliminar.usuario)
-                        .get();
+                // Buscar y eliminar de Firebase
+                const snapshot = await db.collection('usuarios')
+                    .where('usuario', '==', nombreUsuario)
+                    .get();
 
-                    snapshot.forEach(doc => {
-                        doc.ref.delete();
-                    });
-
-                    alert('✅ Usuario eliminado correctamente');
-                    await cargarUsuarios();
+                if (snapshot.empty) {
+                    alert('❌ Usuario no encontrado en Firebase');
+                    return;
                 }
+
+                // Eliminar todos los documentos que coincidan
+                snapshot.forEach(doc => {
+                    doc.ref.delete();
+                });
+
+                alert('✅ Usuario eliminado correctamente de Firebase');
+                await cargarUsuarios();
             } catch (error) {
                 console.error('Error al eliminar usuario:', error);
                 alert('❌ Error al eliminar el usuario');
             }
         }
 
-        function descargarLicencia() {
-            const licencias = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
-            const ultimaLicencia = licencias[0];
+        async function descargarLicencia() {
+            try {
+                // Obtener la última licencia desde Firebase
+                const snapshot = await db.collection('licencias')
+                    .orderBy('fechaCreacion', 'desc')
+                    .limit(1)
+                    .get();
 
-            const contenido = `
+                if (snapshot.empty) {
+                    alert('❌ No hay licencias para descargar');
+                    return;
+                }
+
+                const ultimaLicencia = snapshot.docs[0].data();
+
+                const contenido = `
 TU TALLER - SISTEMA DE GESTIÓN
 ================================
 LICENCIA DE SOFTWARE
@@ -2245,13 +2240,17 @@ soporte@tutaller.com
 © ${new Date().getFullYear()} Tu Taller - Todos los derechos reservados
             `;
 
-            const blob = new Blob([contenido], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Licencia_${ultimaLicencia.clientName.replace(/\s+/g, '_')}_${Date.now()}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
+                const blob = new Blob([contenido], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Licencia_${ultimaLicencia.clientName.replace(/\s+/g, '_')}_${Date.now()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Error al descargar licencia:', error);
+                alert('❌ Error al descargar la licencia');
+            }
         }
 
         // ====== FUNCIONES DE CONSULTA DE LICENCIA ======

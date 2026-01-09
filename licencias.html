@@ -2169,6 +2169,59 @@
             }
         }
 
+        // Función para vincular usuario con licencia existente
+        async function vincularUsuarioConLicencia(usuario, clientName) {
+            try {
+                // Buscar la licencia por nombre del cliente
+                const licenciaSnapshot = await db.collection('licencias')
+                    .where('clientName', '==', clientName)
+                    .get();
+                
+                if (licenciaSnapshot.empty) {
+                    alert(`❌ No se encontró la licencia: ${clientName}`);
+                    return false;
+                }
+                
+                const licenciaData = licenciaSnapshot.docs[0].data();
+                const licenseKey = licenciaData.licenseKey;
+                
+                // Buscar el usuario
+                const usuarioSnapshot = await db.collection('usuarios')
+                    .where('usuario', '==', usuario)
+                    .get();
+                
+                if (usuarioSnapshot.empty) {
+                    alert(`❌ No se encontró el usuario: ${usuario}`);
+                    return false;
+                }
+                
+                // Actualizar el usuario con la licenseKey
+                const usuarioDoc = usuarioSnapshot.docs[0];
+                await usuarioDoc.ref.update({
+                    licenseKey: licenseKey,
+                    clientName: clientName,
+                    fechaVinculacion: new Date().toISOString()
+                });
+                
+                alert(`✅ Usuario vinculado correctamente\n\nUsuario: ${usuario}\nLicencia: ${clientName}\nKey: ${licenseKey}`);
+                return true;
+                
+            } catch (error) {
+                console.error('Error al vincular:', error);
+                alert('❌ Error al vincular usuario con licencia');
+                return false;
+            }
+        }
+
+        // Ejecutar automáticamente la vinculación al cargar la página
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Esperar a que Firebase se inicialice
+            setTimeout(async () => {
+                console.log('🔗 Vinculando carlos.tec con smart cell...');
+                await vincularUsuarioConLicencia('carlos.tec', 'smart cell');
+            }, 3000);
+        });
+
         async function cargarUsuarios() {
             const container = document.getElementById('usuariosList');
             

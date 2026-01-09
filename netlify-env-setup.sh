@@ -5,7 +5,7 @@
 echo "🚀 Configurando variables de entorno en Netlify..."
 
 # Variables de Firebase
-netlify env:set FIREBASE_API_KEY "***REMOVED***"
+netlify env:set FIREBASE_API_KEY "AIzaSyCvVPWVA1RL1LZHeoE9XY9DCqfWBMbCMmM"
 netlify env:set FIREBASE_AUTH_DOMAIN "licencias-taller.firebaseapp.com"
 netlify env:set FIREBASE_PROJECT_ID "licencias-taller"
 netlify env:set FIREBASE_STORAGE_BUCKET "licencias-taller.firebasestorage.app"

@@ -20,7 +20,7 @@ Mover las credenciales de Firebase a variables de entorno.
 
 #### Firebase Configuration:
 ```
-FIREBASE_API_KEY = ***REMOVED***
+FIREBASE_API_KEY = AIzaSyCvVPWVA1RL1LZHeoE9XY9DCqfWBMbCMmM
 FIREBASE_AUTH_DOMAIN = licencias-taller.firebaseapp.com
 FIREBASE_PROJECT_ID = licencias-taller
 FIREBASE_STORAGE_BUCKET = licencias-taller.firebasestorage.app

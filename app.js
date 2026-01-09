@@ -767,7 +767,7 @@ function cargarDatosDemo() {
     location.reload();
 }
 
-// Sistema de almacenamiento con Firebase
+// Sistema de almacenamiento con Firebase - Cada usuario tiene su propia base de datos
 class Storage {
     static get(key) {
         const data = localStorage.getItem(key);
@@ -786,23 +786,33 @@ class Storage {
         localStorage.removeItem('repuestos');
     }
     
-    // Métodos para Firebase
+    // Métodos para Firebase - Estructura: usuarios/{usuario}/{coleccion}
     static async syncToFirebase(usuario, key, data) {
         try {
             if (!usuario) return false;
-            const collectionName = `${key}_${usuario}`;
+            
+            // Usar subcollection dentro del documento del usuario
+            const userRef = db.collection('usuarios-data').doc(usuario);
+            const collectionRef = userRef.collection(key);
             
             // Limpiar colección anterior
-            const snapshot = await db.collection(collectionName).get();
+            const snapshot = await collectionRef.get();
             const deletePromises = snapshot.docs.map(doc => doc.ref.delete());
             await Promise.all(deletePromises);
             
-            // Guardar nuevos datos
+            // Crear documento del usuario si no existe
+            await userRef.set({ 
+                ultimaActualizacion: new Date().toISOString(),
+                usuario: usuario 
+            }, { merge: true });
+            
+            // Guardar nuevos datos en la subcollection
             const savePromises = data.map(item => 
-                db.collection(collectionName).add(item)
+                collectionRef.add(item)
             );
             await Promise.all(savePromises);
             
+            console.log(`✅ Datos de ${key} sincronizados para usuario: ${usuario}`);
             return true;
         } catch (error) {
             console.error(`Error al sincronizar ${key} con Firebase:`, error);
@@ -813,9 +823,11 @@ class Storage {
     static async loadFromFirebase(usuario, key) {
         try {
             if (!usuario) return [];
-            const collectionName = `${key}_${usuario}`;
             
-            const snapshot = await db.collection(collectionName).get();
+            // Cargar desde subcollection del usuario
+            const collectionRef = db.collection('usuarios-data').doc(usuario).collection(key);
+            const snapshot = await collectionRef.get();
+            
             const data = [];
             snapshot.forEach(doc => {
                 data.push({ ...doc.data(), firebaseId: doc.id });
@@ -826,6 +838,7 @@ class Storage {
                 localStorage.setItem(key, JSON.stringify(data));
             }
             
+            console.log(`✅ Cargados ${data.length} registros de ${key} para usuario: ${usuario}`);
             return data;
         } catch (error) {
             console.error(`Error al cargar ${key} desde Firebase:`, error);

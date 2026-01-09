@@ -50,6 +50,8 @@
             resultsDiv.appendChild(div);
         }
         
+        let firebaseApp = null;
+        
         function testAuth() {
             resultsDiv.innerHTML = '';
             addResult('🔍 Iniciando pruebas...', 'warning');
@@ -83,15 +85,18 @@
                     measurementId: window.ENV.FIREBASE_MEASUREMENT_ID
                 };
                 
-                firebase.initializeApp(firebaseConfig);
-                addResult('✅ Firebase inicializado correctamente', 'success');
-            } catch (error) {
-                if (error.code === 'app/duplicate-app') {
-                    addResult('⚠️ Firebase ya estaba inicializado', 'warning');
+                // Verificar si ya existe una app
+                if (!firebase.apps.length) {
+                    firebaseApp = firebase.initializeApp(firebaseConfig);
+                    addResult('✅ Firebase inicializado correctamente', 'success');
                 } else {
-                    addResult(`❌ Error al inicializar Firebase: ${error.message}`, 'error');
-                    return;
+                    firebaseApp = firebase.app();
+                    addResult('⚠️ Firebase ya estaba inicializado', 'warning');
                 }
+            } catch (error) {
+                addResult(`❌ Error al inicializar Firebase: ${error.message}`, 'error');
+                console.error(error);
+                return;
             }
             
             // Test 4: Firebase Auth disponible
@@ -120,9 +125,16 @@
             addResult('🚀 Intentando Google Sign-In...', 'warning');
             
             try {
+                // Asegurarse de que Firebase esté inicializado
+                if (!firebase.apps.length) {
+                    addResult('❌ Firebase no está inicializado. Presiona "Probar Autenticación" primero', 'error');
+                    return;
+                }
+                
                 const auth = firebase.auth();
                 const provider = new firebase.auth.GoogleAuthProvider();
                 
+                addResult('⏳ Abriendo popup de Google...', 'warning');
                 const result = await auth.signInWithPopup(provider);
                 addResult(`✅ Login exitoso: ${result.user.displayName}`, 'success');
                 addResult(`Email: ${result.user.email}`, 'success');

@@ -42,6 +42,10 @@ function verificarLicenciaActiva() {
     return true;
 }
 
+// Exportar funciones básicas inmediatamente
+window.verificarSesion = verificarSesion;
+window.verificarLicenciaActiva = verificarLicenciaActiva;
+
 // === GOOGLE SIGN-IN ===
 async function signInWithGoogle() {
     try {
@@ -199,6 +203,9 @@ async function signInWithGoogle() {
     }
 }
 
+// Exportar signInWithGoogle inmediatamente
+window.signInWithGoogle = signInWithGoogle;
+
 document.addEventListener('DOMContentLoaded', () => {
     verificarSesion();
     mostrarInfoLicencia();
@@ -295,6 +302,9 @@ function testFirebaseConfig() {
             });
     }
 }
+
+// Exportar testFirebaseConfig inmediatamente
+window.testFirebaseConfig = testFirebaseConfig;
 
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -587,6 +597,12 @@ async function registrarUsuario(event) {
     actualizarDashboard();
 }
 
+// Exportar funciones de licencias inmediatamente
+window.mostrarActivacionLicencia = mostrarActivacionLicencia;
+window.ocultarActivacionLicencia = ocultarActivacionLicencia;
+window.activarLicencia = activarLicencia;
+window.registrarUsuario = registrarUsuario;
+
 function mostrarInfoLicencia() {
     const licenciaActiva = localStorage.getItem('licenciaActiva');
     if (!licenciaActiva) return;
@@ -639,6 +655,9 @@ function cerrarSesion() {
         location.reload();
     }
 }
+
+// Exportar cerrarSesion inmediatamente
+window.cerrarSesion = cerrarSesion;
 
 // === DATOS DE DEMOSTRACIÓN ===
 function cargarDatosDemo() {
@@ -2178,15 +2197,9 @@ document.getElementById('busqueda').addEventListener('keypress', (e) => {
 // Inicializar
 actualizarDashboard();
 
-// === EXPORTAR FUNCIONES AL SCOPE GLOBAL ===
-// Necesario para que funcionen los onclick en HTML
-window.signInWithGoogle = signInWithGoogle;
-window.mostrarActivacionLicencia = mostrarActivacionLicencia;
-window.ocultarActivacionLicencia = ocultarActivacionLicencia;
-window.activarLicencia = activarLicencia;
-window.registrarUsuario = registrarUsuario;
-window.testFirebaseConfig = testFirebaseConfig;
-window.cerrarSesion = cerrarSesion;
+// === EXPORTAR FUNCIONES RESTANTES AL SCOPE GLOBAL ===
+// Las funciones principales ya fueron exportadas después de su definición
+// Aquí exportamos las funciones de UI que se definen más adelante
 window.mostrarFormCliente = mostrarFormCliente;
 window.cancelarFormCliente = cancelarFormCliente;
 window.mostrarFormOrden = mostrarFormOrden;

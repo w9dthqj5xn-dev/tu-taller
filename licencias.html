@@ -1922,10 +1922,7 @@
                                     `<button class="btn-activar" onclick="${lic.esUsuarioGoogle ? 'toggleSuspenderUsuarioGoogle' : 'toggleSuspenderLicenciaFirebase'}('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">▶️ Activar</button>` :
                                     `<button class="btn-suspender" onclick="${lic.esUsuarioGoogle ? 'toggleSuspenderUsuarioGoogle' : 'toggleSuspenderLicenciaFirebase'}('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #f97316; color: white; border: none; border-radius: 6px; cursor: pointer;">⏸️ Suspender</button>`
                                 }
-                                <button class="btn-eliminar" onclick="${lic.esUsuarioGoogle ? 'eliminarUsuarioGoogle' : 'eliminarLicenciaFirebase'}ciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">▶️ Activar</button>` :
-                                    `<button class="btn-suspender" onclick="toggleSuspenderLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #f97316; color: white; border: none; border-radius: 6px; cursor: pointer;">⏸️ Suspender</button>`
-                                }
-                                <button class="btn-eliminar" onclick="eliminarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">🗑️ Eliminar</button>
+                                <button class="btn-eliminar" onclick="${lic.esUsuarioGoogle ? 'eliminarUsuarioGoogle' : 'eliminarLicenciaFirebase'}('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">🗑️ Eliminar</button>
                             </div>
                         </div>
                     `;
@@ -2449,6 +2446,7 @@ soporte@tutaller.com
     
     <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="firebase-licencias.js"></script>

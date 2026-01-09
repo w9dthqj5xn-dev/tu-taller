@@ -113,6 +113,8 @@ async function signInWithGoogle() {
             try {
                 await db.collection('usuarios-google').doc(user.uid).set(userData);
                 console.log('✅ Usuario registrado en Firebase');
+                // Limpiar datos de cualquier sesión anterior
+                Storage.clear();
             } catch (error) {
                 console.warn('No se pudo guardar en Firebase (modo offline):', error);
             }
@@ -131,6 +133,13 @@ async function signInWithGoogle() {
         localStorage.setItem('sesionActiva', 'true');
         localStorage.setItem('usuarioGoogle', JSON.stringify(userData));
         localStorage.setItem('tipoLogin', 'google');
+        // Importante: guardar el email como usuario para sincronización
+        localStorage.setItem('usuario', user.email);
+        localStorage.setItem('nombreTaller', user.displayName || user.email.split('@')[0]);
+        
+        // Cargar datos desde Firebase
+        console.log('🔄 Cargando datos de Firebase para:', user.email);
+        await cargarDatosUsuario(user.email);
 
         // Verificar licencia
         if (!verificarLicenciaActiva()) {

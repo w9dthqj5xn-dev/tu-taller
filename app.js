@@ -822,24 +822,10 @@ function cargarDatosDemo() {
 // Sistema de almacenamiento con Firebase - Cada usuario tiene su propia base de datos
 class Storage {
     static get(key) {
-        // Verificar que hay sesión activa antes de acceder a datos
-        const sesion = localStorage.getItem('sesionActiva');
-        if (sesion !== 'true') {
-            console.warn('Intento de acceder a Storage sin autenticación');
-            return [];
-        }
-        
         const data = localStorage.getItem(key);
         return data ? JSON.parse(data) : [];
     }
     static set(key, data) {
-        // Verificar que hay sesión activa antes de guardar datos
-        const sesion = localStorage.getItem('sesionActiva');
-        if (sesion !== 'true') {
-            console.warn('Intento de guardar en Storage sin autenticación');
-            return;
-        }
-        
         localStorage.setItem(key, JSON.stringify(data));
     }
     static getNextId(key) {
@@ -857,13 +843,8 @@ class Storage {
         try {
             if (!usuario) return false;
             
-            // Verificar autenticación de Firebase
-            if (!auth.currentUser || auth.currentUser.email !== usuario) {
-                console.error('Usuario no autenticado en Firebase');
-                return false;
-            }
-            
             // Usar subcollection dentro del documento del usuario
+            // La seguridad la manejan las Reglas de Firebase
             const userRef = db.collection('usuarios-data').doc(usuario);
             const collectionRef = userRef.collection(key);
             
@@ -896,13 +877,8 @@ class Storage {
         try {
             if (!usuario) return [];
             
-            // Verificar autenticación de Firebase
-            if (!auth.currentUser || auth.currentUser.email !== usuario) {
-                console.error('Usuario no autenticado en Firebase');
-                return [];
-            }
-            
             // Cargar desde subcollection del usuario
+            // La seguridad la manejan las Reglas de Firebase
             const collectionRef = db.collection('usuarios-data').doc(usuario).collection(key);
             const snapshot = await collectionRef.get();
             

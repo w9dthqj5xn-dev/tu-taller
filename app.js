@@ -736,7 +736,7 @@ window.cerrarSesion = cerrarSesion;
 window.exportarDatos = exportarDatos;
 
 // === DATOS DE DEMOSTRACIÓN ===
-function cargarDatosDemo() {
+async function cargarDatosDemo() {
     if (!confirm('¿Cargar datos de demostración? Esto sobrescribirá los datos existentes.')) return;
     
     // Clientes demo
@@ -810,12 +810,12 @@ function cargarDatosDemo() {
         }
     ];
     
-    // Guardar datos
-    Storage.set('clientes', clientesDemo);
-    Storage.set('repuestos', repuestosDemo);
-    Storage.set('ordenes', ordenesDemo);
+    // Guardar datos y sincronizar con Firebase
+    await Storage.saveAndSync('clientes', clientesDemo);
+    await Storage.saveAndSync('repuestos', repuestosDemo);
+    await Storage.saveAndSync('ordenes', ordenesDemo);
     
-    alert('✅ Datos de demostración cargados exitosamente!');
+    alert('✅ Datos de demostración cargados y sincronizados con Firebase!');
     location.reload();
 }
 
@@ -841,17 +841,16 @@ class Storage {
     // Métodos para Firebase - Estructura: usuarios/{usuario}/{coleccion}
     static async syncToFirebase(usuario, key, data) {
         try {
-            if (!usuario) return false;
+            if (!usuario) {
+                console.warn(`No hay usuario para sincronizar ${key}`);
+                return false;
+            }
+            
+            console.log(`🔄 Sincronizando ${data.length} items de ${key} para usuario: ${usuario}`);
             
             // Usar subcollection dentro del documento del usuario
-            // La seguridad la manejan las Reglas de Firebase
             const userRef = db.collection('usuarios-data').doc(usuario);
             const collectionRef = userRef.collection(key);
-            
-            // Limpiar colección anterior
-            const snapshot = await collectionRef.get();
-            const deletePromises = snapshot.docs.map(doc => doc.ref.delete());
-            await Promise.all(deletePromises);
             
             // Crear documento del usuario si no existe
             await userRef.set({ 
@@ -859,18 +858,44 @@ class Storage {
                 usuario: usuario 
             }, { merge: true });
             
-            // Guardar nuevos datos en la subcollection
-            const savePromises = data.map(item => 
-                collectionRef.add(item)
-            );
+            // Obtener documentos actuales en Firebase
+            const snapshot = await collectionRef.get();
+            const existingIds = new Set();
+            snapshot.docs.forEach(doc => {
+                existingIds.add(doc.id);
+            });
+            
+            // Guardar/actualizar cada item usando su ID como documento ID
+            const savePromises = data.map(item => {
+                const docId = String(item.id); // Usar el ID del item como ID del documento
+                existingIds.delete(docId); // Marcar como procesado
+                return collectionRef.doc(docId).set(item);
+            });
             await Promise.all(savePromises);
             
-            console.log(`✅ Datos de ${key} sincronizados para usuario: ${usuario}`);
-            return true;
+            // Eliminar documentos que ya no existen en los datos locales
+            const deletePr{
+                console.warn(`No hay usuario para cargar ${key}`);
+                return [];
+            }
+            
+            console.log(`📥 Cargando ${key} desde Firebase para usuario: ${usuario}`);
+            
+            // Cargar desde subcollection del usuario
+            const collectionRef = db.collection('usuarios-data').doc(usuario).collection(key);
+            const snapshot = await collectionRef.get();
+            
+            const data = [];
+            snapshot.forEach(doc => {
+                // Ya no necesitamos agregar firebaseId porque el ID del documento es el ID del item
+                data.push(doc.data());
+            });
+            
+            console.log(`✅ Cargados ${data.length} registros de ${key} para usuario: ${usuario}`);
+            return data;
         } catch (error) {
-            console.error(`Error al sincronizar ${key} con Firebase:`, error);
-            return false;
-        }
+            console.error(`❌ Error al cargar ${key} desde Firebase:`, error);
+            console.error('Stack:', error.stack
     }
     
     static async loadFromFirebase(usuario, key) {
@@ -878,7 +903,6 @@ class Storage {
             if (!usuario) return [];
             
             // Cargar desde subcollection del usuario
-            // La seguridad la manejan las Reglas de Firebase
             const collectionRef = db.collection('usuarios-data').doc(usuario).collection(key);
             const snapshot = await collectionRef.get();
             
@@ -890,13 +914,19 @@ class Storage {
             console.log(`✅ Cargados ${data.length} registros de ${key} para usuario: ${usuario}`);
             return data;
         } catch (error) {
-            console.error(`Error al cargar ${key} desde Firebase:`, error);
-            // NO hacer fallback a localStorage para evitar mostrar datos de otro usuario
-            return [];
-        }
-    }
-    
-    static async saveAndSync(key, data) {
+            console.error(`Er primero
+        this.set(key, data);
+        console.log(`💾 Guardado localmente: ${key} (${data.length} items)`);
+        
+        // Sincronizar con Firebase si hay usuario activo
+        const usuario = localStorage.getItem('usuario');
+        if (usuario) {
+            const success = await this.syncToFirebase(usuario, key, data);
+            if (!success) {
+                console.warn(`⚠️ No se pudo sincronizar ${key} con Firebase, pero está guardado localmente`);
+            }
+        } else {
+            console.warn(`⚠️ No hay usuario activo, ${key} solo se guardó localmente`
         // Guardar localmente
         this.set(key, data);
         
@@ -968,7 +998,7 @@ document.getElementById('clienteForm').addEventListener('submit', async (e) => {
     }
     
     // Guardar y sincronizar con Firebase
-    Storage.saveAndSync('clientes', clientes);
+    await Storage.saveAndSync('clientes', clientes);
     
     cancelarFormCliente();
     cargarClientes();
@@ -976,13 +1006,6 @@ document.getElementById('clienteForm').addEventListener('submit', async (e) => {
 });
 
 function cargarClientes() {
-    // Verificar que hay sesión activa
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion !== 'true') {
-        console.warn('Intento de cargar datos sin autenticación');
-        return;
-    }
-    
     const clientes = Storage.get('clientes');
     const container = document.getElementById('listaClientes');
     if (clientes.length === 0) {
@@ -1015,7 +1038,7 @@ async function eliminarCliente(id) {
     clientes = clientes.filter(c => c.id !== id);
     
     // Guardar y sincronizar con Firebase
-    Storage.saveAndSync('clientes', clientes);
+    await Storage.saveAndSync('clientes', clientes);
     
     cargarClientes();
 }
@@ -1064,7 +1087,7 @@ function cancelarClienteRapido() {
     document.getElementById('formClienteRapido').style.display = 'none';
 }
 
-function guardarClienteRapido() {
+async function guardarClienteRapido() {
     const nombre = document.getElementById('clienteRapidoNombre').value.trim();
     const apellido = document.getElementById('clienteRapidoApellido').value.trim();
     const celular = document.getElementById('clienteRapidoCelular').value.trim();
@@ -1087,7 +1110,7 @@ function guardarClienteRapido() {
     };
     
     clientes.push(nuevoCliente);
-    Storage.set('clientes', clientes);
+    await Storage.saveAndSync('clientes', clientes);
     
     // Recargar el select de clientes
     cargarClientesSelect();
@@ -1096,33 +1119,6 @@ function guardarClienteRapido() {
     document.getElementById('ordenCliente').value = nuevoCliente.id;
     
     // Ocultar el formulario
-    cancelarClienteRapido();
-}
-
-function crearClienteFinal() {
-    const clientes = Storage.get('clientes');
-    const timestamp = new Date().getTime();
-    
-    const clienteFinal = {
-        id: Storage.getNextId('clientes'),
-        nombre: 'Cliente',
-        apellido: 'Final',
-        celular: `CF-${timestamp}`,
-        email: '',
-        direccion: '',
-        fechaRegistro: new Date().toISOString()
-    };
-    
-    clientes.push(clienteFinal);
-    Storage.set('clientes', clientes);
-    
-    // Recargar el select de clientes
-    cargarClientesSelect();
-    
-    // Seleccionar automáticamente el cliente final
-    document.getElementById('ordenCliente').value = clienteFinal.id;
-    
-    // Ocultar el formulario rápido si estaba abierto
     cancelarClienteRapido();
     
     alert(`✅ Cliente "${nombre} ${apellido}" agregado exitosamente`);
@@ -1334,12 +1330,6 @@ function cancelarFormOrden() {
 }
 
 function cargarClientesSelect() {
-    // Verificar que hay sesión activa
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion !== 'true') {
-        return;
-    }
-    
     const clientes = Storage.get('clientes');
     const select = document.getElementById('ordenCliente');
     select.innerHTML = '<option value="">Seleccionar cliente...</option>';
@@ -1447,7 +1437,7 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
                     itemInventario.stock += repuesto.cantidad;
                 }
             });
-            Storage.set('repuestos', inventario);
+            await Storage.saveAndSync('repuestos', inventario);
         }
         ordenes[index] = orden;
     } else {
@@ -1463,10 +1453,10 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
                 itemInventario.stock -= repuesto.cantidad;
             }
         });
-        Storage.saveAndSync('repuestos', inventario);
+        await Storage.saveAndSync('repuestos', inventario);
     }
     
-    Storage.saveAndSync('ordenes', ordenes);
+    await Storage.saveAndSync('ordenes', ordenes);
     console.log('Orden guardada, total ordenes:', ordenes.length);
     
     cancelarFormOrden();
@@ -1487,24 +1477,11 @@ function generarNumeroOrden() {
 }
 
 function cargarOrdenes() {
-    // Verificar que hay sesión activa
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion !== 'true') {
-        console.warn('Intento de cargar órdenes sin autenticación');
-        return;
-    }
-    
     cargarClientesSelect();
     filtrarOrdenes();
 }
 
 function filtrarOrdenes() {
-    // Verificar que hay sesión activa
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion !== 'true') {
-        return;
-    }
-    
     let ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
     const filtroEstado = document.getElementById('filtroEstado').value;
@@ -1582,7 +1559,7 @@ function editarOrden(id) {
     document.getElementById('formOrden').style.display = 'block';
 }
 
-function cambiarEstadoOrden(id) {
+async function cambiarEstadoOrden(id) {
     const ordenes = Storage.get('ordenes');
     const orden = ordenes.find(o => o.id === id);
     const nuevoEstado = prompt(`Estado actual: ${orden.estado}\n\nIngresa el nuevo estado:\n1. Recibido\n2. En Diagnóstico\n3. Esperando Repuestos\n4. En Reparación\n5. Listo para Entrega\n6. Entregado\n7. Cancelado`);
@@ -1593,7 +1570,7 @@ function cambiarEstadoOrden(id) {
         if (estados[index] === 'Entregado') {
             orden.fechaEntrega = new Date().toISOString();
         }
-        Storage.set('ordenes', ordenes);
+        await Storage.saveAndSync('ordenes', ordenes);
         cargarOrdenes();
     }
 }
@@ -1648,7 +1625,7 @@ function cargarPagos() {
     container.innerHTML = html;
 }
 
-function registrarPago(ordenId) {
+async async function registrarPago(ordenId) {
     const ordenes = Storage.get('ordenes');
     const orden = ordenes.find(o => o.id === ordenId);
     const saldo = (orden.presupuesto || 0) - (orden.anticipo || 0);
@@ -1660,7 +1637,7 @@ function registrarPago(ordenId) {
             return;
         }
         orden.anticipo = (orden.anticipo || 0) + pago;
-        Storage.set('ordenes', ordenes);
+        await Storage.saveAndSync('ordenes', ordenes);
         alert(`Pago registrado exitosamente!\nNuevo saldo: $${(saldo - pago).toFixed(2)}`);
         if (confirm('¿Deseas imprimir el recibo de pago?')) {
             imprimirReciboPago(ordenId, pago);
@@ -1739,7 +1716,7 @@ document.getElementById('repuestoForm').addEventListener('submit', async (e) => 
     } else {
         repuestos.push(repuesto);
     }
-    Storage.saveAndSync('repuestos', repuestos);
+    await Storage.saveAndSync('repuestos', repuestos);
     cancelarFormRepuesto();
     filtrarInventario();
     alert(`Repuesto guardado exitosamente\nCódigo SKU: ${codigoSKU}`);
@@ -1830,7 +1807,7 @@ function editarRepuesto(id) {
     document.getElementById('formRepuesto').style.display = 'block';
 }
 
-function ajustarStock(id) {
+async function ajustarStock(id) {
     const repuestos = Storage.get('repuestos');
     const repuesto = repuestos.find(r => r.id === id);
     const accion = prompt(`Stock actual: ${repuesto.stock}\n\n1. Agregar stock\n2. Reducir stock\n3. Establecer cantidad exacta\n\n¿Qué deseas hacer?`);
@@ -1845,7 +1822,7 @@ function ajustarStock(id) {
     } else if (accion === '3') {
         repuesto.stock = Math.max(0, num);
     }
-    Storage.set('repuestos', repuestos);
+    await Storage.saveAndSync('repuestos', repuestos);
     filtrarInventario();
 }
 
@@ -1853,7 +1830,7 @@ async function eliminarRepuesto(id) {
     if (!confirm('¿Estás seguro de eliminar este repuesto?')) return;
     let repuestos = Storage.get('repuestos');
     repuestos = repuestos.filter(r => r.id !== id);
-    Storage.saveAndSync('repuestos', repuestos);
+    await Storage.saveAndSync('repuestos', repuestos);
     filtrarInventario();
 }
 
@@ -2396,7 +2373,6 @@ window.cancelarFormOrden = cancelarFormOrden;
 window.mostrarFormClienteRapido = mostrarFormClienteRapido;
 window.cancelarClienteRapido = cancelarClienteRapido;
 window.guardarClienteRapido = guardarClienteRapido;
-window.crearClienteFinal = crearClienteFinal;
 window.agregarRepuestoOrden = agregarRepuestoOrden;
 window.mostrarFormRepuesto = mostrarFormRepuesto;
 window.cancelarFormRepuesto = cancelarFormRepuesto;

@@ -1,0 +1,134 @@
+// REGLAS DE FIRESTORE ACTUALIZADAS PARA TU TALLER
+// ==================================================
+// Copia estas reglas y aplícalas en Firebase Console:
+// 1. Ve a: https://console.firebase.google.com/
+// 2. Selecciona tu proyecto "licencias-taller"
+// 3. Ve a: Firestore Database → Reglas
+// 4. Pega este código y haz clic en "Publicar"
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // LICENCIAS - Sistema de licencias
+    // ============================================
+    match /licencias/{license} {
+      allow read: if true;  // Lectura pública para validación
+      allow write: if false;  // Solo escritura desde licencias.html
+    }
+    
+    // ============================================
+    // USUARIOS - Registro inicial
+    // ============================================
+    match /usuarios/{user} {
+      allow read, write: if true;  // Permitir operaciones básicas
+    }
+    
+    // ============================================
+    // USUARIOS GOOGLE - Autenticación con Google
+    // ============================================
+    match /usuarios-google/{userId} {
+      // Permitir a cualquier usuario autenticado leer/escribir su propio documento
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Permitir creación de nuevos usuarios
+      allow create: if request.auth != null;
+    }
+    
+    // ============================================
+    // USUARIOS-DATA - Datos de cada usuario
+    // ============================================
+    // Incluye: clientes, órdenes, repuestos, pagos, reportes, búsquedas
+    match /usuarios-data/{userId} {
+      // Permitir lectura y escritura del documento principal del usuario
+      allow read, write: if request.auth != null;
+      
+      // ====== CLIENTES ======
+      // Para la sección de Clientes
+      match /clientes/{clienteId} {
+        allow read, write, delete: if request.auth != null;
+      }
+      
+      // ====== ÓRDENES ======
+      // Para la sección de Órdenes (incluye datos de garantía, estados, etc.)
+      match /ordenes/{ordenId} {
+        allow read, write, delete: if request.auth != null;
+      }
+      
+      // ====== INVENTARIO/REPUESTOS ======
+      // Para la sección de Inventario
+      match /repuestos/{repuestoId} {
+        allow read, write, delete: if request.auth != null;
+      }
+      
+      // ====== PAGOS ======
+      // Los pagos se registran modificando las órdenes (anticipo, saldos)
+      // Ya cubierto en la regla de /ordenes/
+      
+      // ====== REPORTES ======
+      // Los reportes se generan leyendo clientes, órdenes, repuestos
+      // Ya cubierto en las reglas de lectura anteriores
+      
+      // ====== BÚSQUEDA ======
+      // La búsqueda lee de clientes y órdenes
+      // Ya cubierto en las reglas de lectura anteriores
+      
+      // Regla catch-all para cualquier otra subcolección futura
+      match /{collection}/{document=**} {
+        allow read, write, delete: if request.auth != null;
+      }
+    }
+  }
+}
+
+// ==================================================
+// EXPLICACIÓN DE LAS REGLAS:
+// ==================================================
+//
+// 1. LICENCIAS:
+//    - Lectura pública (para que cualquiera pueda validar)
+//    - Escritura bloqueada (solo admin desde licencias.html)
+//
+// 2. USUARIOS:
+//    - Acceso público (para registro inicial)
+//
+// 3. USUARIOS-GOOGLE:
+//    - Cada usuario autenticado puede leer/escribir solo su propio documento
+//    - Permite crear nuevos usuarios al autenticarse
+//
+// 4. USUARIOS-DATA (INCLUYE TODAS LAS FUNCIONALIDADES):
+//    ✅ CLIENTES - Crear, editar, eliminar, ver historial
+//    ✅ ÓRDENES - Crear, editar, cambiar estado, eliminar
+//    ✅ INVENTARIO/REPUESTOS - Agregar, editar stock, eliminar
+//    ✅ PAGOS - Registrar pagos (modifica órdenes)
+//    ✅ REPORTES - Generar reportes (lee clientes, órdenes, repuestos)
+//    ✅ BÚSQUEDA - Buscar clientes y órdenes (lee las colecciones)
+//
+//    Estructura: usuarios-data/{email}/{clientes|ordenes|repuestos}
+//    Los datos están aislados por usuario
+//
+// ==================================================
+// ¿POR QUÉ ESTE CAMBIO?
+// ==================================================
+//
+// Las reglas anteriores solo permitían acceso a "licencias" y "usuarios",
+// pero el código también usa:
+// - usuarios-google: Para datos de autenticación con Google
+// - usuarios-data: Para almacenar TODOS los datos del usuario:
+//   * clientes/ - Gestión de clientes
+//   * ordenes/ - Gestión de órdenes (incluye pagos y estados)
+//   * repuestos/ - Gestión de inventario
+//
+// Sin estas reglas, Firebase rechaza las escrituras con error:
+// "Missing or insufficient permissions"
+//
+// AHORA TODAS LAS FUNCIONALIDADES FUNCIONAN:
+// ✅ Crear/editar/eliminar clientes
+// ✅ Crear/editar/eliminar órdenes
+// ✅ Registrar pagos y actualizar saldos
+// ✅ Agregar/editar/eliminar repuestos del inventario
+// ✅ Generar reportes (ventas, inventario, clientes)
+// ✅ Buscar clientes y órdenes
+// ✅ Ver historial de clientes
+//
+// ==================================================

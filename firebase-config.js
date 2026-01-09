@@ -16,14 +16,15 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Configurar proveedor de Google
-let googleProvider;
+// Configurar proveedor de Google (declarar en scope global)
+let googleProvider = null;
 try {
     googleProvider = new firebase.auth.GoogleAuthProvider();
     googleProvider.addScope('email');
     googleProvider.addScope('profile');
     
     console.log('✅ Firebase y Google Auth inicializados correctamente');
+    console.log('✅ Google Provider configurado:', googleProvider);
     
     // Verificar estado de autenticación al cargar
     firebase.auth().onAuthStateChanged((user) => {
@@ -37,4 +38,5 @@ try {
 } catch (error) {
     console.error('❌ Error al configurar Google Provider:', error);
     console.log('🔍 Verifica que Firebase Auth esté correctamente configurado');
+    console.error('Stack:', error.stack);
 }

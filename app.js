@@ -45,22 +45,39 @@ function verificarLicenciaActiva() {
 // === GOOGLE SIGN-IN ===
 async function signInWithGoogle() {
     try {
+        console.log('🔍 Iniciando Google Sign-In...');
+        
+        // Verificar si Firebase está disponible
+        if (typeof firebase === 'undefined') {
+            throw new Error('Firebase no está cargado. Recarga la página.');
+        }
+        
         // Verificar si Firebase Auth está disponible
-        if (!window.firebase || !firebase.auth) {
+        if (!firebase.auth) {
             throw new Error('Firebase Auth no está cargado correctamente');
         }
+        
+        console.log('✅ Firebase disponible');
+        console.log('✅ Auth disponible:', auth);
+        console.log('✅ Google Provider:', googleProvider);
 
         // Verificar si el proveedor de Google está configurado
         if (!googleProvider) {
-            throw new Error('Google Provider no está configurado');
+            throw new Error('Google Provider no está configurado. Verifica firebase-config.js');
         }
 
         // Mostrar loading
         const btn = document.querySelector('.google-signin-btn');
+        if (!btn) {
+            throw new Error('Botón de Google no encontrado');
+        }
+        
         const originalText = btn.innerHTML;
         btn.innerHTML = '<div style="width: 20px; height: 20px; border: 2px solid #ddd; border-top: 2px solid #666; border-radius: 50%; animation: spin 1s linear infinite;"></div> Conectando...';
         btn.disabled = true;
 
+        console.log('🚀 Abriendo popup de Google...');
+        
         // Autenticar con Google
         const result = await auth.signInWithPopup(googleProvider);
         const user = result.user;

@@ -683,8 +683,48 @@ function cerrarSesion() {
     }
 }
 
-// Exportar cerrarSesion inmediatamente
+function exportarDatos() {
+    try {
+        const usuario = localStorage.getItem('usuario');
+        const nombreTaller = localStorage.getItem('nombreTaller');
+        
+        // Obtener todos los datos del usuario
+        const clientes = Storage.get('clientes');
+        const ordenes = Storage.get('ordenes');
+        const repuestos = Storage.get('repuestos');
+        
+        const datosExportar = {
+            usuario: usuario,
+            nombreTaller: nombreTaller,
+            fechaExportacion: new Date().toISOString(),
+            clientes: clientes,
+            ordenes: ordenes,
+            repuestos: repuestos
+        };
+        
+        // Crear archivo JSON y descargarlo
+        const jsonStr = JSON.stringify(datosExportar, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `datos_${usuario}_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        alert(`✅ Datos exportados exitosamente\n\nClientes: ${clientes.length}\nÓrdenes: ${ordenes.length}\nRepuestos: ${repuestos.length}\n\nArchivo: datos_${usuario}_${Date.now()}.json`);
+        
+    } catch (error) {
+        console.error('Error al exportar datos:', error);
+        alert('❌ Error al exportar datos');
+    }
+}
+
+// Exportar funciones inmediatamente
 window.cerrarSesion = cerrarSesion;
+window.exportarDatos = exportarDatos;
 
 // === DATOS DE DEMOSTRACIÓN ===
 function cargarDatosDemo() {

@@ -119,7 +119,10 @@
         <header>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h1>🔧 Taller de Reparaciones</h1>
-                <button onclick="cerrarSesion()" class="btn-logout">🚪 Cerrar Sesión</button>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="exportarDatos()" class="btn-logout" style="background: #8b5cf6;">📤 Exportar</button>
+                    <button onclick="cerrarSesion()" class="btn-logout">🚪 Cerrar Sesión</button>
+                </div>
             </div>
             <nav>
                 <button class="nav-btn active" data-section="dashboard">Dashboard</button>

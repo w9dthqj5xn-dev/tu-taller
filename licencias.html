@@ -1408,12 +1408,39 @@
                                     <button class="btn btn-primary" onclick="mostrarFormCrearUsuario()">
                                         ➕ Crear Usuario
                                     </button>
+                                    <button class="btn" onclick="mostrarImportarDatos()" style="background: #8b5cf6; color: white;">
+                                        📥 Importar Datos
+                                    </button>
                                     <button class="btn btn-primary" onclick="cargarUsuarios()">
                                         🔄 Actualizar
                                     </button>
                                 </div>
                             </div>
                             <div id="usuariosList"></div>
+                        </div>
+                        
+                        <!-- Modal para importar datos -->
+                        <div id="modalImportar" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+                            <div class="card" style="width: 90%; max-width: 600px; margin: 20px;">
+                                <div class="card-header">
+                                    <h3 class="card-title">📥 Importar Datos de Usuario</h3>
+                                    <button class="btn" onclick="cerrarImportarDatos()" style="background: #ef4444; color: white;">✖️</button>
+                                </div>
+                                <div style="padding: 20px;">
+                                    <p style="margin-bottom: 15px; color: #64748b;">Pega aquí el JSON exportado desde la otra PC:</p>
+                                    <div class="form-group">
+                                        <label for="usuarioImportar">Usuario destino *</label>
+                                        <input type="text" id="usuarioImportar" placeholder="ej: carlos.tec" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="jsonImportar">Datos JSON *</label>
+                                        <textarea id="jsonImportar" rows="10" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-family: monospace; font-size: 12px;" placeholder='{"clientes": [...], "ordenes": [...], "repuestos": [...]}'></textarea>
+                                    </div>
+                                    <button class="btn btn-primary" onclick="importarDatosUsuario()" style="width: 100%;">
+                                        ✅ Importar a Firebase
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -2290,6 +2317,91 @@
                         <button onclick="cargarUsuarios()" style="margin-top: 10px; padding: 6px 12px;">🔄 Reintentar</button>
                     </div>
                 `;
+            }
+        }
+
+        function mostrarImportarDatos() {
+            document.getElementById('modalImportar').style.display = 'flex';
+        }
+
+        function cerrarImportarDatos() {
+            document.getElementById('modalImportar').style.display = 'none';
+            document.getElementById('usuarioImportar').value = '';
+            document.getElementById('jsonImportar').value = '';
+        }
+
+        async function importarDatosUsuario() {
+            const usuario = document.getElementById('usuarioImportar').value.trim();
+            const jsonText = document.getElementById('jsonImportar').value.trim();
+            
+            if (!usuario || !jsonText) {
+                alert('❌ Por favor completa todos los campos');
+                return;
+            }
+            
+            try {
+                // Parsear el JSON
+                const datos = JSON.parse(jsonText);
+                
+                if (!datos.clientes && !datos.ordenes && !datos.repuestos) {
+                    alert('❌ El JSON debe contener al menos uno de: clientes, ordenes, repuestos');
+                    return;
+                }
+                
+                // Verificar que el usuario existe
+                const snapshot = await db.collection('usuarios')
+                    .where('usuario', '==', usuario)
+                    .get();
+                
+                if (snapshot.empty) {
+                    alert('❌ El usuario no existe. Créalo primero.');
+                    return;
+                }
+                
+                if (!confirm(`¿Importar datos a la cuenta de "${usuario}"?\n\nClientes: ${datos.clientes?.length || 0}\nÓrdenes: ${datos.ordenes?.length || 0}\nRepuestos: ${datos.repuestos?.length || 0}\n\nEsto reemplazará los datos existentes.`)) {
+                    return;
+                }
+                
+                const userRef = db.collection('usuarios-data').doc(usuario);
+                
+                // Importar clientes
+                if (datos.clientes && datos.clientes.length > 0) {
+                    const clientesRef = userRef.collection('clientes');
+                    for (const cliente of datos.clientes) {
+                        await clientesRef.add(cliente);
+                    }
+                }
+                
+                // Importar órdenes
+                if (datos.ordenes && datos.ordenes.length > 0) {
+                    const ordenesRef = userRef.collection('ordenes');
+                    for (const orden of datos.ordenes) {
+                        await ordenesRef.add(orden);
+                    }
+                }
+                
+                // Importar repuestos
+                if (datos.repuestos && datos.repuestos.length > 0) {
+                    const repuestosRef = userRef.collection('repuestos');
+                    for (const repuesto of datos.repuestos) {
+                        await repuestosRef.add(repuesto);
+                    }
+                }
+                
+                // Actualizar metadata del usuario
+                await userRef.set({ 
+                    ultimaActualizacion: new Date().toISOString(),
+                    usuario: usuario,
+                    datosImportados: true
+                }, { merge: true });
+                
+                alert(`✅ Datos importados exitosamente\n\nClientes: ${datos.clientes?.length || 0}\nÓrdenes: ${datos.ordenes?.length || 0}\nRepuestos: ${datos.repuestos?.length || 0}`);
+                
+                cerrarImportarDatos();
+                
+            } catch (error) {
+                console.error('Error al importar datos:', error);
+                alert('❌ Error al importar datos. Verifica que el JSON sea válido.');
             }
         }
 

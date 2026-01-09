@@ -320,26 +320,42 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
     
+    console.log('🔐 Intentando iniciar sesión con usuario:', username);
+    
     try {
         // Buscar usuario en Firebase Firestore
+        console.log('📡 Consultando Firebase...');
         const snapshot = await db.collection('usuarios')
             .where('usuario', '==', username)
             .get();
         
+        console.log('📊 Resultados de Firebase:', snapshot.size, 'documentos encontrados');
+        
         let usuarioEncontrado = null;
         if (!snapshot.empty) {
             const userData = snapshot.docs[0].data();
+            console.log('👤 Usuario encontrado:', userData.usuario);
             // Verificar contraseña
             if (userData.password === password) {
                 usuarioEncontrado = userData;
+                console.log('✅ Contraseña correcta');
+            } else {
+                console.log('❌ Contraseña incorrecta');
             }
+        } else {
+            console.log('⚠️ No se encontró usuario en Firebase');
         }
         
         // También permitir credenciales admin por defecto
         const esAdmin = (username === 'admin' && password === 'admin123');
+        if (esAdmin) {
+            console.log('🔑 Login como admin por defecto');
+        }
         
         if (usuarioEncontrado || esAdmin) {
             const nombreTaller = usuarioEncontrado ? (usuarioEncontrado.nombreTaller || 'Taller de Reparaciones') : 'Taller de Reparaciones';
+            
+            console.log('🎉 Login exitoso! Taller:', nombreTaller);
             
             // IMPORTANTE: Limpiar datos de cualquier usuario anterior
             console.log('🧹 Limpiando datos de sesión anterior...');
@@ -350,18 +366,28 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             localStorage.setItem('nombreTaller', nombreTaller);
             
             // Cargar datos desde Firebase
-            await cargarDatosUsuario(username);
+            console.log('📥 Cargando datos del usuario...');
+            const cargaExitosa = await cargarDatosUsuario(username);
             
+            if (cargaExitosa) {
+                console.log('✅ Datos cargados correctamente');
+            } else {
+                console.warn('⚠️ Advertencia: No se pudieron cargar todos los datos');
+            }
+            
+            console.log('🚀 Mostrando aplicación principal');
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             actualizarDashboard();
         } else {
+            console.log('❌ Credenciales incorrectas');
             alert('❌ Usuario o contraseña incorrectos');
             document.getElementById('loginPassword').value = '';
         }
     } catch (error) {
-        console.error('Error al iniciar sesión:', error);
-        alert('❌ Error al verificar credenciales. Por favor intenta de nuevo.');
+        console.error('💥 Error al iniciar sesión:', error);
+        console.error('Stack:', error.stack);
+        alert(`❌ Error al verificar credenciales: ${error.message}\nRevisa la consola para más detalles.`);
     }
 });
 

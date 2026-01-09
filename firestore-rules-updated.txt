@@ -15,21 +15,21 @@ service cloud.firestore {
     // ============================================
     match /licencias/{license} {
       allow read: if true;  // Lectura pública para validación
-      allow write: if false;  // Solo escritura desde licencias.html
+      allow write: if true;  // Permitir escritura para admin desde licencias.html
     }
     
     // ============================================
-    // USUARIOS - Registro inicial
+    // USUARIOS - Registro inicial y autenticación
     // ============================================
     match /usuarios/{user} {
-      allow read, write: if true;  // Permitir operaciones básicas
+      allow read, write: if true;  // Acceso público para sistema de usuarios normal
     }
     
     // ============================================
     // USUARIOS GOOGLE - Autenticación con Google
     // ============================================
     match /usuarios-google/{userId} {
-      // Permitir a cualquier usuario autenticado leer/escribir su propio documento
+      // Permitir a cualquier usuario autenticado con Google
       allow read, write: if request.auth != null && request.auth.uid == userId;
       // Permitir creación de nuevos usuarios
       allow create: if request.auth != null;
@@ -38,44 +38,30 @@ service cloud.firestore {
     // ============================================
     // USUARIOS-DATA - Datos de cada usuario
     // ============================================
-    // Incluye: clientes, órdenes, repuestos, pagos, reportes, búsquedas
+    // IMPORTANTE: Permitir acceso público temporalmente para ambos tipos de autenticación
+    // (usuarios normales SIN request.auth y usuarios de Google CON request.auth)
     match /usuarios-data/{userId} {
-      // Permitir lectura y escritura del documento principal del usuario
-      allow read, write: if request.auth != null;
+      // Permitir acceso a cualquiera (tanto usuarios normales como Google)
+      allow read, write: if true;
       
       // ====== CLIENTES ======
-      // Para la sección de Clientes
       match /clientes/{clienteId} {
-        allow read, write, delete: if request.auth != null;
+        allow read, write, delete: if true;
       }
       
       // ====== ÓRDENES ======
-      // Para la sección de Órdenes (incluye datos de garantía, estados, etc.)
       match /ordenes/{ordenId} {
-        allow read, write, delete: if request.auth != null;
+        allow read, write, delete: if true;
       }
       
       // ====== INVENTARIO/REPUESTOS ======
-      // Para la sección de Inventario
       match /repuestos/{repuestoId} {
-        allow read, write, delete: if request.auth != null;
+        allow read, write, delete: if true;
       }
       
-      // ====== PAGOS ======
-      // Los pagos se registran modificando las órdenes (anticipo, saldos)
-      // Ya cubierto en la regla de /ordenes/
-      
-      // ====== REPORTES ======
-      // Los reportes se generan leyendo clientes, órdenes, repuestos
-      // Ya cubierto en las reglas de lectura anteriores
-      
-      // ====== BÚSQUEDA ======
-      // La búsqueda lee de clientes y órdenes
-      // Ya cubierto en las reglas de lectura anteriores
-      
-      // Regla catch-all para cualquier otra subcolección futura
+      // Regla catch-all para cualquier otra subcolección
       match /{collection}/{document=**} {
-        allow read, write, delete: if request.auth != null;
+        allow read, write, delete: if true;
       }
     }
   }

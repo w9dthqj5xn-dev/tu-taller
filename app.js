@@ -881,7 +881,7 @@ document.getElementById('clienteForm').addEventListener('submit', async (e) => {
     }
     
     // Guardar y sincronizar con Firebase
-    await Storage.saveAndSync('clientes', clientes);
+    Storage.saveAndSync('clientes', clientes);
     
     cancelarFormCliente();
     cargarClientes();
@@ -1336,10 +1336,10 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
                 itemInventario.stock -= repuesto.cantidad;
             }
         });
-        await Storage.saveAndSync('repuestos', inventario);
+        Storage.saveAndSync('repuestos', inventario);
     }
     
-    await Storage.saveAndSync('ordenes', ordenes);
+    Storage.saveAndSync('ordenes', ordenes);
     console.log('Orden guardada, total ordenes:', ordenes.length);
     
     cancelarFormOrden();
@@ -1458,7 +1458,7 @@ function cambiarEstadoOrden(id) {
     }
 }
 
-function eliminarOrden(id) {
+async function eliminarOrden(id) {
     if (!confirm('¿Estás seguro de eliminar esta orden?')) return;
     let ordenes = Storage.get('ordenes');
     ordenes = ordenes.filter(o => o.id !== id);
@@ -1599,7 +1599,7 @@ document.getElementById('repuestoForm').addEventListener('submit', async (e) => 
     } else {
         repuestos.push(repuesto);
     }
-    await Storage.saveAndSync('repuestos', repuestos);
+    Storage.saveAndSync('repuestos', repuestos);
     cancelarFormRepuesto();
     filtrarInventario();
     alert(`Repuesto guardado exitosamente\nCódigo SKU: ${codigoSKU}`);

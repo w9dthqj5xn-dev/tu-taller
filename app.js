@@ -976,6 +976,13 @@ document.getElementById('clienteForm').addEventListener('submit', async (e) => {
 });
 
 function cargarClientes() {
+    // Verificar que hay sesión activa
+    const sesion = localStorage.getItem('sesionActiva');
+    if (sesion !== 'true') {
+        console.warn('Intento de cargar datos sin autenticación');
+        return;
+    }
+    
     const clientes = Storage.get('clientes');
     const container = document.getElementById('listaClientes');
     if (clientes.length === 0) {
@@ -1002,7 +1009,7 @@ function editarCliente(id) {
     document.getElementById('formCliente').style.display = 'block';
 }
 
-function eliminarCliente(id) {
+async function eliminarCliente(id) {
     if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
     let clientes = Storage.get('clientes');
     clientes = clientes.filter(c => c.id !== id);
@@ -1327,6 +1334,12 @@ function cancelarFormOrden() {
 }
 
 function cargarClientesSelect() {
+    // Verificar que hay sesión activa
+    const sesion = localStorage.getItem('sesionActiva');
+    if (sesion !== 'true') {
+        return;
+    }
+    
     const clientes = Storage.get('clientes');
     const select = document.getElementById('ordenCliente');
     select.innerHTML = '<option value="">Seleccionar cliente...</option>';
@@ -1474,11 +1487,24 @@ function generarNumeroOrden() {
 }
 
 function cargarOrdenes() {
+    // Verificar que hay sesión activa
+    const sesion = localStorage.getItem('sesionActiva');
+    if (sesion !== 'true') {
+        console.warn('Intento de cargar órdenes sin autenticación');
+        return;
+    }
+    
     cargarClientesSelect();
     filtrarOrdenes();
 }
 
 function filtrarOrdenes() {
+    // Verificar que hay sesión activa
+    const sesion = localStorage.getItem('sesionActiva');
+    if (sesion !== 'true') {
+        return;
+    }
+    
     let ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
     const filtroEstado = document.getElementById('filtroEstado').value;
@@ -1823,7 +1849,7 @@ function ajustarStock(id) {
     filtrarInventario();
 }
 
-function eliminarRepuesto(id) {
+async function eliminarRepuesto(id) {
     if (!confirm('¿Estás seguro de eliminar este repuesto?')) return;
     let repuestos = Storage.get('repuestos');
     repuestos = repuestos.filter(r => r.id !== id);

@@ -1356,15 +1356,62 @@
                             <p>Gestiona los usuarios registrados y resetea contraseñas</p>
                         </div>
                         
+                        <!-- Formulario para crear usuario manualmente -->
+                        <div class="card" id="formCrearUsuario" style="display: none; margin-bottom: 20px;">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <span class="card-icon">➕</span>
+                                    Crear Usuario Manualmente
+                                </h3>
+                                <button class="btn" onclick="ocultarFormCrearUsuario()" style="background: #ef4444; color: white;">
+                                    ✖️ Cancelar
+                                </button>
+                            </div>
+                            <form id="crearUsuarioForm" onsubmit="crearUsuarioManual(event)" style="padding: 20px;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="nuevoUsuario">Usuario *</label>
+                                        <input type="text" id="nuevoUsuario" required placeholder="ej: carlos.tec">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="nuevaPassword">Contraseña *</label>
+                                        <input type="text" id="nuevaPassword" required placeholder="ej: Layla1509">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="nuevoEmail">Email</label>
+                                        <input type="email" id="nuevoEmail" placeholder="correo@ejemplo.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="nuevoNombreTaller">Nombre del Taller *</label>
+                                        <input type="text" id="nuevoNombreTaller" required placeholder="ej: Taller TecnoCell">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="nuevaLicenseKey">Clave de Licencia (opcional)</label>
+                                    <input type="text" id="nuevaLicenseKey" placeholder="Si tiene licencia, ingresar aquí">
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                    ✅ Crear Usuario
+                                </button>
+                            </form>
+                        </div>
+                        
                         <div class="card">
                             <div class="card-header">
                                 <h3 class="card-title">
                                     <span class="card-icon">👤</span>
                                     Lista de Usuarios
                                 </h3>
-                                <button class="btn btn-primary" onclick="cargarUsuarios()">
-                                    🔄 Actualizar
-                                </button>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-primary" onclick="mostrarFormCrearUsuario()">
+                                        ➕ Crear Usuario
+                                    </button>
+                                    <button class="btn btn-primary" onclick="cargarUsuarios()">
+                                        🔄 Actualizar
+                                    </button>
+                                </div>
                             </div>
                             <div id="usuariosList"></div>
                         </div>
@@ -2028,6 +2075,72 @@
         }
 
         // ====== ADMINISTRACIÓN DE USUARIOS ======
+
+        function mostrarFormCrearUsuario() {
+            document.getElementById('formCrearUsuario').style.display = 'block';
+            document.getElementById('crearUsuarioForm').reset();
+        }
+
+        function ocultarFormCrearUsuario() {
+            document.getElementById('formCrearUsuario').style.display = 'none';
+            document.getElementById('crearUsuarioForm').reset();
+        }
+
+        async function crearUsuarioManual(event) {
+            event.preventDefault();
+            
+            const usuario = document.getElementById('nuevoUsuario').value.trim();
+            const password = document.getElementById('nuevaPassword').value.trim();
+            const email = document.getElementById('nuevoEmail').value.trim();
+            const nombreTaller = document.getElementById('nuevoNombreTaller').value.trim();
+            const licenseKey = document.getElementById('nuevaLicenseKey').value.trim() || 'MANUAL-' + Date.now();
+            
+            if (!usuario || !password || !nombreTaller) {
+                alert('❌ Por favor completa todos los campos obligatorios');
+                return;
+            }
+            
+            if (password.length < 4) {
+                alert('❌ La contraseña debe tener al menos 4 caracteres');
+                return;
+            }
+            
+            try {
+                // Verificar si el usuario ya existe
+                const snapshot = await db.collection('usuarios')
+                    .where('usuario', '==', usuario)
+                    .get();
+                
+                if (!snapshot.empty) {
+                    alert('❌ Ya existe un usuario con ese nombre. Elige otro nombre de usuario.');
+                    return;
+                }
+                
+                // Crear el nuevo usuario
+                const nuevoUsuario = {
+                    usuario: usuario,
+                    password: password,
+                    email: email || '',
+                    nombreTaller: nombreTaller,
+                    licenseKey: licenseKey,
+                    fechaCreacion: new Date().toISOString(),
+                    fechaRegistro: new Date().toISOString(),
+                    estado: 'activo',
+                    creadoPor: 'admin_manual'
+                };
+                
+                await db.collection('usuarios').add(nuevoUsuario);
+                
+                alert(`✅ Usuario creado exitosamente\n\nUsuario: ${usuario}\nContraseña: ${password}\nTaller: ${nombreTaller}`);
+                
+                ocultarFormCrearUsuario();
+                await cargarUsuarios();
+                
+            } catch (error) {
+                console.error('Error al crear usuario:', error);
+                alert('❌ Error al crear el usuario. Por favor intenta de nuevo.');
+            }
+        }
 
         async function cargarUsuarios() {
             const container = document.getElementById('usuariosList');

@@ -331,6 +331,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         
         if (usuarioEncontrado || esAdmin) {
             const nombreTaller = usuarioEncontrado ? (usuarioEncontrado.nombreTaller || 'Taller de Reparaciones') : 'Taller de Reparaciones';
+            
+            // IMPORTANTE: Limpiar datos de cualquier usuario anterior
+            console.log('🧹 Limpiando datos de sesión anterior...');
+            Storage.clear();
+            
             localStorage.setItem('sesionActiva', 'true');
             localStorage.setItem('usuario', username);
             localStorage.setItem('nombreTaller', nombreTaller);
@@ -361,19 +366,12 @@ async function cargarDatosUsuario(usuario) {
         const ordenes = await Storage.loadFromFirebase(usuario, 'ordenes');
         const repuestos = await Storage.loadFromFirebase(usuario, 'repuestos');
         
-        // Si se cargaron datos, actualizar localStorage
-        if (clientes.length > 0) {
-            Storage.set('clientes', clientes);
-            console.log('✅ Clientes cargados:', clientes.length);
-        }
-        if (ordenes.length > 0) {
-            Storage.set('ordenes', ordenes);
-            console.log('✅ Órdenes cargadas:', ordenes.length);
-        }
-        if (repuestos.length > 0) {
-            Storage.set('repuestos', repuestos);
-            console.log('✅ Repuestos cargados:', repuestos.length);
-        }
+        // Siempre actualizar localStorage con los datos de Firebase (incluso si están vacíos)
+        Storage.set('clientes', clientes);
+        Storage.set('ordenes', ordenes);
+        Storage.set('repuestos', repuestos);
+        
+        console.log(`✅ Datos cargados - Clientes: ${clientes.length}, Órdenes: ${ordenes.length}, Repuestos: ${repuestos.length}`);
         
         return true;
     } catch (error) {
@@ -655,11 +653,16 @@ function mostrarInfoLicencia() {
 
 function cerrarSesion() {
     if (confirm('¿Estás seguro de cerrar sesión?')) {
+        // Limpiar TODOS los datos para evitar mezcla entre usuarios
+        console.log('🧹 Limpiando datos de sesión...');
+        Storage.clear();
+        
         // Remover datos locales
         localStorage.removeItem('sesionActiva');
         localStorage.removeItem('usuario');
         localStorage.removeItem('usuarioGoogle');
         localStorage.removeItem('tipoLogin');
+        localStorage.removeItem('nombreTaller');
         
         // Cerrar sesión de Google si es necesario
         const tipoLogin = localStorage.getItem('tipoLogin');
@@ -833,16 +836,12 @@ class Storage {
                 data.push({ ...doc.data(), firebaseId: doc.id });
             });
             
-            // Guardar en localStorage como caché
-            if (data.length > 0) {
-                localStorage.setItem(key, JSON.stringify(data));
-            }
-            
             console.log(`✅ Cargados ${data.length} registros de ${key} para usuario: ${usuario}`);
             return data;
         } catch (error) {
             console.error(`Error al cargar ${key} desde Firebase:`, error);
-            return this.get(key); // Fallback a localStorage
+            // NO hacer fallback a localStorage para evitar mostrar datos de otro usuario
+            return [];
         }
     }
     

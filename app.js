@@ -42,9 +42,15 @@ function verificarLicenciaActiva() {
     return true;
 }
 
+// Función para formatear números: sin decimales y con separador de miles
+function formatearMonto(numero) {
+    return Math.round(numero).toLocaleString('es-CO'); // Formato: 2.000 (sin decimales)
+}
+
 // Exportar funciones básicas inmediatamente
 window.verificarSesion = verificarSesion;
 window.verificarLicenciaActiva = verificarLicenciaActiva;
+window.formatearMonto = formatearMonto;
 
 // === GOOGLE SIGN-IN ===
 async function signInWithGoogle() {
@@ -1650,9 +1656,9 @@ function cargarPagos() {
             cobradoHoy += anticipo;
         }
     });
-    document.getElementById('totalCobrado').textContent = `$${totalCobrado.toFixed(2)}`;
-    document.getElementById('porCobrar').textContent = `$${porCobrar.toFixed(2)}`;
-    document.getElementById('cobradoHoy').textContent = `$${cobradoHoy.toFixed(2)}`;
+    document.getElementById('totalCobrado').textContent = `$${formatearMonto(totalCobrado)}`;
+    document.getElementById('porCobrar').textContent = `$${formatearMonto(porCobrar)}`;
+    document.getElementById('cobradoHoy').textContent = `$${formatearMonto(cobradoHoy)}`;
     const container = document.getElementById('listaPagos');
     if (ordenesPendientes.length === 0) {
         container.innerHTML = '<div class="empty-state"><h3>¡Todo pagado! 🎉</h3><p>No hay cuentas por cobrar pendientes</p></div>';
@@ -1982,10 +1988,10 @@ function generarReportes() {
         gananciaNetaTotal += (presupuesto - costoPiezas - costoRepuestosOrden);
     });
     
-    document.getElementById('reporteIngresos').textContent = `$${ingresosTotales.toFixed(2)}`;
+    document.getElementById('reporteIngresos').textContent = `$${formatearMonto(ingresosTotales)}`;
     document.getElementById('reporteCompletadas').textContent = ordenesFiltradas.length;
-    document.getElementById('reportePromedio').textContent = `$${promedioPorOrden.toFixed(2)}`;
-    document.getElementById('reporteGananciaNeta').textContent = `$${gananciaNetaTotal.toFixed(2)}`;
+    document.getElementById('reportePromedio').textContent = `$${formatearMonto(promedioPorOrden)}`;
+    document.getElementById('reporteGananciaNeta').textContent = `$${formatearMonto(gananciaNetaTotal)}`;
     const dispositivos = {};
     ordenesFiltradas.forEach(orden => {
         const key = `${orden.marca} ${orden.modelo}`;
@@ -2035,11 +2041,11 @@ function generarReportes() {
     const porcentajeCostosRepuestos = ingresosTotales > 0 ? (costosTotalesRepuestos / ingresosTotales * 100) : 0;
     
     let htmlGanancias = '<table><thead><tr><th>Concepto</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
-    htmlGanancias += `<tr style="background: #c8e6c9; font-weight: bold;"><td><strong>💰 TOTAL COBRADO</strong></td><td><strong>$${ingresosTotales.toFixed(2)}</strong></td><td>100%</td></tr>`;
-    htmlGanancias += `<tr style="background: #ffebee;"><td><strong>🔧 Costos Piezas Externas</strong></td><td><strong>-$${costosTotalesPiezas.toFixed(2)}</strong></td><td>-${porcentajeCostosPiezas.toFixed(1)}%</td></tr>`;
-    htmlGanancias += `<tr style="background: #fce4ec;"><td><strong>📦 Costos Repuestos</strong></td><td><strong>-$${costosTotalesRepuestos.toFixed(2)}</strong></td><td>-${porcentajeCostosRepuestos.toFixed(1)}%</td></tr>`;
-    htmlGanancias += `<tr style="background: #e8f5e9; font-weight: bold; font-size: 1.1em;"><td><strong>✅ GANANCIA NETA</strong></td><td><strong>$${gananciaReal.toFixed(2)}</strong></td><td>${porcentajeGanancia.toFixed(1)}%</td></tr>`;
-    htmlGanancias += `<tr style="background: #fff9c4;"><td><strong>💵 Anticipos Recibidos</strong></td><td><strong>$${anticiposTotales.toFixed(2)}</strong></td><td>${ingresosTotales > 0 ? (anticiposTotales / ingresosTotales * 100).toFixed(1) : 0}%</td></tr>`;
+    htmlGanancias += `<tr style="background: #c8e6c9; font-weight: bold;"><td><strong>💰 TOTAL COBRADO</strong></td><td><strong>$${formatearMonto(ingresosTotales)}</strong></td><td>100%</td></tr>`;
+    htmlGanancias += `<tr style="background: #ffebee;"><td><strong>🔧 Costos Piezas Externas</strong></td><td><strong>-$${formatearMonto(costosTotalesPiezas)}</strong></td><td>-${porcentajeCostosPiezas.toFixed(1)}%</td></tr>`;
+    htmlGanancias += `<tr style="background: #fce4ec;"><td><strong>📦 Costos Repuestos</strong></td><td><strong>-$${formatearMonto(costosTotalesRepuestos)}</strong></td><td>-${porcentajeCostosRepuestos.toFixed(1)}%</td></tr>`;
+    htmlGanancias += `<tr style="background: #e8f5e9; font-weight: bold; font-size: 1.1em;"><td><strong>✅ GANANCIA NETA</strong></td><td><strong>$${formatearMonto(gananciaReal)}</strong></td><td>${porcentajeGanancia.toFixed(1)}%</td></tr>`;
+    htmlGanancias += `<tr style="background: #fff9c4;"><td><strong>💵 Anticipos Recibidos</strong></td><td><strong>$${formatearMonto(anticiposTotales)}</strong></td><td>${ingresosTotales > 0 ? (anticiposTotales / ingresosTotales * 100).toFixed(1) : 0}%</td></tr>`;
     htmlGanancias += '</tbody></table>';
     document.getElementById('desgloseganancias').innerHTML = htmlGanancias;
     
@@ -2049,10 +2055,10 @@ function generarReportes() {
     const porcentajeAnticipos = ingresosTotales > 0 ? (anticiposTotales / ingresosTotales * 100) : 0;
     
     let htmlIngresos = '<table><thead><tr><th>Concepto</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
-    htmlIngresos += `<tr style="background: #e3f2fd;"><td><strong>💰 Total Cobrado</strong></td><td><strong>$${ingresosTotales.toFixed(2)}</strong></td><td>100%</td></tr>`;
-    htmlIngresos += `<tr style="background: #c8e6c9;"><td><strong>✅ Anticipos Recibidos</strong></td><td><strong>$${anticiposTotales.toFixed(2)}</strong></td><td>${porcentajeAnticipos.toFixed(1)}%</td></tr>`;
-    htmlIngresos += `<tr style="background: #fff9c4;"><td><strong>⏳ Saldo Pendiente</strong></td><td><strong>$${saldosPendientes.toFixed(2)}</strong></td><td>${porcentajeSaldo.toFixed(1)}%</td></tr>`;
-    htmlIngresos += `<tr style="background: #f3e5f5;"><td><strong>📊 Promedio por Orden</strong></td><td><strong>$${promedioPorOrden.toFixed(2)}</strong></td><td>-</td></tr>`;
+    htmlIngresos += `<tr style="background: #e3f2fd;"><td><strong>💰 Total Cobrado</strong></td><td><strong>$${formatearMonto(ingresosTotales)}</strong></td><td>100%</td></tr>`;
+    htmlIngresos += `<tr style="background: #c8e6c9;"><td><strong>✅ Anticipos Recibidos</strong></td><td><strong>$${formatearMonto(anticiposTotales)}</strong></td><td>${porcentajeAnticipos.toFixed(1)}%</td></tr>`;
+    htmlIngresos += `<tr style="background: #fff9c4;"><td><strong>⏳ Saldo Pendiente</strong></td><td><strong>$${formatearMonto(saldosPendientes)}</strong></td><td>${porcentajeSaldo.toFixed(1)}%</td></tr>`;
+    htmlIngresos += `<tr style="background: #f3e5f5;"><td><strong>📊 Promedio por Orden</strong></td><td><strong>$${formatearMonto(promedioPorOrden)}</strong></td><td>-</td></tr>`;
     htmlIngresos += `<tr style="background: #e8eaf6;"><td><strong>📦 Órdenes Completadas</strong></td><td><strong>${ordenesFiltradas.length}</strong></td><td>-</td></tr>`;
     htmlIngresos += '</tbody></table>';
     document.getElementById('resumenIngresos').innerHTML = htmlIngresos;

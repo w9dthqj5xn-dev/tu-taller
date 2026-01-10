@@ -1643,7 +1643,7 @@ function cargarPagos() {
     container.innerHTML = html;
 }
 
-async async function registrarPago(ordenId) {
+async function registrarPago(ordenId) {
     const ordenes = Storage.get('ordenes');
     const orden = ordenes.find(o => o.id === ordenId);
     const saldo = (orden.presupuesto || 0) - (orden.anticipo || 0);

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Autenticación - Tu Taller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .test-section h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        pre {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test de Autenticación</h1>
+        <p class="subtitle">Diagnóstico completo del sistema de autenticación de Tu Taller</p>
+
+        <!-- Test 1: Firebase -->
+        <div class="test-section">
+            <h2>1️⃣ Verificación de Firebase</h2>
+            <div id="firebase-check"></div>
+        </div>
+
+        <!-- Test 2: Reglas Firestore -->
+        <div class="test-section">
+            <h2>2️⃣ Test de Reglas Firestore</h2>
+            <button onclick="testFirestoreRules()">Probar Lectura/Escritura</button>
+            <div id="firestore-rules"></div>
+        </div>
+
+        <!-- Test 3: Login Google -->
+        <div class="test-section">
+            <h2>3️⃣ Test Login con Google</h2>
+            <button onclick="testGoogleLogin()">Iniciar Sesión con Google</button>
+            <button onclick="testLogout()">Cerrar Sesión</button>
+            <div id="google-auth"></div>
+        </div>
+
+        <!-- Test 4: Login Normal -->
+        <div class="test-section">
+            <h2>4️⃣ Test Login Normal</h2>
+            <div style="margin: 10px 0;">
+                <input type="text" id="test-username" placeholder="Usuario" style="padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #ddd; margin-right: 10px;">
+                <input type="password" id="test-password" placeholder="Contraseña" style="padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #ddd; margin-right: 10px;">
+                <button onclick="testNormalLogin()">Login</button>
+            </div>
+            <div id="normal-auth"></div>
+        </div>
+
+        <!-- Estado Actual -->
+        <div class="test-section">
+            <h2>📊 Estado Actual</h2>
+            <div id="current-state"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="env.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        // Función para mostrar resultados
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = message;
+            element.appendChild(resultDiv);
+        }
+
+        // Test 1: Verificar Firebase
+        function checkFirebase() {
+            const element = document.getElementById('firebase-check');
+            element.innerHTML = '';
+
+            // Verificar Firebase
+            if (typeof firebase === 'undefined') {
+                showResult('firebase-check', '❌ Firebase no está cargado', 'error');
+                return false;
+            }
+            showResult('firebase-check', '✅ Firebase SDK cargado correctamente', 'success');
+
+            // Verificar Auth
+            if (!firebase.auth) {
+                showResult('firebase-check', '❌ Firebase Auth no disponible', 'error');
+                return false;
+            }
+            showResult('firebase-check', '✅ Firebase Auth disponible', 'success');
+
+            // Verificar Firestore
+            if (!firebase.firestore) {
+                showResult('firebase-check', '❌ Firestore no disponible', 'error');
+                return false;
+            }
+            showResult('firebase-check', '✅ Firestore disponible', 'success');
+
+            // Verificar Google Provider
+            if (!googleProvider) {
+                showResult('firebase-check', '❌ Google Provider no configurado', 'error');
+                return false;
+            }
+            showResult('firebase-check', '✅ Google Provider configurado', 'success');
+
+            // Mostrar configuración
+            showResult('firebase-check', `<strong>Proyecto:</strong> ${firebaseConfig.projectId}`, 'info');
+
+            return true;
+        }
+
+        // Test 2: Probar reglas de Firestore
+        async function testFirestoreRules() {
+            const element = document.getElementById('firestore-rules');
+            element.innerHTML = '<div class="loading"></div> Probando reglas...';
+
+            try {
+                // Test 1: Leer colección usuarios
+                showResult('firestore-rules', '📖 Intentando leer colección "usuarios"...', 'info');
+                const usuariosSnapshot = await db.collection('usuarios').limit(1).get();
+                showResult('firestore-rules', `✅ Lectura de "usuarios" exitosa (${usuariosSnapshot.size} docs)`, 'success');
+
+                // Test 2: Leer colección licencias
+                showResult('firestore-rules', '📖 Intentando leer colección "licencias"...', 'info');
+                const licenciasSnapshot = await db.collection('licencias').limit(1).get();
+                showResult('firestore-rules', `✅ Lectura de "licencias" exitosa (${licenciasSnapshot.size} docs)`, 'success');
+
+                // Test 3: Intentar leer usuarios-google (sin auth)
+                showResult('firestore-rules', '📖 Intentando leer "usuarios-google" (sin autenticación)...', 'info');
+                try {
+                    const googleSnapshot = await db.collection('usuarios-google').limit(1).get();
+                    showResult('firestore-rules', '❌ Se pudo leer sin autenticación (reglas demasiado permisivas)', 'error');
+                } catch (error) {
+                    showResult('firestore-rules', '✅ Correctamente bloqueado sin autenticación', 'success');
+                }
+
+            } catch (error) {
+                showResult('firestore-rules', `❌ Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        // Test 3: Login con Google
+        async function testGoogleLogin() {
+            const element = document.getElementById('google-auth');
+            element.innerHTML = '<div class="loading"></div> Abriendo popup de Google...';
+
+            try {
+                const result = await auth.signInWithPopup(googleProvider);
+                const user = result.user;
+
+                element.innerHTML = '';
+                showResult('google-auth', '✅ Autenticación con Google exitosa', 'success');
+                showResult('google-auth', `<strong>Usuario:</strong> ${user.displayName}`, 'info');
+                showResult('google-auth', `<strong>Email:</strong> ${user.email}`, 'info');
+                showResult('google-auth', `<strong>UID:</strong> ${user.uid}`, 'info');
+
+                // Intentar escribir en usuarios-google
+                showResult('google-auth', '💾 Intentando guardar en usuarios-google...', 'info');
+                await db.collection('usuarios-google').doc(user.uid).set({
+                    email: user.email,
+                    nombre: user.displayName,
+                    ultimoAcceso: new Date().toISOString(),
+                    test: true
+                });
+                showResult('google-auth', '✅ Datos guardados en usuarios-google correctamente', 'success');
+
+                // Leer de vuelta
+                showResult('google-auth', '📖 Leyendo datos guardados...', 'info');
+                const doc = await db.collection('usuarios-google').doc(user.uid).get();
+                if (doc.exists) {
+                    showResult('google-auth', `✅ Datos leídos: <pre>${JSON.stringify(doc.data(), null, 2)}</pre>`, 'success');
+                }
+
+                updateCurrentState();
+
+            } catch (error) {
+                element.innerHTML = '';
+                showResult('google-auth', `❌ Error: ${error.message}`, 'error');
+                showResult('google-auth', `<pre>${error.stack}</pre>`, 'error');
+                console.error(error);
+            }
+        }
+
+        // Test 4: Login normal
+        async function testNormalLogin() {
+            const element = document.getElementById('normal-auth');
+            const username = document.getElementById('test-username').value;
+            const password = document.getElementById('test-password').value;
+
+            if (!username || !password) {
+                showResult('normal-auth', '⚠️ Ingresa usuario y contraseña', 'error');
+                return;
+            }
+
+            element.innerHTML = '<div class="loading"></div> Verificando credenciales...';
+
+            try {
+                showResult('normal-auth', `🔍 Buscando usuario: ${username}`, 'info');
+                const snapshot = await db.collection('usuarios')
+                    .where('usuario', '==', username)
+                    .get();
+
+                if (snapshot.empty) {
+                    showResult('normal-auth', '❌ Usuario no encontrado en Firebase', 'error');
+                    
+                    // Probar credenciales admin por defecto
+                    if (username === 'admin' && password === 'admin123') {
+                        showResult('normal-auth', '✅ Login exitoso con credenciales admin por defecto', 'success');
+                    }
+                    return;
+                }
+
+                const userData = snapshot.docs[0].data();
+                showResult('normal-auth', `✅ Usuario encontrado: ${userData.usuario}`, 'success');
+
+                if (userData.password === password) {
+                    showResult('normal-auth', '✅ Contraseña correcta - Login exitoso', 'success');
+                    showResult('normal-auth', `<pre>${JSON.stringify(userData, null, 2)}</pre>`, 'info');
+                } else {
+                    showResult('normal-auth', '❌ Contraseña incorrecta', 'error');
+                }
+
+            } catch (error) {
+                element.innerHTML = '';
+                showResult('normal-auth', `❌ Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        // Cerrar sesión
+        async function testLogout() {
+            try {
+                await auth.signOut();
+                showResult('google-auth', '✅ Sesión cerrada', 'success');
+                updateCurrentState();
+            } catch (error) {
+                showResult('google-auth', `❌ Error al cerrar sesión: ${error.message}`, 'error');
+            }
+        }
+
+        // Actualizar estado actual
+        function updateCurrentState() {
+            const element = document.getElementById('current-state');
+            element.innerHTML = '';
+
+            const user = auth.currentUser;
+            if (user) {
+                showResult('current-state', '👤 Usuario autenticado', 'success');
+                showResult('current-state', `<strong>Nombre:</strong> ${user.displayName || 'N/A'}`, 'info');
+                showResult('current-state', `<strong>Email:</strong> ${user.email}`, 'info');
+                showResult('current-state', `<strong>UID:</strong> ${user.uid}`, 'info');
+            } else {
+                showResult('current-state', '👤 No hay usuario autenticado', 'info');
+            }
+
+            // Mostrar localStorage
+            const sesionActiva = localStorage.getItem('sesionActiva');
+            const usuario = localStorage.getItem('usuario');
+            showResult('current-state', `<strong>sesionActiva:</strong> ${sesionActiva || 'null'}`, 'info');
+            showResult('current-state', `<strong>usuario:</strong> ${usuario || 'null'}`, 'info');
+        }
+
+        // Ejecutar verificaciones iniciales
+        window.onload = function() {
+            checkFirebase();
+            updateCurrentState();
+
+            // Escuchar cambios de autenticación
+            auth.onAuthStateChanged((user) => {
+                console.log('🔄 Estado de autenticación cambió:', user ? user.email : 'No autenticado');
+                updateCurrentState();
+            });
+        };
+    </script>
+</body>
+</html>

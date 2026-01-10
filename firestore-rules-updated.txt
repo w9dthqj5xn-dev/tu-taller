@@ -29,10 +29,9 @@ service cloud.firestore {
     // USUARIOS GOOGLE - Autenticación con Google
     // ============================================
     match /usuarios-google/{userId} {
-      // Permitir a cualquier usuario autenticado con Google
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      // Permitir creación de nuevos usuarios
-      allow create: if request.auth != null;
+      // Permitir lectura y escritura a cualquier usuario autenticado
+      // Esto permite el flujo completo de autenticación y actualización de datos
+      allow read, write: if request.auth != null;
     }
     
     // ============================================

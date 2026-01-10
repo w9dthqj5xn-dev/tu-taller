@@ -950,14 +950,19 @@ async function realizarImportacion(datosImportados, modo) {
         Storage.set('ordenes', ordenesNuevos);
         Storage.set('repuestos', repuestosNuevos);
         
-        // Sincronizar con Firebase si el usuario está autenticado
+        // SIEMPRE sincronizar con Firebase después de importar
         const sesionActiva = localStorage.getItem('sesionActiva');
-        if (sesionActiva === 'true' && typeof sincronizarConFirebase === 'function') {
+        let firebaseSyncSuccess = false;
+        
+        if (sesionActiva === 'true') {
             try {
+                console.log('📤 Subiendo datos importados a Firebase...');
                 await sincronizarConFirebase();
-                console.log('✅ Datos sincronizados con Firebase');
+                firebaseSyncSuccess = true;
+                console.log('✅ Datos importados y sincronizados con Firebase exitosamente');
             } catch (error) {
-                console.warn('⚠️ No se pudo sincronizar con Firebase:', error);
+                console.error('⚠️ Error al sincronizar con Firebase:', error);
+                // Continuar aunque falle Firebase (datos ya están en localStorage)
             }
         }
         
@@ -967,8 +972,8 @@ async function realizarImportacion(datosImportados, modo) {
         if (typeof cargarInventario === 'function') cargarInventario();
         if (typeof cargarDashboard === 'function') cargarDashboard();
         
-        // Mostrar resultado
-        const resultado = modo === 'overwrite'
+        // Mostrar resultado con info de Firebase
+        const resultadoBase = modo === 'overwrite'
             ? `✅ Datos importados exitosamente (SOBRESCRIBIR)\n\n` +
               `Clientes: ${stats.clientesAgregados}\n` +
               `Órdenes: ${stats.ordenesAgregadas}\n` +
@@ -981,7 +986,11 @@ async function realizarImportacion(datosImportados, modo) {
               `Total órdenes: ${ordenesNuevos.length}\n` +
               `Total repuestos: ${repuestosNuevos.length}`;
         
-        alert(resultado);
+        const resultadoFirebase = firebaseSyncSuccess 
+            ? '\n\n🔥 FIREBASE: Datos subidos correctamente\n✅ Sincronizado en la nube'
+            : '\n\n⚠️ FIREBASE: No se pudo sincronizar\n(Los datos están guardados localmente)';
+        
+        alert(resultadoBase + resultadoFirebase);
         
     } catch (error) {
         console.error('Error en realizarImportacion:', error);
@@ -1006,18 +1015,24 @@ async function sincronizarConFirebase() {
         const ordenes = Storage.get('ordenes');
         const repuestos = Storage.get('repuestos');
         
-        // Guardar en Firestore
-        const userDocRef = db.collection('usuarios').doc(usuario);
+        // Guardar en Firestore usando usuarios-data
+        const userDocRef = db.collection('usuarios-data').doc(usuario);
         
         await userDocRef.set({
             nombreTaller: localStorage.getItem('nombreTaller'),
             clientes: clientes,
             ordenes: ordenes,
             repuestos: repuestos,
-            ultimaActualizacion: new Date().toISOString()
+            ultimaActualizacion: new Date().toISOString(),
+            version: '2.0'
         }, { merge: true });
         
-        console.log('✅ Datos sincronizados con Firebase');
+        console.log('✅ Datos sincronizados con Firebase:', {
+            usuario: usuario,
+            clientes: clientes?.length || 0,
+            ordenes: ordenes?.length || 0,
+            repuestos: repuestos?.length || 0
+        });
         return true;
         
     } catch (error) {

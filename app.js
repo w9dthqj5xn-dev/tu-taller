@@ -900,12 +900,23 @@ class Storage {
             await Promise.all(savePromises);
             
             // Eliminar documentos que ya no existen en los datos locales
-            const deletePr{
-                console.warn(`No hay usuario para cargar ${key}`);
-                return [];
-            }
+            const deletePromises = Array.from(existingIds).map(docId => 
+                collectionRef.doc(docId).delete()
+            );
+            await Promise.all(deletePromises);
             
-            console.log(`📥 Cargando ${key} desde Firebase para usuario: ${usuario}`);
+            console.log(`✅ ${key} sincronizado correctamente para usuario: ${usuario}`);
+            return true;
+        } catch (error) {
+            console.error(`❌ Error al sincronizar ${key}:`, error);
+            console.error('Stack:', error.stack);
+            return false;
+        }
+    }
+    
+    static async loadFromFirebase(usuario, key) {
+        try {
+            if (!usuario) return [];
             
             // Cargar desde subcollection del usuario
             const collectionRef = db.collection('usuarios-data').doc(usuario).collection(key);
@@ -921,26 +932,14 @@ class Storage {
             return data;
         } catch (error) {
             console.error(`❌ Error al cargar ${key} desde Firebase:`, error);
-            console.error('Stack:', error.stack
+            console.error('Stack:', error.stack);
+            return [];
+        }
     }
     
-    static async loadFromFirebase(usuario, key) {
-        try {
-            if (!usuario) return [];
-            
-            // Cargar desde subcollection del usuario
-            const collectionRef = db.collection('usuarios-data').doc(usuario).collection(key);
-            const snapshot = await collectionRef.get();
-            
-            const data = [];
-            snapshot.forEach(doc => {
-                data.push({ ...doc.data(), firebaseId: doc.id });
-            });
-            
-            console.log(`✅ Cargados ${data.length} registros de ${key} para usuario: ${usuario}`);
-            return data;
-        } catch (error) {
-            console.error(`Er primero
+    // Método combinado: guardar localmente Y sincronizar con Firebase
+    static async saveAndSync(key, data) {
+        // Guardar localmente primero
         this.set(key, data);
         console.log(`💾 Guardado localmente: ${key} (${data.length} items)`);
         
@@ -952,14 +951,7 @@ class Storage {
                 console.warn(`⚠️ No se pudo sincronizar ${key} con Firebase, pero está guardado localmente`);
             }
         } else {
-            console.warn(`⚠️ No hay usuario activo, ${key} solo se guardó localmente`
-        // Guardar localmente
-        this.set(key, data);
-        
-        // Sincronizar con Firebase si hay usuario activo
-        const usuario = localStorage.getItem('usuario');
-        if (usuario) {
-            await this.syncToFirebase(usuario, key, data);
+            console.warn(`⚠️ No hay usuario activo, ${key} solo se guardó localmente`);
         }
     }
 }

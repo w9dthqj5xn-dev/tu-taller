@@ -1416,6 +1416,8 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
     const id = document.getElementById('ordenId').value;
     
     const tieneGarantia = document.querySelector('input[name="tipoGarantia"]:checked').value === 'con';
+    const anticipo = limpiarNumero(document.getElementById('ordenAnticipo').value);
+    
     const orden = {
         id: id ? parseInt(id) : Storage.getNextId('ordenes'),
         numero: id ? ordenes.find(o => o.id === parseInt(id)).numero : generarNumeroOrden(),
@@ -1429,7 +1431,7 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
         estado: document.getElementById('ordenEstado').value,
         presupuesto: limpiarNumero(document.getElementById('ordenPresupuesto').value),
         costoPiezas: limpiarNumero(document.getElementById('ordenCostoPiezas').value),
-        anticipo: limpiarNumero(document.getElementById('ordenAnticipo').value),
+        anticipo: anticipo,
         tieneGarantia: tieneGarantia,
         garantia: tieneGarantia ? parseInt(document.getElementById('ordenGarantia').value) || 30 : 0,
         fechaIngreso: document.getElementById('ordenFechaIngreso').value,
@@ -1440,6 +1442,19 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
         fechaCreacion: id ? ordenes.find(o => o.id === parseInt(id)).fechaCreacion : new Date().toISOString(),
         fechaEntrega: null
     };
+    
+    // Registrar anticipo en el historial de pagos si es una orden nueva y tiene anticipo
+    if (!id && anticipo > 0) {
+        orden.historialPagos = [{
+            monto: anticipo,
+            fecha: new Date().toISOString(),
+            tipo: 'Anticipo inicial'
+        }];
+    } else if (id) {
+        // Si es edición, mantener el historial existente
+        const ordenAnterior = ordenes.find(o => o.id === parseInt(id));
+        orden.historialPagos = ordenAnterior.historialPagos || [];
+    }
     
     console.log('Orden a guardar:', orden);
     
@@ -1623,7 +1638,15 @@ function cargarPagos() {
                 totalCobrado += presupuesto;
             }
         }
-        if (orden.fechaCreacion && orden.fechaCreacion.split('T')[0] === hoy && anticipo > 0) {
+        // Calcular pagos realizados hoy (usando historial de pagos)
+        if (orden.historialPagos && orden.historialPagos.length > 0) {
+            orden.historialPagos.forEach(pago => {
+                if (pago.fecha && pago.fecha.split('T')[0] === hoy) {
+                    cobradoHoy += pago.monto;
+                }
+            });
+        } else if (orden.fechaCreacion && orden.fechaCreacion.split('T')[0] === hoy && anticipo > 0) {
+            // Fallback: si no hay historial, usar la fecha de creación (órdenes antiguas)
             cobradoHoy += anticipo;
         }
     });
@@ -1655,6 +1678,17 @@ async function registrarPago(ordenId) {
             return;
         }
         orden.anticipo = (orden.anticipo || 0) + pago;
+        
+        // Registrar el pago en el historial con fecha actual
+        if (!orden.historialPagos) {
+            orden.historialPagos = [];
+        }
+        orden.historialPagos.push({
+            monto: pago,
+            fecha: new Date().toISOString(),
+            tipo: 'Pago'
+        });
+        
         await Storage.saveAndSync('ordenes', ordenes);
         alert(`Pago registrado exitosamente!\nNuevo saldo: $${(saldo - pago).toFixed(2)}`);
         if (confirm('¿Deseas imprimir el recibo de pago?')) {
@@ -1921,7 +1955,9 @@ function generarReportes() {
     }
     
     const ordenesFiltradas = ordenes.filter(o => {
-        const fecha = new Date(o.fechaCreacion);
+        // Usar fechaEntrega si existe (fecha en que se marcó como entregado)
+        // Si no existe, usar fechaCreacion (órdenes antiguas)
+        const fecha = new Date(o.fechaEntrega || o.fechaCreacion);
         return fecha >= fechaInicio && fecha <= fechaFin && o.estado === 'Entregado';
     });
     let ingresosTotales = 0;

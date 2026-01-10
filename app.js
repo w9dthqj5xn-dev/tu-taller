@@ -756,7 +756,8 @@ function exportarDatos() {
             fechaExportacion: new Date().toISOString(),
             clientes: clientes,
             ordenes: ordenes,
-            repuestos: repuestos
+            repuestos: repuestos,
+            version: '1.0' // Versión del formato de backup
         };
         
         // Crear archivo JSON y descargarlo
@@ -765,13 +766,13 @@ function exportarDatos() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `datos_${usuario}_${Date.now()}.json`;
+        a.download = `backup_${usuario}_${Date.now()}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        alert(`✅ Datos exportados exitosamente\n\nClientes: ${clientes.length}\nÓrdenes: ${ordenes.length}\nRepuestos: ${repuestos.length}\n\nArchivo: datos_${usuario}_${Date.now()}.json`);
+        alert(`✅ Datos exportados exitosamente\n\nClientes: ${clientes.length}\nÓrdenes: ${ordenes.length}\nRepuestos: ${repuestos.length}\n\nArchivo: backup_${usuario}_${Date.now()}.json`);
         
     } catch (error) {
         console.error('Error al exportar datos:', error);
@@ -779,9 +780,257 @@ function exportarDatos() {
     }
 }
 
+// Función para importar datos desde un archivo de backup
+function importarDatos() {
+    // Crear input file
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+            // Leer archivo
+            const texto = await file.text();
+            const datosImportados = JSON.parse(texto);
+            
+            // Validar estructura del backup
+            if (!datosImportados.clientes || !datosImportados.ordenes || !datosImportados.repuestos) {
+                throw new Error('Formato de backup inválido. Falta información de clientes, órdenes o repuestos.');
+            }
+            
+            // Mostrar resumen y confirmar
+            const mensaje = `📦 Backup encontrado:\n\n` +
+                `Usuario: ${datosImportados.usuario || 'No especificado'}\n` +
+                `Taller: ${datosImportados.nombreTaller || 'No especificado'}\n` +
+                `Fecha exportación: ${datosImportados.fechaExportacion ? new Date(datosImportados.fechaExportacion).toLocaleString('es') : 'No especificada'}\n\n` +
+                `Clientes: ${datosImportados.clientes.length}\n` +
+                `Órdenes: ${datosImportados.ordenes.length}\n` +
+                `Repuestos: ${datosImportados.repuestos.length}\n\n` +
+                `¿Cómo deseas importar los datos?`;
+            
+            // Preguntar modo de importación
+            const opciones = [
+                '🔄 COMBINAR - Agregar datos nuevos y mantener los existentes',
+                '⚠️ SOBRESCRIBIR - Reemplazar todos los datos actuales',
+                '❌ Cancelar'
+            ];
+            
+            const seleccion = prompt(mensaje + '\n\n' + opciones.map((o, i) => `${i + 1}. ${o}`).join('\n') + '\n\nIngresa el número de opción (1-3):');
+            
+            if (!seleccion || seleccion === '3') {
+                alert('❌ Importación cancelada');
+                return;
+            }
+            
+            const modo = seleccion === '1' ? 'merge' : seleccion === '2' ? 'overwrite' : null;
+            
+            if (!modo) {
+                alert('❌ Opción inválida. Importación cancelada.');
+                return;
+            }
+            
+            // Confirmar acción
+            if (modo === 'overwrite') {
+                const confirmar = confirm('⚠️ ADVERTENCIA: Esto eliminará TODOS tus datos actuales y los reemplazará con los del backup.\n\n¿Estás seguro de continuar?');
+                if (!confirmar) {
+                    alert('❌ Importación cancelada');
+                    return;
+                }
+            }
+            
+            // Realizar importación
+            await realizarImportacion(datosImportados, modo);
+            
+        } catch (error) {
+            console.error('Error al importar datos:', error);
+            alert(`❌ Error al importar datos:\n\n${error.message}`);
+        }
+    };
+    
+    input.click();
+}
+
+// Función auxiliar para realizar la importación
+async function realizarImportacion(datosImportados, modo) {
+    try {
+        const usuario = localStorage.getItem('usuario');
+        
+        let clientesActuales = Storage.get('clientes');
+        let ordenesActuales = Storage.get('ordenes');
+        let repuestosActuales = Storage.get('repuestos');
+        
+        let clientesNuevos, ordenesNuevos, repuestosNuevos;
+        let stats = { clientesAgregados: 0, ordenesAgregadas: 0, repuestosAgregados: 0 };
+        
+        if (modo === 'overwrite') {
+            // Modo sobrescribir: reemplazar todo
+            clientesNuevos = datosImportados.clientes;
+            ordenesNuevos = datosImportados.ordenes;
+            repuestosNuevos = datosImportados.repuestos;
+            
+            stats.clientesAgregados = clientesNuevos.length;
+            stats.ordenesAgregadas = ordenesNuevos.length;
+            stats.repuestosAgregados = repuestosNuevos.length;
+            
+        } else {
+            // Modo merge: combinar datos
+            // Encontrar IDs máximos actuales
+            const maxClienteId = clientesActuales.length > 0 ? Math.max(...clientesActuales.map(c => c.id)) : 0;
+            const maxOrdenId = ordenesActuales.length > 0 ? Math.max(...ordenesActuales.map(o => o.id)) : 0;
+            const maxRepuestoId = repuestosActuales.length > 0 ? Math.max(...repuestosActuales.map(r => r.id)) : 0;
+            
+            // Mapear IDs antiguos a nuevos para evitar conflictos
+            const clienteIdMap = new Map();
+            const repuestoIdMap = new Map();
+            
+            // Importar clientes (evitar duplicados por celular)
+            const celularesExistentes = new Set(clientesActuales.map(c => c.celular));
+            clientesNuevos = [...clientesActuales];
+            let nuevoClienteId = maxClienteId + 1;
+            
+            datosImportados.clientes.forEach(cliente => {
+                if (!celularesExistentes.has(cliente.celular)) {
+                    const clienteNuevo = { ...cliente, id: nuevoClienteId };
+                    clienteIdMap.set(cliente.id, nuevoClienteId);
+                    clientesNuevos.push(clienteNuevo);
+                    stats.clientesAgregados++;
+                    nuevoClienteId++;
+                } else {
+                    // Mapear al cliente existente
+                    const clienteExistente = clientesActuales.find(c => c.celular === cliente.celular);
+                    clienteIdMap.set(cliente.id, clienteExistente.id);
+                }
+            });
+            
+            // Importar repuestos (evitar duplicados por código)
+            const codigosExistentes = new Set(repuestosActuales.map(r => r.codigo));
+            repuestosNuevos = [...repuestosActuales];
+            let nuevoRepuestoId = maxRepuestoId + 1;
+            
+            datosImportados.repuestos.forEach(repuesto => {
+                if (!codigosExistentes.has(repuesto.codigo)) {
+                    const repuestoNuevo = { ...repuesto, id: nuevoRepuestoId };
+                    repuestoIdMap.set(repuesto.id, nuevoRepuestoId);
+                    repuestosNuevos.push(repuestoNuevo);
+                    stats.repuestosAgregados++;
+                    nuevoRepuestoId++;
+                } else {
+                    // Mapear al repuesto existente
+                    const repuestoExistente = repuestosActuales.find(r => r.codigo === repuesto.codigo);
+                    repuestoIdMap.set(repuesto.id, repuestoExistente.id);
+                }
+            });
+            
+            // Importar órdenes (actualizar referencias a clientes y repuestos)
+            ordenesNuevos = [...ordenesActuales];
+            let nuevoOrdenId = maxOrdenId + 1;
+            
+            datosImportados.ordenes.forEach(orden => {
+                const ordenNueva = { 
+                    ...orden, 
+                    id: nuevoOrdenId,
+                    numero: generarNumeroOrden(), // Generar nuevo número único
+                    clienteId: clienteIdMap.get(orden.clienteId) || orden.clienteId,
+                    repuestos: orden.repuestos.map(r => ({
+                        ...r,
+                        id: repuestoIdMap.get(r.id) || r.id
+                    }))
+                };
+                ordenesNuevos.push(ordenNueva);
+                stats.ordenesAgregadas++;
+                nuevoOrdenId++;
+            });
+        }
+        
+        // Guardar en localStorage
+        Storage.set('clientes', clientesNuevos);
+        Storage.set('ordenes', ordenesNuevos);
+        Storage.set('repuestos', repuestosNuevos);
+        
+        // Sincronizar con Firebase si el usuario está autenticado
+        const sesionActiva = localStorage.getItem('sesionActiva');
+        if (sesionActiva === 'true' && typeof sincronizarConFirebase === 'function') {
+            try {
+                await sincronizarConFirebase();
+                console.log('✅ Datos sincronizados con Firebase');
+            } catch (error) {
+                console.warn('⚠️ No se pudo sincronizar con Firebase:', error);
+            }
+        }
+        
+        // Recargar vistas
+        if (typeof cargarClientes === 'function') cargarClientes();
+        if (typeof cargarOrdenes === 'function') cargarOrdenes();
+        if (typeof cargarInventario === 'function') cargarInventario();
+        if (typeof cargarDashboard === 'function') cargarDashboard();
+        
+        // Mostrar resultado
+        const resultado = modo === 'overwrite'
+            ? `✅ Datos importados exitosamente (SOBRESCRIBIR)\n\n` +
+              `Clientes: ${stats.clientesAgregados}\n` +
+              `Órdenes: ${stats.ordenesAgregadas}\n` +
+              `Repuestos: ${stats.repuestosAgregados}`
+            : `✅ Datos importados exitosamente (COMBINAR)\n\n` +
+              `Nuevos clientes: ${stats.clientesAgregados}\n` +
+              `Nuevas órdenes: ${stats.ordenesAgregadas}\n` +
+              `Nuevos repuestos: ${stats.repuestosAgregados}\n\n` +
+              `Total clientes: ${clientesNuevos.length}\n` +
+              `Total órdenes: ${ordenesNuevos.length}\n` +
+              `Total repuestos: ${repuestosNuevos.length}`;
+        
+        alert(resultado);
+        
+    } catch (error) {
+        console.error('Error en realizarImportacion:', error);
+        throw error;
+    }
+}
+
+// Función para sincronizar datos locales con Firebase
+async function sincronizarConFirebase() {
+    try {
+        const usuario = localStorage.getItem('usuario');
+        if (!usuario) {
+            throw new Error('No hay usuario autenticado');
+        }
+        
+        // Verificar si Firebase está disponible
+        if (typeof db === 'undefined') {
+            throw new Error('Firebase no está inicializado');
+        }
+        
+        const clientes = Storage.get('clientes');
+        const ordenes = Storage.get('ordenes');
+        const repuestos = Storage.get('repuestos');
+        
+        // Guardar en Firestore
+        const userDocRef = db.collection('usuarios').doc(usuario);
+        
+        await userDocRef.set({
+            nombreTaller: localStorage.getItem('nombreTaller'),
+            clientes: clientes,
+            ordenes: ordenes,
+            repuestos: repuestos,
+            ultimaActualizacion: new Date().toISOString()
+        }, { merge: true });
+        
+        console.log('✅ Datos sincronizados con Firebase');
+        return true;
+        
+    } catch (error) {
+        console.error('Error al sincronizar con Firebase:', error);
+        throw error;
+    }
+}
+
 // Exportar funciones inmediatamente
 window.cerrarSesion = cerrarSesion;
 window.exportarDatos = exportarDatos;
+window.importarDatos = importarDatos;
+window.sincronizarConFirebase = sincronizarConFirebase;
 
 // === DATOS DE DEMOSTRACIÓN ===
 async function cargarDatosDemo() {

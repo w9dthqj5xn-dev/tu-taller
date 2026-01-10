@@ -120,7 +120,8 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h1>🔧 Taller de Reparaciones</h1>
                 <div style="display: flex; gap: 10px;">
-                    <button onclick="exportarDatos()" class="btn-logout" style="background: #8b5cf6;">📤 Exportar</button>
+                    <button onclick="importarDatos()" class="btn-logout" style="background: #10b981;" title="Importar backup de datos">📤 Importar</button>
+                    <button onclick="exportarDatos()" class="btn-logout" style="background: #8b5cf6;" title="Exportar backup de datos">📥 Exportar</button>
                     <button onclick="cerrarSesion()" class="btn-logout">🚪 Cerrar Sesión</button>
                 </div>
             </div>
@@ -591,8 +592,15 @@
                 </div>
 
                 <div style="margin-top: 30px;">
-                    <button class="btn-primary" onclick="exportarDatos()">📥 Exportar Datos (JSON)</button>
-                    <button class="btn-secondary" onclick="imprimirReporte()">🖨️ Imprimir Reporte</button>
+                    <h3>Gestión de Datos</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+                        <button class="btn-primary" onclick="exportarDatos()">📥 Exportar Backup (JSON)</button>
+                        <button class="btn-primary" onclick="importarDatos()" style="background: linear-gradient(135deg, #10b981, #059669);">📤 Importar Backup (JSON)</button>
+                        <button class="btn-secondary" onclick="imprimirReporte()">🖨️ Imprimir Reporte</button>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 13px; color: #666;">
+                        💡 <strong>Tip:</strong> Exporta tus datos regularmente como backup de seguridad. Puedes importarlos para restaurar o combinar con datos existentes.
+                    </p>
                 </div>
             </section>
 

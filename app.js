@@ -1545,6 +1545,79 @@ async function guardarClienteRapido() {
     alert(`✅ Cliente "${nombre} ${apellido}" agregado exitosamente`);
 }
 
+// Función para crear o obtener cliente final
+async function obtenerClienteFinal() {
+    let clientes = Storage.get('clientes');
+    
+    // Buscar si ya existe un cliente final
+    let clienteFinal = clientes.find(c => 
+        c.nombre === 'Cliente' && c.apellido === 'Final' && c.celular === '0000000000'
+    );
+    
+    // Si no existe, crearlo
+    if (!clienteFinal) {
+        clienteFinal = {
+            id: Storage.getNextId('clientes'),
+            nombre: 'Cliente',
+            apellido: 'Final',
+            celular: '0000000000',
+            email: '',
+            direccion: '',
+            fechaRegistro: new Date().toISOString()
+        };
+        clientes.push(clienteFinal);
+        await Storage.saveAndSync('clientes', clientes);
+    }
+    
+    return clienteFinal;
+}
+
+// Función para crear orden con cliente final directamente
+async function crearOrdenClienteFinal() {
+    if (!confirm('¿Deseas crear una orden para "Cliente Final"?\n\nEsto guardará una orden básica con datos mínimos.')) {
+        return;
+    }
+    
+    // Obtener o crear el cliente final
+    const clienteFinal = await obtenerClienteFinal();
+    
+    // Crear la orden con datos mínimos
+    const ordenes = Storage.get('ordenes');
+    const orden = {
+        id: Storage.getNextId('ordenes'),
+        numero: generarNumeroOrden(),
+        clienteId: clienteFinal.id,
+        tipoDispositivo: 'Celular',
+        marca: 'N/A',
+        modelo: 'N/A',
+        imei: '',
+        problema: 'Cliente Final',
+        accesorios: '',
+        estado: 'Recibido',
+        presupuesto: 0,
+        costoPiezas: 0,
+        anticipo: 0,
+        tieneGarantia: false,
+        garantia: 0,
+        fechaIngreso: new Date().toISOString().split('T')[0],
+        fechaEstimada: '',
+        tecnico: '',
+        notas: 'Orden para cliente final',
+        repuestos: [],
+        fechaCreacion: new Date().toISOString(),
+        fechaEntrega: null,
+        historialPagos: []
+    };
+    
+    ordenes.push(orden);
+    await Storage.saveAndSync('ordenes', ordenes);
+    
+    alert(`✅ Orden #${orden.numero} creada exitosamente para Cliente Final`);
+    
+    // Recargar la vista de órdenes
+    cargarOrdenes();
+}
+
 function mostrarFormOrden() {
     document.getElementById('formOrden').style.display = 'block';
     document.getElementById('ordenForm').reset();
@@ -2830,6 +2903,7 @@ window.cancelarFormOrden = cancelarFormOrden;
 window.mostrarFormClienteRapido = mostrarFormClienteRapido;
 window.cancelarClienteRapido = cancelarClienteRapido;
 window.guardarClienteRapido = guardarClienteRapido;
+window.crearOrdenClienteFinal = crearOrdenClienteFinal;
 window.agregarRepuestoOrden = agregarRepuestoOrden;
 window.mostrarFormRepuesto = mostrarFormRepuesto;
 window.cancelarFormRepuesto = cancelarFormRepuesto;

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico de Licencia</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .info-box {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .info-box pre {
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #5568d3;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnóstico de Licencia</h1>
+        <p style="color: #666; margin-bottom: 20px;">Verificación del estado de tu licencia en el sistema</p>
+        
+        <div style="margin-bottom: 20px;">
+            <button class="btn" onclick="cargarDiagnostico()">🔄 Actualizar Diagnóstico</button>
+            <button class="btn btn-success" onclick="corregirLicencia()">✅ Corregir Licencia Vitalicia</button>
+            <button class="btn btn-danger" onclick="limpiarDatos()">🗑️ Limpiar Datos</button>
+        </div>
+
+        <div id="diagnostico"></div>
+    </div>
+
+    <script>
+        function cargarDiagnostico() {
+            const diagnosticoDiv = document.getElementById('diagnostico');
+            let html = '';
+
+            // 1. Verificar licenciaActiva
+            const licenciaActiva = localStorage.getItem('licenciaActiva');
+            if (licenciaActiva) {
+                try {
+                    const licencia = JSON.parse(licenciaActiva);
+                    const clase = licencia.licenseType === 'vitalicia' ? 'success' : 
+                                licencia.licenseType === 'prueba' ? 'warning' : 'info-box';
+                    
+                    html += `
+                        <div class="info-box ${clase}">
+                            <h3>✅ Licencia Activa Encontrada</h3>
+                            <p><strong>Tipo:</strong> ${licencia.licenseType}</p>
+                            <p><strong>Cliente:</strong> ${licencia.clientName || 'No especificado'}</p>
+                            <p><strong>Email:</strong> ${licencia.clientEmail || 'No especificado'}</p>
+                            <p><strong>Clave:</strong> ${licencia.licenseKey || 'No especificada'}</p>
+                            <p><strong>Fecha Creación:</strong> ${licencia.fechaCreacion ? new Date(licencia.fechaCreacion).toLocaleString() : 'No especificada'}</p>
+                            <p><strong>Fecha Expiración:</strong> ${licencia.fechaExpiracion ? new Date(licencia.fechaExpiracion).toLocaleString() : '♾️ SIN EXPIRACIÓN (Vitalicia)'}</p>
+                            <p><strong>Suspendida:</strong> ${licencia.suspendida ? '⚠️ SÍ' : '✅ NO'}</p>
+                            <p><strong>Activa:</strong> ${licencia.activa !== false ? '✅ SÍ' : '❌ NO'}</p>
+                            <pre>${JSON.stringify(licencia, null, 2)}</pre>
+                        </div>
+                    `;
+                } catch (error) {
+                    html += `
+                        <div class="info-box error">
+                            <h3>❌ Error al parsear licenciaActiva</h3>
+                            <p>${error.message}</p>
+                            <pre>${licenciaActiva}</pre>
+                        </div>
+                    `;
+                }
+            } else {
+                html += `
+                    <div class="info-box warning">
+                        <h3>⚠️ No hay licencia activa</h3>
+                        <p>No se encontró 'licenciaActiva' en localStorage</p>
+                    </div>
+                `;
+            }
+
+            // 2. Verificar sesión
+            const sesionActiva = localStorage.getItem('sesionActiva');
+            const usuario = localStorage.getItem('usuario');
+            const nombreTaller = localStorage.getItem('nombreTaller');
+            
+            html += `
+                <div class="info-box">
+                    <h3>👤 Sesión del Usuario</h3>
+                    <p><strong>Sesión Activa:</strong> ${sesionActiva === 'true' ? '✅ SÍ' : '❌ NO'}</p>
+                    <p><strong>Usuario:</strong> ${usuario || 'No definido'}</p>
+                    <p><strong>Nombre Taller:</strong> ${nombreTaller || 'No definido'}</p>
+                </div>
+            `;
+
+            // 3. Verificar usuarios registrados
+            const usuariosRegistrados = localStorage.getItem('usuariosRegistrados');
+            if (usuariosRegistrados) {
+                try {
+                    const usuarios = JSON.parse(usuariosRegistrados);
+                    html += `
+                        <div class="info-box">
+                            <h3>📝 Usuarios Registrados (${usuarios.length})</h3>
+                            <pre>${JSON.stringify(usuarios, null, 2)}</pre>
+                        </div>
+                    `;
+                } catch (error) {
+                    html += `
+                        <div class="info-box error">
+                            <h3>❌ Error al parsear usuariosRegistrados</h3>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // 4. Todas las claves de localStorage
+            html += `
+                <div class="info-box">
+                    <h3>🔑 Todas las Claves en localStorage</h3>
+                    <ul style="list-style: none; padding: 10px;">
+            `;
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                html += `<li style="margin: 5px 0;">• ${key}</li>`;
+            }
+            
+            html += `
+                    </ul>
+                </div>
+            `;
+
+            diagnosticoDiv.innerHTML = html;
+        }
+
+        function corregirLicencia() {
+            const licenciaActiva = localStorage.getItem('licenciaActiva');
+            if (!licenciaActiva) {
+                alert('❌ No se encontró ninguna licencia para corregir');
+                return;
+            }
+
+            try {
+                const licencia = JSON.parse(licenciaActiva);
+                
+                // Si ya es vitalicia pero tiene fechaExpiracion, corregirla
+                if (licencia.licenseType === 'vitalicia' && licencia.fechaExpiracion) {
+                    licencia.fechaExpiracion = null;
+                    localStorage.setItem('licenciaActiva', JSON.stringify(licencia));
+                    alert('✅ Licencia corregida: fechaExpiracion eliminada');
+                    cargarDiagnostico();
+                } else if (licencia.licenseType === 'vitalicia') {
+                    alert('✅ La licencia vitalicia ya está correcta (sin fechaExpiracion)');
+                } else {
+                    const confirmar = confirm(`La licencia actual es de tipo "${licencia.licenseType}".\n\n¿Deseas cambiarla a VITALICIA?`);
+                    if (confirmar) {
+                        licencia.licenseType = 'vitalicia';
+                        licencia.fechaExpiracion = null;
+                        localStorage.setItem('licenciaActiva', JSON.stringify(licencia));
+                        alert('✅ Licencia actualizada a VITALICIA sin expiración');
+                        cargarDiagnostico();
+                    }
+                }
+            } catch (error) {
+                alert(`❌ Error al corregir licencia: ${error.message}`);
+            }
+        }
+
+        function limpiarDatos() {
+            if (confirm('⚠️ ¿ADVERTENCIA!\n\nEsto eliminará TODOS los datos del localStorage.\n\n¿Estás seguro?')) {
+                if (confirm('⚠️ ÚLTIMA CONFIRMACIÓN\n\nSe perderán:\n- Sesión activa\n- Licencia\n- Usuarios\n- Todos los datos locales\n\n¿Continuar?')) {
+                    localStorage.clear();
+                    alert('✅ Todos los datos han sido eliminados');
+                    cargarDiagnostico();
+                }
+            }
+        }
+
+        // Cargar automáticamente al inicio
+        cargarDiagnostico();
+    </script>
+</body>
+</html>

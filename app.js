@@ -676,10 +676,17 @@ function mostrarInfoLicencia() {
     const indicador = document.createElement('div');
     indicador.style.cssText = 'position: fixed; bottom: 10px; right: 10px; background: #28a745; color: white; padding: 8px 12px; border-radius: 5px; font-size: 12px; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2);';
     
-    let texto = `🔐 Licencia: ${licencia.licenseType}`;
-    if (licencia.fechaExpiracion) {
-        const diasRestantes = Math.ceil((new Date(licencia.fechaExpiracion) - new Date()) / (1000 * 60 * 60 * 24));
-        texto += ` (${diasRestantes} días restantes)`;
+    let texto = '';
+    
+    // Verificar si es licencia vitalicia
+    if (licencia.licenseType === 'vitalicia') {
+        texto = `♾️ Licencia Vitalicia - Sin expiración`;
+    } else {
+        texto = `🔐 Licencia: ${licencia.licenseType}`;
+        if (licencia.fechaExpiracion) {
+            const diasRestantes = Math.ceil((new Date(licencia.fechaExpiracion) - new Date()) / (1000 * 60 * 60 * 24));
+            texto += ` (${diasRestantes} días restantes)`;
+        }
     }
     
     indicador.textContent = texto;

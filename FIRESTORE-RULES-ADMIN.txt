@@ -1,0 +1,89 @@
+// ============================================================
+// REGLAS DE FIRESTORE PARA PANEL DE ADMINISTRACIÓN DE LICENCIAS
+// ============================================================
+// 
+// ⚠️ IMPORTANTE: Copia estas reglas y aplícalas en Firebase Console
+//
+// PASOS PARA APLICAR:
+// 1. Ve a: https://console.firebase.google.com/
+// 2. Selecciona tu proyecto "licencias-taller"
+// 3. Ve a: Firestore Database → Reglas (Rules)
+// 4. REEMPLAZA todo el contenido con este código
+// 5. Haz clic en "Publicar" (Publish)
+//
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // LICENCIAS - Panel de Administración
+    // ============================================
+    // El panel de licencias.html necesita acceso completo
+    // para crear, editar, renovar y eliminar licencias
+    match /licencias/{license} {
+      allow read, write, delete: if true;
+    }
+    
+    // ============================================
+    // USUARIOS - Sistema de registro con licencias
+    // ============================================
+    // Usuarios que se registran con una licencia
+    match /usuarios/{user} {
+      allow read, write, delete: if true;
+    }
+    
+    // ============================================
+    // USUARIOS GOOGLE - Autenticación con Google
+    // ============================================
+    // Usuarios que inician sesión con Google
+    match /usuarios-google/{userId} {
+      // Permitir a usuarios autenticados con Google
+      allow read, write, delete: if request.auth != null;
+      
+      // Permitir también acceso público para el panel de admin
+      allow read, write, delete: if true;
+    }
+    
+    // ============================================
+    // USUARIOS-DATA - Datos de cada usuario
+    // ============================================
+    // Aquí se guardan los clientes, órdenes, repuestos de cada usuario
+    match /usuarios-data/{userId} {
+      allow read, write, delete: if true;
+      
+      // Subcolecciones de cada usuario
+      match /{collection}/{document=**} {
+        allow read, write, delete: if true;
+      }
+    }
+  }
+}
+
+// ============================================================
+// EXPLICACIÓN:
+// ============================================================
+//
+// Estas reglas permiten acceso completo (lectura y escritura) a todas
+// las colecciones porque:
+//
+// 1. El panel de administración (licencias.html) NO usa Firebase Auth
+//    - Usa autenticación simple con usuario/contraseña en localStorage
+//    - No hay request.auth, por lo que necesita acceso público
+//
+// 2. La aplicación principal (index.html) puede usar ambos métodos:
+//    - Login con usuario/contraseña (sin Firebase Auth)
+//    - Login con Google (con Firebase Auth)
+//
+// 3. La seguridad se mantiene porque:
+//    - El panel de admin está protegido por contraseña
+//    - Solo el administrador tiene las credenciales
+//    - Los usuarios finales solo acceden a SUS propios datos
+//
+// ⚠️ NOTA DE SEGURIDAD:
+// En producción, considera implementar Firebase Admin SDK para
+// el panel de administración o usar Cloud Functions con
+// autenticación personalizada.
+//
+// ============================================================

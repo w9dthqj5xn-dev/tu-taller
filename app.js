@@ -1433,8 +1433,14 @@ function cargarClientes() {
         container.innerHTML = '<div class="empty-state"><h3>No hay clientes registrados</h3><p>Agrega tu primer cliente para comenzar</p></div>';
         return;
     }
+    // Ordenar clientes alfabéticamente por nombre y apellido
+    const clientesOrdenados = [...clientes].sort((a, b) => {
+        const nombreA = `${a.nombre} ${a.apellido}`.toLowerCase();
+        const nombreB = `${b.nombre} ${b.apellido}`.toLowerCase();
+        return nombreA.localeCompare(nombreB, 'es');
+    });
     let html = '<table><thead><tr><th>#</th><th>Nombre Completo</th><th>Celular</th><th>Email</th><th>Fecha Registro</th><th>Acciones</th></tr></thead><tbody>';
-    clientes.forEach(cliente => {
+    clientesOrdenados.forEach(cliente => {
         html += `<tr><td>${cliente.id}</td><td>${cliente.nombre} ${cliente.apellido}</td><td>${cliente.celular}</td><td>${cliente.email || '-'}</td><td>${new Date(cliente.fechaRegistro).toLocaleDateString()}</td><td><button class="btn-success" onclick="editarCliente(${cliente.id})">Editar</button><button class="btn-secondary" onclick="verHistorialCliente(${cliente.id})">Historial</button><button class="btn-danger" onclick="eliminarCliente(${cliente.id})">Eliminar</button></td></tr>`;
     });
     html += '</tbody></table>';
@@ -1825,9 +1831,15 @@ function cancelarFormOrden() {
 
 function cargarClientesSelect() {
     const clientes = Storage.get('clientes');
+    // Ordenar clientes alfabéticamente por nombre y apellido
+    const clientesOrdenados = [...clientes].sort((a, b) => {
+        const nombreA = `${a.nombre} ${a.apellido}`.toLowerCase();
+        const nombreB = `${b.nombre} ${b.apellido}`.toLowerCase();
+        return nombreA.localeCompare(nombreB, 'es');
+    });
     const select = document.getElementById('ordenCliente');
     select.innerHTML = '<option value="">Seleccionar cliente...</option>';
-    clientes.forEach(cliente => {
+    clientesOrdenados.forEach(cliente => {
         const option = document.createElement('option');
         option.value = cliente.id;
         option.textContent = `${cliente.nombre} ${cliente.apellido} - ${cliente.celular}`;

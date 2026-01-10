@@ -154,6 +154,9 @@ async function signInWithGoogle() {
 
         // Mostrar mensaje de bienvenida
         mostrarMensaje(`¡Bienvenido/a ${user.displayName}! 🎉`, 'success');
+        
+        // Mostrar información de la licencia al iniciar sesión
+        setTimeout(() => mostrarInfoLicencia(), 1500);
 
         // Cambiar a la aplicación principal
         document.getElementById('loginScreen').style.display = 'none';
@@ -223,7 +226,6 @@ window.signInWithGoogle = signInWithGoogle;
 
 document.addEventListener('DOMContentLoaded', () => {
     verificarSesion();
-    mostrarInfoLicencia();
     
     // Agregar estilos para el loading spinner
     const style = document.createElement('style');
@@ -382,6 +384,15 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             }
             
             console.log('🚀 Mostrando aplicación principal');
+            
+            // Verificar licencia
+            if (!verificarLicenciaActiva()) {
+                return;
+            }
+            
+            // Mostrar información de la licencia al iniciar sesión
+            setTimeout(() => mostrarInfoLicencia(), 1000);
+            
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             actualizarDashboard();
@@ -672,11 +683,8 @@ function mostrarInfoLicencia() {
     
     const licencia = JSON.parse(licenciaActiva);
     
-    // Crear un pequeño indicador en la esquina
-    const indicador = document.createElement('div');
-    indicador.style.cssText = 'position: fixed; bottom: 10px; right: 10px; background: #28a745; color: white; padding: 8px 12px; border-radius: 5px; font-size: 12px; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2);';
-    
     let texto = '';
+    let tipo = 'success';
     
     // Verificar si es licencia vitalicia
     if (licencia.licenseType === 'vitalicia') {
@@ -686,17 +694,18 @@ function mostrarInfoLicencia() {
         if (licencia.fechaExpiracion) {
             const diasRestantes = Math.ceil((new Date(licencia.fechaExpiracion) - new Date()) / (1000 * 60 * 60 * 24));
             texto += ` (${diasRestantes} días restantes)`;
+            
+            // Cambiar color según días restantes
+            if (diasRestantes <= 3) {
+                tipo = 'error';
+            } else if (diasRestantes <= 7) {
+                tipo = 'info';
+            }
         }
     }
     
-    indicador.textContent = texto;
-    indicador.title = `Cliente: ${licencia.clientName}\nEmail: ${licencia.clientEmail}`;
-    
-    // Solo agregar si no existe
-    if (!document.querySelector('#licenseIndicator')) {
-        indicador.id = 'licenseIndicator';
-        document.body.appendChild(indicador);
-    }
+    // Mostrar como mensaje temporal en lugar de indicador permanente
+    mostrarMensaje(texto, tipo);
 }
 
 function cerrarSesion() {

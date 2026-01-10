@@ -92,6 +92,17 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.9; }
         }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
 
         .dashboard {
             display: flex;
@@ -1267,9 +1278,15 @@
                 <div class="main-content">
                     <!-- Generator Section -->
                     <div id="section-generator" class="content-section">
-                        <div class="content-header">
-                            <h2>⚙️ Generar Nueva Licencia</h2>
-                            <p>Crea licencias personalizadas para tus clientes</p>
+                        <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div>
+                                <h2>⚙️ Generar Nueva Licencia</h2>
+                                <p>Crea licencias personalizadas para tus clientes</p>
+                            </div>
+                            <button onclick="sincronizarDatosFirebase()" style="padding: 10px 20px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                <span style="font-size: 16px;">🔄</span>
+                                Sincronizar con Firebase
+                            </button>
                         </div>
 
                         <div id="successMessage" style="display: none;" class="alert alert-success"></div>
@@ -1340,9 +1357,15 @@
 
                     <!-- Licenses Section -->
                     <div id="section-licenses" class="content-section" style="display: none;">
-                        <div class="content-header">
-                            <h2>📋 Licencias Activas</h2>
-                            <p>Administra todas las licencias del sistema</p>
+                        <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div>
+                                <h2>📋 Licencias Activas</h2>
+                                <p>Administra todas las licencias del sistema</p>
+                            </div>
+                            <button onclick="sincronizarDatosFirebase()" style="padding: 10px 20px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                <span style="font-size: 16px;">🔄</span>
+                                Sincronizar
+                            </button>
                         </div>
                         <div class="card">
                             <div id="licensesList"></div>
@@ -1351,9 +1374,15 @@
 
                     <!-- Users Section -->
                     <div id="section-users" class="content-section" style="display: none;">
-                        <div class="content-header">
-                            <h2>👥 Administración de Usuarios</h2>
-                            <p>Gestiona los usuarios registrados y resetea contraseñas</p>
+                        <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div>
+                                <h2>👥 Administración de Usuarios</h2>
+                                <p>Gestiona los usuarios registrados y resetea contraseñas</p>
+                            </div>
+                            <button onclick="sincronizarDatosFirebase()" style="padding: 10px 20px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                <span style="font-size: 16px;">🔄</span>
+                                Sincronizar
+                            </button>
                         </div>
                         
                         <!-- Formulario para crear usuario manualmente -->
@@ -1446,9 +1475,15 @@
 
                     <!-- Statistics Section -->
                     <div id="section-statistics" class="content-section" style="display: none;">
-                        <div class="content-header">
-                            <h2>📊 Panel de Estadísticas</h2>
-                            <p>Métricas y análisis del sistema</p>
+                        <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div>
+                                <h2>📊 Panel de Estadísticas</h2>
+                                <p>Métricas y análisis del sistema</p>
+                            </div>
+                            <button onclick="sincronizarDatosFirebase()" style="padding: 10px 20px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                <span style="font-size: 16px;">🔄</span>
+                                Sincronizar
+                            </button>
                         </div>
                         
                         <div class="stats-grid">
@@ -1541,13 +1576,69 @@
             }
         }
 
-        function mostrarGenerador() {
+        async function mostrarGenerador() {
             document.getElementById('loginSection').classList.remove('active');
             document.getElementById('generatorSection').classList.add('active');
             document.body.classList.remove('login-mode');
             document.body.classList.add('dashboard-mode');
             showSection('generator');
-            cargarLicencias();
+            
+            // Sincronizar datos desde Firebase al abrir el panel
+            await sincronizarDatosFirebase();
+        }
+        
+        // Función para sincronizar todos los datos desde Firebase
+        async function sincronizarDatosFirebase() {
+            try {
+                console.log('🔄 Sincronizando datos desde Firebase...');
+                
+                // Cargar todas las colecciones en paralelo
+                await Promise.all([
+                    cargarLicencias(),
+                    cargarUsuarios(),
+                    cargarEstadisticas()
+                ]);
+                
+                console.log('✅ Datos sincronizados correctamente desde Firebase');
+                
+                // Mostrar notificación breve
+                mostrarNotificacion('✅ Datos sincronizados desde Firebase', 'success');
+                
+            } catch (error) {
+                console.error('❌ Error al sincronizar datos:', error);
+                mostrarNotificacion('⚠️ Error al sincronizar datos. Reintentando...', 'warning');
+            }
+        }
+        
+        // Función para mostrar notificaciones temporales
+        function mostrarNotificacion(mensaje, tipo = 'info') {
+            const notificacion = document.createElement('div');
+            notificacion.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 16px 24px;
+                border-radius: 12px;
+                color: white;
+                font-weight: 600;
+                font-size: 14px;
+                z-index: 10000;
+                max-width: 400px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+                animation: slideInRight 0.3s ease;
+                background: ${tipo === 'success' ? 'linear-gradient(135deg, #10b981, #059669)' : 
+                            tipo === 'error' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 
+                            tipo === 'warning' ? 'linear-gradient(135deg, #f59e0b, #d97706)' :
+                            'linear-gradient(135deg, #3b82f6, #1d4ed8)'};
+            `;
+            notificacion.textContent = mensaje;
+            
+            document.body.appendChild(notificacion);
+            
+            setTimeout(() => {
+                notificacion.style.animation = 'slideInRight 0.3s ease reverse';
+                setTimeout(() => notificacion.remove(), 300);
+            }, 3000);
         }
 
         function showSection(sectionName) {

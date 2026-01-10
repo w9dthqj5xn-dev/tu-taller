@@ -169,12 +169,15 @@ async function toggleSuspenderLicenciaFirebase(licenseKey) {
 // Eliminar licencia
 async function eliminarLicenciaFirebase(licenseKey) {
     try {
+        console.log('🗑️ Iniciando eliminación de licencia:', licenseKey);
+        
         // Buscar licencia en Firebase
         const snapshot = await db.collection('licencias')
             .where('licenseKey', '==', licenseKey)
             .get();
         
         if (snapshot.empty) {
+            console.log('❌ Licencia no encontrada en Firebase');
             alert('❌ Licencia no encontrada en Firebase');
             return false;
         }
@@ -182,18 +185,24 @@ async function eliminarLicenciaFirebase(licenseKey) {
         const doc = snapshot.docs[0];
         const licencia = doc.data();
         
+        console.log('📄 Licencia encontrada:', licencia);
+        
         if (!confirm(`¿Está seguro de eliminar la licencia de ${licencia.clientName}?\n\nClave: ${licenseKey}\n\nEsta acción no se puede deshacer.`)) {
+            console.log('❌ Eliminación cancelada por el usuario');
             return false;
         }
         
+        console.log('💥 Eliminando documento con ID:', doc.id);
         await doc.ref.delete();
         
+        console.log('✅ Documento eliminado exitosamente de Firebase');
         alert('✅ Licencia eliminada correctamente de Firebase');
         return true;
         
     } catch (error) {
-        console.error('Error al eliminar licencia:', error);
-        alert('❌ Error al eliminar licencia');
+        console.error('❌ Error al eliminar licencia:', error);
+        console.error('Stack:', error.stack);
+        alert(`❌ Error al eliminar licencia: ${error.message}`);
         return false;
     }
 }

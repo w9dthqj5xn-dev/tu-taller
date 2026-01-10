@@ -1918,6 +1918,8 @@
             container.innerHTML = '<p style="text-align: center; padding: 20px;">🔄 Cargando licencias desde Firebase...</p>';
             
             try {
+                console.log('📥 Cargando licencias desde Firebase...');
+                
                 // Cargar licencias solo desde Firebase
                 const licenciasFirebase = [];
                 
@@ -1930,8 +1932,11 @@
                     .orderBy('fechaCreacion', 'desc')
                     .get();
                 
+                console.log(`📊 Documentos en colección 'licencias': ${snapshot.size}`);
+                
                 snapshot.forEach(doc => {
                     const data = doc.data();
+                    console.log('📄 Licencia:', doc.id, data.licenseKey);
                     licenciasFirebase.push({
                         id: doc.id,
                         ...data,
@@ -1942,6 +1947,8 @@
                 // Cargar usuarios de Google y crear "licencias virtuales" para ellos
                 const googleSnapshot = await db.collection('usuarios-google').get();
                 const usuariosGoogle = [];
+                
+                console.log(`🔵 Usuarios de Google: ${googleSnapshot.size}`);
                 
                 googleSnapshot.forEach(doc => {
                     const data = doc.data();
@@ -1965,6 +1972,8 @@
 
                 // Todas las licencias desde Firebase
                 const todasLicencias = [...licenciasFirebase, ...usuariosGoogle];
+                
+                console.log(`✅ Total de licencias cargadas: ${todasLicencias.length} (Firebase: ${licenciasFirebase.length}, Google: ${usuariosGoogle.length})`);
                 
                 if (todasLicencias.length === 0) {
                     container.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No hay licencias generadas</p>';

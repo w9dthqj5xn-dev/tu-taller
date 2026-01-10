@@ -1265,6 +1265,12 @@
                                 Estadísticas
                             </div>
                         </li>
+                        <li class="nav-item" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-top: 10px;">
+                            <div class="nav-link" onclick="forzarMigracionManual()" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                                <span class="nav-icon">🔄</span>
+                                Migrar Datos Locales
+                            </div>
+                        </li>
                         <li class="nav-item" style="margin-top: auto;">
                             <div class="nav-link" onclick="cerrarSesion()">
                                 <span class="nav-icon">🚪</span>
@@ -1583,7 +1589,10 @@
             document.body.classList.add('dashboard-mode');
             showSection('generator');
             
-            // Sincronizar datos desde Firebase al abrir el panel
+            // PRIMERO: Migrar datos locales a Firebase si existen
+            await migrarDatosLocalAFirebase();
+            
+            // SEGUNDO: Sincronizar datos desde Firebase al abrir el panel
             await sincronizarDatosFirebase();
         }
         
@@ -1591,6 +1600,7 @@
         async function sincronizarDatosFirebase() {
             try {
                 console.log('🔄 Sincronizando datos desde Firebase...');
+                mostrarNotificacion('🔄 Sincronizando con Firebase...', 'info');
                 
                 // Cargar todas las colecciones en paralelo
                 await Promise.all([
@@ -1599,14 +1609,26 @@
                     cargarEstadisticas()
                 ]);
                 
-                console.log('✅ Datos sincronizados correctamente desde Firebase');
+                // Contar datos cargados
+                const licenciasSnapshot = await db.collection('licencias').get();
+                const usuariosSnapshot = await db.collection('usuarios').get();
+                const usuariosGoogleSnapshot = await db.collection('usuarios-google').get();
                 
-                // Mostrar notificación breve
-                mostrarNotificacion('✅ Datos sincronizados desde Firebase', 'success');
+                const totalLicencias = licenciasSnapshot.size;
+                const totalUsuarios = usuariosSnapshot.size;
+                const totalUsuariosGoogle = usuariosGoogleSnapshot.size;
+                
+                console.log(`✅ Datos sincronizados: ${totalLicencias} licencias, ${totalUsuarios} usuarios, ${totalUsuariosGoogle} usuarios Google`);
+                
+                // Mostrar notificación de éxito con detalles
+                mostrarNotificacion(
+                    `✅ Sincronizado: ${totalLicencias} licencias • ${totalUsuarios + totalUsuariosGoogle} usuarios`, 
+                    'success'
+                );
                 
             } catch (error) {
                 console.error('❌ Error al sincronizar datos:', error);
-                mostrarNotificacion('⚠️ Error al sincronizar datos. Reintentando...', 'warning');
+                mostrarNotificacion('⚠️ Error al sincronizar. Verifica tu conexión.', 'error');
             }
         }
         
@@ -1707,23 +1729,33 @@
         // Función para migrar datos de localStorage a Firebase
         async function migrarDatosLocalAFirebase() {
             try {
-                console.log('🔄 Iniciando migración de datos locales a Firebase...');
+                console.log('🔄 Iniciando verificación y migración de datos locales a Firebase...');
+                
+                let licenciasMigradas = 0;
+                let usuariosMigrados = 0;
                 
                 // Migrar licencias
                 const licenciasLocal = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
                 if (licenciasLocal.length > 0) {
-                    console.log(`📋 Encontradas ${licenciasLocal.length} licencias locales`);
+                    console.log(`📋 Encontradas ${licenciasLocal.length} licencias en localStorage`);
                     
                     for (const licencia of licenciasLocal) {
-                        // Verificar si ya existe en Firebase
-                        const snapshot = await db.collection('licencias')
-                            .where('licenseKey', '==', licencia.licenseKey)
-                            .get();
-                        
-                        if (snapshot.empty) {
-                            // No existe, agregarla
-                            await db.collection('licencias').add(licencia);
-                            console.log(`✅ Licencia migrada: ${licencia.clientName}`);
+                        try {
+                            // Verificar si ya existe en Firebase
+                            const snapshot = await db.collection('licencias')
+                                .where('licenseKey', '==', licencia.licenseKey)
+                                .get();
+                            
+                            if (snapshot.empty) {
+                                // No existe, agregarla
+                                await db.collection('licencias').add(licencia);
+                                licenciasMigradas++;
+                                console.log(`✅ Licencia migrada: ${licencia.clientName} (${licencia.licenseKey})`);
+                            } else {
+                                console.log(`ℹ️ Licencia ya existe en Firebase: ${licencia.clientName}`);
+                            }
+                        } catch (error) {
+                            console.error(`❌ Error al migrar licencia ${licencia.licenseKey}:`, error);
                         }
                     }
                 }
@@ -1731,38 +1763,70 @@
                 // Migrar usuarios
                 const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
                 if (usuariosLocal.length > 0) {
-                    console.log(`👥 Encontrados ${usuariosLocal.length} usuarios locales`);
+                    console.log(`👥 Encontrados ${usuariosLocal.length} usuarios en localStorage`);
                     
                     for (const usuario of usuariosLocal) {
-                        // Verificar si ya existe en Firebase
-                        const snapshot = await db.collection('usuarios')
-                            .where('usuario', '==', usuario.usuario)
-                            .get();
-                        
-                        if (snapshot.empty) {
-                            // No existe, agregarlo
-                            await db.collection('usuarios').add(usuario);
-                            console.log(`✅ Usuario migrado: ${usuario.usuario}`);
+                        try {
+                            // Verificar si ya existe en Firebase
+                            const snapshot = await db.collection('usuarios')
+                                .where('usuario', '==', usuario.usuario)
+                                .get();
+                            
+                            if (snapshot.empty) {
+                                // No existe, agregarlo
+                                await db.collection('usuarios').add(usuario);
+                                usuariosMigrados++;
+                                console.log(`✅ Usuario migrado: ${usuario.usuario}`);
+                            } else {
+                                console.log(`ℹ️ Usuario ya existe en Firebase: ${usuario.usuario}`);
+                            }
+                        } catch (error) {
+                            console.error(`❌ Error al migrar usuario ${usuario.usuario}:`, error);
                         }
                     }
                 }
                 
-                console.log('✅ Migración completada exitosamente');
-                
-                // Mostrar notificación si se migraron datos
-                if (licenciasLocal.length > 0 || usuariosLocal.length > 0) {
-                    const totalMigrados = licenciasLocal.length + usuariosLocal.length;
-                    alert(`✅ Migración completada\n\n${licenciasLocal.length} licencias migradas\n${usuariosLocal.length} usuarios migrados\n\nTotal: ${totalMigrados} registros`);
-                    
-                    // Recargar datos
-                    await cargarEstadisticas();
-                    await cargarLicencias();
-                    await cargarUsuarios();
+                // Mostrar resultado
+                if (licenciasMigradas > 0 || usuariosMigrados > 0) {
+                    console.log(`✅ Migración completada: ${licenciasMigradas} licencias, ${usuariosMigrados} usuarios`);
+                    mostrarNotificacion(
+                        `✅ Datos migrados a Firebase: ${licenciasMigradas} licencias, ${usuariosMigrados} usuarios`, 
+                        'success'
+                    );
+                } else if (licenciasLocal.length > 0 || usuariosLocal.length > 0) {
+                    console.log('ℹ️ Todos los datos locales ya están en Firebase');
+                } else {
+                    console.log('ℹ️ No hay datos locales para migrar');
                 }
                 
             } catch (error) {
                 console.error('❌ Error en la migración:', error);
-                alert('⚠️ Hubo un problema al migrar algunos datos. Por favor contacta al soporte.');
+                mostrarNotificacion('⚠️ Error al migrar datos. Revisa la consola.', 'error');
+            }
+        }
+        
+        // Función para forzar migración manual (con diálogo de confirmación)
+        async function forzarMigracionManual() {
+            const licenciasLocal = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
+            const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+            
+            if (licenciasLocal.length === 0 && usuariosLocal.length === 0) {
+                alert('ℹ️ No hay datos en localStorage para migrar.\n\nTodos los datos ya están en Firebase o no hay datos locales.');
+                return;
+            }
+            
+            const confirmar = confirm(
+                `🔄 MIGRACIÓN DE DATOS LOCALES A FIREBASE\n\n` +
+                `Datos encontrados en este dispositivo:\n` +
+                `• Licencias: ${licenciasLocal.length}\n` +
+                `• Usuarios: ${usuariosLocal.length}\n\n` +
+                `¿Deseas migrar estos datos a Firebase?\n\n` +
+                `Esto permitirá verlos en todos tus dispositivos.`
+            );
+            
+            if (confirmar) {
+                await migrarDatosLocalAFirebase();
+                await sincronizarDatosFirebase();
             }
         }
 

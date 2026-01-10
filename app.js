@@ -155,8 +155,39 @@ async function signInWithGoogle() {
             try {
                 await db.collection('usuarios-google').doc(user.uid).set(userData);
                 console.log('✅ Usuario registrado en Firebase');
+                
+                // IMPORTANTE: Inicializar estructura de datos en Firebase para el nuevo usuario
+                console.log('🔧 Inicializando estructura de datos en Firebase para:', user.email);
+                const userDataRef = db.collection('usuarios-data').doc(user.email);
+                await userDataRef.set({
+                    usuario: user.email,
+                    nombreTaller: user.displayName || user.email.split('@')[0],
+                    ultimaActualizacion: new Date().toISOString(),
+                    version: '2.0',
+                    fechaCreacion: new Date().toISOString(),
+                    proveedor: 'google'
+                });
+                
+                // Crear subcollections vacías
+                await userDataRef.collection('clientes').doc('_init').set({ init: true });
+                await userDataRef.collection('ordenes').doc('_init').set({ init: true });
+                await userDataRef.collection('repuestos').doc('_init').set({ init: true });
+                
+                // Eliminar documentos de inicialización
+                await userDataRef.collection('clientes').doc('_init').delete();
+                await userDataRef.collection('ordenes').doc('_init').delete();
+                await userDataRef.collection('repuestos').doc('_init').delete();
+                
+                console.log('✅ Estructura de datos inicializada en Firebase para nuevo usuario Google');
+                
                 // Limpiar datos de cualquier sesión anterior
                 Storage.clear();
+                
+                // Inicializar datos locales vacíos
+                Storage.set('clientes', []);
+                Storage.set('ordenes', []);
+                Storage.set('repuestos', []);
+                
             } catch (error) {
                 console.warn('No se pudo guardar en Firebase (modo offline):', error);
             }
@@ -468,7 +499,16 @@ async function cargarDatosUsuario(usuario) {
         // Mostrar notificación al usuario
         const totalRegistros = clientes.length + ordenes.length + repuestos.length;
         if (totalRegistros > 0) {
-            mostrarNotificacion(`✅ Datos cargados: ${clientes.length} clientes, ${ordenes.length} órdenes, ${repuestos.length} repuestos`, 'success');
+            mostrarNotificacion(
+                `✅ Sincronizado: ${clientes.length} clientes, ${ordenes.length} órdenes, ${repuestos.length} repuestos`, 
+                'success'
+            );
+        } else {
+            // Usuario nuevo o sin datos
+            mostrarNotificacion(
+                `🎉 ¡Cuenta lista! Tus datos se sincronizarán automáticamente en todos tus dispositivos`, 
+                'info'
+            );
         }
         
         return true;
@@ -697,6 +737,29 @@ async function registrarUsuario(event) {
         // Guardar en Firebase
         await db.collection('usuarios').add(nuevoUsuario);
         
+        // IMPORTANTE: Inicializar estructura de datos en Firebase para el nuevo usuario
+        console.log('🔧 Inicializando estructura de datos en Firebase para:', usuario);
+        const userDataRef = db.collection('usuarios-data').doc(usuario);
+        await userDataRef.set({
+            usuario: usuario,
+            nombreTaller: nombreTaller,
+            ultimaActualizacion: new Date().toISOString(),
+            version: '2.0',
+            fechaCreacion: new Date().toISOString()
+        });
+        
+        // Crear subcollections vacías (esto asegura que la estructura esté lista)
+        await userDataRef.collection('clientes').doc('_init').set({ init: true });
+        await userDataRef.collection('ordenes').doc('_init').set({ init: true });
+        await userDataRef.collection('repuestos').doc('_init').set({ init: true });
+        
+        // Eliminar documentos de inicialización
+        await userDataRef.collection('clientes').doc('_init').delete();
+        await userDataRef.collection('ordenes').doc('_init').delete();
+        await userDataRef.collection('repuestos').doc('_init').delete();
+        
+        console.log('✅ Estructura de datos inicializada en Firebase');
+        
         localStorage.removeItem('licenciaTemporal');
         
         // Iniciar sesión automáticamente
@@ -704,12 +767,19 @@ async function registrarUsuario(event) {
         localStorage.setItem('usuario', usuario);
         localStorage.setItem('nombreTaller', nombreTaller);
         
+        // Inicializar datos locales vacíos
+        Storage.set('clientes', []);
+        Storage.set('ordenes', []);
+        Storage.set('repuestos', []);
+        
+        console.log('✅ Datos locales inicializados');
+        
         // Ocultar modal y mostrar app
         document.getElementById('modalRegistro').style.display = 'none';
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
         
-        alert(`✅ ¡Bienvenido ${nombreTaller}! Tu cuenta ha sido creada exitosamente.`);
+        mostrarNotificacion(`✅ ¡Bienvenido ${nombreTaller}! Tu cuenta ha sido creada con sincronización automática en la nube`, 'success');
         actualizarDashboard();
     } catch (error) {
         console.error('Error al registrar usuario:', error);

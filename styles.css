@@ -53,6 +53,17 @@ body {
     }
 }
 
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+}
+
 .login-header {
     text-align: center;
     margin-bottom: 25px;

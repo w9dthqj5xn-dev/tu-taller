@@ -47,10 +47,46 @@ function formatearMonto(numero) {
     return Math.round(numero).toLocaleString('es-CO'); // Formato: 2.000 (sin decimales)
 }
 
+// Función para mostrar notificaciones al usuario
+function mostrarNotificacion(mensaje, tipo = 'info') {
+    // Tipos: 'success', 'error', 'warning', 'info'
+    const colores = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
+    
+    const notif = document.createElement('div');
+    notif.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${colores[tipo] || colores.info};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-size: 14px;
+        max-width: 400px;
+        animation: slideIn 0.3s ease-out;
+    `;
+    notif.textContent = mensaje;
+    
+    document.body.appendChild(notif);
+    
+    setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notif.remove(), 300);
+    }, 4000);
+}
+
 // Exportar funciones básicas inmediatamente
 window.verificarSesion = verificarSesion;
 window.verificarLicenciaActiva = verificarLicenciaActiva;
 window.formatearMonto = formatearMonto;
+window.mostrarNotificacion = mostrarNotificacion;
 
 // === GOOGLE SIGN-IN ===
 async function signInWithGoogle() {
@@ -423,11 +459,22 @@ async function cargarDatosUsuario(usuario) {
         Storage.set('ordenes', ordenes);
         Storage.set('repuestos', repuestos);
         
-        console.log(`✅ Datos cargados - Clientes: ${clientes.length}, Órdenes: ${ordenes.length}, Repuestos: ${repuestos.length}`);
+        console.log(`✅ Datos cargados desde Firebase:`, {
+            clientes: clientes.length,
+            ordenes: ordenes.length,
+            repuestos: repuestos.length
+        });
+        
+        // Mostrar notificación al usuario
+        const totalRegistros = clientes.length + ordenes.length + repuestos.length;
+        if (totalRegistros > 0) {
+            mostrarNotificacion(`✅ Datos cargados: ${clientes.length} clientes, ${ordenes.length} órdenes, ${repuestos.length} repuestos`, 'success');
+        }
         
         return true;
     } catch (error) {
         console.error('Error al cargar datos del usuario:', error);
+        mostrarNotificacion('⚠️ No se pudieron cargar los datos desde la nube', 'warning');
         return false;
     }
 }
@@ -1011,29 +1058,29 @@ async function sincronizarConFirebase() {
             throw new Error('Firebase no está inicializado');
         }
         
-        const clientes = Storage.get('clientes');
-        const ordenes = Storage.get('ordenes');
-        const repuestos = Storage.get('repuestos');
+        const clientes = Storage.get('clientes') || [];
+        const ordenes = Storage.get('ordenes') || [];
+        const repuestos = Storage.get('repuestos') || [];
         
-        // Guardar en Firestore usando usuarios-data
-        const userDocRef = db.collection('usuarios-data').doc(usuario);
-        
-        await userDocRef.set({
-            nombreTaller: localStorage.getItem('nombreTaller'),
-            clientes: clientes,
-            ordenes: ordenes,
-            repuestos: repuestos,
-            ultimaActualizacion: new Date().toISOString(),
-            version: '2.0'
-        }, { merge: true });
-        
-        console.log('✅ Datos sincronizados con Firebase:', {
+        console.log('🔄 Sincronizando con Firebase...', {
             usuario: usuario,
-            clientes: clientes?.length || 0,
-            ordenes: ordenes?.length || 0,
-            repuestos: repuestos?.length || 0
+            clientes: clientes.length,
+            ordenes: ordenes.length,
+            repuestos: repuestos.length
         });
-        return true;
+        
+        // Usar Storage.syncToFirebase para mantener consistencia con subcollections
+        const resultadoClientes = await Storage.syncToFirebase(usuario, 'clientes', clientes);
+        const resultadoOrdenes = await Storage.syncToFirebase(usuario, 'ordenes', ordenes);
+        const resultadoRepuestos = await Storage.syncToFirebase(usuario, 'repuestos', repuestos);
+        
+        if (resultadoClientes && resultadoOrdenes && resultadoRepuestos) {
+            console.log('✅ Todos los datos sincronizados correctamente con Firebase');
+            return true;
+        } else {
+            console.warn('⚠️ Algunos datos no se sincronizaron completamente');
+            return false;
+        }
         
     } catch (error) {
         console.error('Error al sincronizar con Firebase:', error);

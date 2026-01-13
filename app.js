@@ -2465,10 +2465,10 @@ function generarReportes() {
                 return;
             }
             
-            fechaInicio = new Date(fechaInicioInput);
-            fechaInicio.setHours(0, 0, 0, 0);
-            fechaFin = new Date(fechaFinInput);
-            fechaFin.setHours(23, 59, 59, 999);
+            // Crear fechas a partir del input (formato YYYY-MM-DD)
+            // Agregar el tiempo para evitar problemas de zona horaria
+            fechaInicio = new Date(fechaInicioInput + 'T00:00:00');
+            fechaFin = new Date(fechaFinInput + 'T23:59:59');
             break;
         default:
             fechaInicio = new Date(0);
@@ -2477,8 +2477,16 @@ function generarReportes() {
     const ordenesFiltradas = ordenes.filter(o => {
         // Usar fechaEntrega si existe (fecha en que se marcó como entregado)
         // Si no existe, usar fechaCreacion (órdenes antiguas)
-        const fecha = new Date(o.fechaEntrega || o.fechaCreacion);
-        return fecha >= fechaInicio && fecha <= fechaFin && o.estado === 'Entregado';
+        const fechaOrden = new Date(o.fechaEntrega || o.fechaCreacion);
+        
+        // Normalizar la fecha de la orden al inicio del día para comparación exacta
+        const fechaOrdenNormalizada = new Date(fechaOrden.getFullYear(), fechaOrden.getMonth(), fechaOrden.getDate());
+        const fechaInicioNormalizada = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth(), fechaInicio.getDate());
+        const fechaFinNormalizada = new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaFin.getDate());
+        
+        return fechaOrdenNormalizada >= fechaInicioNormalizada && 
+               fechaOrdenNormalizada <= fechaFinNormalizada && 
+               o.estado === 'Entregado';
     });
     let ingresosTotales = 0;
     ordenesFiltradas.forEach(orden => {

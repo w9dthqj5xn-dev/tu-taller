@@ -2150,7 +2150,7 @@ function cargarPagos() {
         const anticipo = orden.anticipo || 0;
         const saldo = presupuesto - anticipo;
         totalCobrado += anticipo;
-        if (orden.estado !== 'Cancelado') {
+        if (orden.estado !== 'Cancelado' && orden.estado !== 'Entregado') {
             if (saldo > 0) {
                 porCobrar += saldo;
                 ordenesPendientes.push({ orden, saldo, cliente: clientes.find(c => c.id === orden.clienteId) });

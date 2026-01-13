@@ -1439,9 +1439,9 @@ function cargarClientes() {
         const nombreB = `${b.nombre} ${b.apellido}`.toLowerCase();
         return nombreA.localeCompare(nombreB, 'es');
     });
-    let html = '<table><thead><tr><th>#</th><th>Nombre Completo</th><th>Celular</th><th>Email</th><th>Fecha Registro</th><th>Acciones</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Nombre Completo</th><th>Celular</th><th>Email</th><th>Fecha Registro</th><th>Acciones</th></tr></thead><tbody>';
     clientesOrdenados.forEach(cliente => {
-        html += `<tr><td>${cliente.id}</td><td>${cliente.nombre} ${cliente.apellido}</td><td>${cliente.celular}</td><td>${cliente.email || '-'}</td><td>${new Date(cliente.fechaRegistro).toLocaleDateString()}</td><td><button class="btn-success" onclick="editarCliente(${cliente.id})">Editar</button><button class="btn-secondary" onclick="verHistorialCliente(${cliente.id})">Historial</button><button class="btn-danger" onclick="eliminarCliente(${cliente.id})">Eliminar</button></td></tr>`;
+        html += `<tr><td>${cliente.nombre} ${cliente.apellido}</td><td>${cliente.celular}</td><td>${cliente.email || '-'}</td><td>${new Date(cliente.fechaRegistro).toLocaleDateString()}</td><td><button class="btn-success" onclick="editarCliente(${cliente.id})">Editar</button><button class="btn-secondary" onclick="verHistorialCliente(${cliente.id})">Historial</button><button class="btn-danger" onclick="eliminarCliente(${cliente.id})">Eliminar</button></td></tr>`;
     });
     html += '</tbody></table>';
     container.innerHTML = html;

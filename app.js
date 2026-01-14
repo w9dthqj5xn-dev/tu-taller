@@ -2884,7 +2884,11 @@ function actualizarDashboard() {
     document.getElementById('enReparacion').textContent = enReparacion;
     const listas = ordenes.filter(o => o.estado === 'Listo para Entrega').length;
     document.getElementById('listasEntrega').textContent = listas;
-    const ordenesRecientes = ordenes.sort((a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion)).slice(0, 5);
+    // Filtrar solo órdenes activas (excluir entregadas y canceladas) y ordenar por fecha
+    const ordenesRecientes = ordenes
+        .filter(o => o.estado !== 'Entregado' && o.estado !== 'Cancelado')
+        .sort((a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion))
+        .slice(0, 5);
     const container = document.getElementById('ordenesRecientes');
     if (ordenesRecientes.length === 0) {
         container.innerHTML = '<p>No hay órdenes registradas</p>';

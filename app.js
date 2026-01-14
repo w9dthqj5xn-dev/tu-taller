@@ -2280,6 +2280,7 @@ document.getElementById('repuestoForm').addEventListener('submit', async (e) => 
         precioCompra: parseFloat(document.getElementById('repuestoPrecioCompra').value) || 0,
         precioVenta: parseFloat(document.getElementById('repuestoPrecioVenta').value),
         ubicacion: document.getElementById('repuestoUbicacion').value,
+        suplidor: document.getElementById('repuestoSuplidor').value || '',
         fechaRegistro: id ? repuestos.find(r => r.id === parseInt(id)).fechaRegistro : new Date().toISOString()
     };
     if (id) {
@@ -2316,12 +2317,14 @@ function filtrarInventario() {
             const compatibilidad = (r.compatibilidad || '').toLowerCase();
             const categoria = (r.categoria || '').toLowerCase();
             const ubicacion = (r.ubicacion || '').toLowerCase();
+            const suplidor = (r.suplidor || '').toLowerCase();
             
             return nombre.includes(busqueda) ||
                    codigo.includes(busqueda) ||
                    compatibilidad.includes(busqueda) ||
                    categoria.includes(busqueda) ||
-                   ubicacion.includes(busqueda);
+                   ubicacion.includes(busqueda) ||
+                   suplidor.includes(busqueda);
         });
         console.log('Después de búsqueda:', repuestos.length);
     }
@@ -2352,11 +2355,11 @@ function filtrarInventario() {
     }
     
     console.log('Renderizando', repuestos.length, 'repuestos');
-    let html = '<table><thead><tr><th>Nombre</th><th>Categoría</th><th>Código/SKU</th><th>Stock</th><th>Precio Compra</th><th>Precio Venta</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Nombre</th><th>Categoría</th><th>Código/SKU</th><th>Stock</th><th>Precio Compra</th><th>Precio Venta</th><th>Ubicación</th><th>Suplidor</th><th>Acciones</th></tr></thead><tbody>';
     repuestos.forEach(repuesto => {
         const alertaStock = repuesto.stock <= repuesto.stockMinimo ? 'style="background: #ffebee;"' : '';
         const estadoStock = repuesto.stock === 0 ? '❌ Agotado' : repuesto.stock <= repuesto.stockMinimo ? '⚠️ Stock bajo' : '✅';
-        html += `<tr ${alertaStock}><td>${repuesto.nombre}${repuesto.compatibilidad ? `<br><small>${repuesto.compatibilidad}</small>` : ''}</td><td>${repuesto.categoria}</td><td>${repuesto.codigo || '-'}</td><td><strong>${repuesto.stock}</strong> ${estadoStock}</td><td>$${repuesto.precioCompra.toFixed(2)}</td><td>$${repuesto.precioVenta.toFixed(2)}</td><td>${repuesto.ubicacion || '-'}</td><td><button class="btn-success" onclick="editarRepuesto(${repuesto.id})">Editar</button><button class="btn-secondary" onclick="ajustarStock(${repuesto.id})">Stock</button><button class="btn-danger" onclick="eliminarRepuesto(${repuesto.id})">Eliminar</button></td></tr>`;
+        html += `<tr ${alertaStock}><td>${repuesto.nombre}${repuesto.compatibilidad ? `<br><small>${repuesto.compatibilidad}</small>` : ''}</td><td>${repuesto.categoria}</td><td>${repuesto.codigo || '-'}</td><td><strong>${repuesto.stock}</strong> ${estadoStock}</td><td>$${repuesto.precioCompra.toFixed(2)}</td><td>$${repuesto.precioVenta.toFixed(2)}</td><td>${repuesto.ubicacion || '-'}</td><td>${repuesto.suplidor || '-'}</td><td><button class="btn-success" onclick="editarRepuesto(${repuesto.id})">Editar</button><button class="btn-secondary" onclick="ajustarStock(${repuesto.id})">Stock</button><button class="btn-danger" onclick="eliminarRepuesto(${repuesto.id})">Eliminar</button></td></tr>`;
     });
     html += '</tbody></table>';
     container.innerHTML = html;
@@ -2376,6 +2379,7 @@ function editarRepuesto(id) {
     document.getElementById('repuestoPrecioCompra').value = repuesto.precioCompra;
     document.getElementById('repuestoPrecioVenta').value = repuesto.precioVenta;
     document.getElementById('repuestoUbicacion').value = repuesto.ubicacion;
+    document.getElementById('repuestoSuplidor').value = repuesto.suplidor || '';
     document.getElementById('formRepuesto').style.display = 'block';
 }
 

@@ -2710,6 +2710,7 @@ async function enviarWhatsApp(ordenId) {
 
 function generarPDFFacturaBlob(orden, cliente) {
     return new Promise(async (resolve) => {
+        console.log('📄 Generando PDF de factura...');
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({
             orientation: 'portrait',
@@ -2718,13 +2719,18 @@ function generarPDFFacturaBlob(orden, cliente) {
         });
         
         // Obtener configuración del taller
+        console.log('🔍 Obteniendo configuración del taller...');
         const config = await obtenerConfiguracionTaller();
+        console.log('📦 Configuración obtenida:', config);
+        
         const nombreTaller = config?.nombreTaller || 'TALLER DE REPARACIONES';
         const direccionTaller = config?.direccionTaller || '';
         const telefonoTaller = config?.telefonoTaller || '';
         const emailTaller = config?.emailTaller || '';
         const politicasTexto = config?.politicasTaller || 'Luego de su equipo ser arreglado tiene un plazo de 15 días para retirarlo. Si pasa de un mes pasa al taller de repuesto si no está pago.';
         const logoUrl = config?.logoUrl || null;
+        
+        console.log('✏️ Datos para PDF:', { nombreTaller, direccionTaller, telefonoTaller, emailTaller, tienelogo: !!logoUrl });
         
         const saldo = (orden.presupuesto || 0) - (orden.anticipo || 0);
         const garantiaTexto = orden.tieneGarantia !== false ? `${orden.garantia} días` : 'Sin garantía';
@@ -2735,10 +2741,11 @@ function generarPDFFacturaBlob(orden, cliente) {
     // Logo (si existe)
     if (logoUrl) {
         try {
+            console.log('🖼️ Agregando logo al PDF...');
             doc.addImage(logoUrl, 'JPEG', 15, y, 30, 30);
             y += 5;
         } catch (error) {
-            console.log('No se pudo agregar el logo:', error);
+            console.log('❌ No se pudo agregar el logo:', error);
         }
     }
     

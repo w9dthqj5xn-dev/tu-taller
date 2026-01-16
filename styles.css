@@ -1052,3 +1052,49 @@ tr:hover {
     text-align: center;
     font-size: 0.9em;
 }
+
+
+/* === CONFIGURACIÓN DEL TALLER === */
+#logoPreview img {
+    transition: all 0.3s ease;
+}
+
+#logoPreview:hover img {
+    transform: scale(1.05);
+}
+
+#logoInput {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#logoInput:hover {
+    background-color: #f8f9fa;
+    border-color: #6366f1 !important;
+}
+
+#configuracionForm textarea {
+    min-height: 80px;
+}
+
+#configuracionForm input[type="file"] {
+    font-size: 13px;
+    padding: 12px;
+    cursor: pointer;
+}
+
+#configuracionForm input[type="file"]::-webkit-file-upload-button {
+    background: #6366f1;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 10px;
+    font-weight: 500;
+    transition: background 0.3s ease;
+}
+
+#configuracionForm input[type="file"]::-webkit-file-upload-button:hover {
+    background: #4f46e5;
+}

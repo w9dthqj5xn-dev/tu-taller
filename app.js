@@ -1416,6 +1416,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
         if (section === 'pagos') cargarPagos();
         if (section === 'inventario') filtrarInventario();
         if (section === 'reportes') generarReportes();
+        if (section === 'configuracion') cargarConfiguracion();
     });
 });
 
@@ -2221,13 +2222,39 @@ async function registrarPago(ordenId) {
     }
 }
 
-function imprimirReciboPago(ordenId, montoPago) {
+async function imprimirReciboPago(ordenId, montoPago) {
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
     const orden = ordenes.find(o => o.id === ordenId);
     const cliente = clientes.find(c => c.id === orden.clienteId);
     const saldo = (orden.presupuesto || 0) - (orden.anticipo || 0);
-    const recibo = `<div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px; border: 2px solid #333;"><div style="text-align: center; margin-bottom: 20px;"><h2 style="margin: 0;">🔧 TALLER DE REPARACIONES</h2><p style="margin: 5px 0;">RECIBO DE PAGO</p></div><hr style="border: 1px solid #333;"><div style="margin: 15px 0;"><p><strong>Fecha:</strong> ${new Date().toLocaleString()}</p><p><strong>Orden:</strong> #${orden.numero}</p><p><strong>Cliente:</strong> ${cliente.nombre} ${cliente.apellido}</p><p><strong>Celular:</strong> ${cliente.celular}</p></div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><p><strong>Dispositivo:</strong> ${orden.marca} ${orden.modelo}</p><p><strong>Total de la reparación:</strong> $${orden.presupuesto.toFixed(2)}</p><p><strong>Pagos anteriores:</strong> $${(orden.anticipo - montoPago).toFixed(2)}</p><p><strong>Pago actual:</strong> <span style="font-size: 1.2em; color: green;">$${montoPago.toFixed(2)}</span></p><p><strong>Saldo pendiente:</strong> <span style="font-size: 1.2em;">$${saldo.toFixed(2)}</span></p></div><hr style="border: 1px solid #333;"><div style="margin-top: 30px; text-align: center;"><p style="margin: 30px 0 5px;">_____________________</p><p style="margin: 0;">Firma del Cliente</p></div><div style="margin-top: 20px; text-align: center; font-size: 0.9em;"><p>¡Gracias por su confianza!</p></div></div>`;
+    
+    // Obtener configuración del taller
+    const config = await obtenerConfiguracionTaller();
+    const nombreTaller = config?.nombreTaller || 'TALLER DE REPARACIONES';
+    const direccionTaller = config?.direccionTaller || '';
+    const telefonoTaller = config?.telefonoTaller || '';
+    const emailTaller = config?.emailTaller || '';
+    const logoUrl = config?.logoUrl || null;
+    
+    // Construir HTML del encabezado con logo si existe
+    let encabezadoHTML = '<div style="text-align: center; margin-bottom: 20px;">';
+    if (logoUrl) {
+        encabezadoHTML += `<img src="${logoUrl}" style="max-width: 80px; max-height: 80px; object-fit: contain; margin-bottom: 10px;" alt="Logo">`;
+    }
+    encabezadoHTML += `<h2 style="margin: 0;">🔧 ${nombreTaller}</h2>`;
+    if (direccionTaller) {
+        encabezadoHTML += `<p style="margin: 3px 0; font-size: 10px;">${direccionTaller}</p>`;
+    }
+    if (telefonoTaller) {
+        encabezadoHTML += `<p style="margin: 3px 0; font-size: 10px;">Tel: ${telefonoTaller}</p>`;
+    }
+    if (emailTaller) {
+        encabezadoHTML += `<p style="margin: 3px 0; font-size: 10px;">Email: ${emailTaller}</p>`;
+    }
+    encabezadoHTML += '<p style="margin: 5px 0;">RECIBO DE PAGO</p></div>';
+    
+    const recibo = `<div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px; border: 2px solid #333;">${encabezadoHTML}<hr style="border: 1px solid #333;"><div style="margin: 15px 0;"><p><strong>Fecha:</strong> ${new Date().toLocaleString()}</p><p><strong>Orden:</strong> #${orden.numero}</p><p><strong>Cliente:</strong> ${cliente.nombre} ${cliente.apellido}</p><p><strong>Celular:</strong> ${cliente.celular}</p></div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><p><strong>Dispositivo:</strong> ${orden.marca} ${orden.modelo}</p><p><strong>Total de la reparación:</strong> $${orden.presupuesto.toFixed(2)}</p><p><strong>Pagos anteriores:</strong> $${(orden.anticipo - montoPago).toFixed(2)}</p><p><strong>Pago actual:</strong> <span style="font-size: 1.2em; color: green;">$${montoPago.toFixed(2)}</span></p><p><strong>Saldo pendiente:</strong> <span style="font-size: 1.2em;">$${saldo.toFixed(2)}</span></p></div><hr style="border: 1px solid #333;"><div style="margin-top: 30px; text-align: center;"><p style="margin: 30px 0 5px;">_____________________</p><p style="margin: 0;">Firma del Cliente</p></div><div style="margin-top: 20px; text-align: center; font-size: 0.9em;"><p>¡Gracias por su confianza!</p></div></div>`;
     const ventana = window.open('', '', 'width=800,height=600');
     ventana.document.write('<html><head><title>Recibo de Pago</title></head><body>');
     ventana.document.write(recibo);
@@ -2680,7 +2707,7 @@ async function enviarWhatsApp(ordenId) {
 }
 
 function generarPDFFacturaBlob(orden, cliente) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({
             orientation: 'portrait',
@@ -2688,18 +2715,58 @@ function generarPDFFacturaBlob(orden, cliente) {
             format: 'a4'
         });
         
+        // Obtener configuración del taller
+        const config = await obtenerConfiguracionTaller();
+        const nombreTaller = config?.nombreTaller || 'TALLER DE REPARACIONES';
+        const direccionTaller = config?.direccionTaller || '';
+        const telefonoTaller = config?.telefonoTaller || '';
+        const emailTaller = config?.emailTaller || '';
+        const politicasTexto = config?.politicasTaller || 'Luego de su equipo ser arreglado tiene un plazo de 15 días para retirarlo. Si pasa de un mes pasa al taller de repuesto si no está pago.';
+        const logoUrl = config?.logoUrl || null;
+        
         const saldo = (orden.presupuesto || 0) - (orden.anticipo || 0);
         const garantiaTexto = orden.tieneGarantia !== false ? `${orden.garantia} días` : 'Sin garantía';
         
         // Configuración de fuente y estilos
         let y = 15;
     
+    // Logo (si existe)
+    if (logoUrl) {
+        try {
+            doc.addImage(logoUrl, 'JPEG', 15, y, 30, 30);
+            y += 5;
+        } catch (error) {
+            console.log('No se pudo agregar el logo:', error);
+        }
+    }
+    
     // Encabezado
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('TALLER DE REPARACIONES', 105, y, { align: 'center' });
-    y += 7;
+    doc.text(nombreTaller, 105, logoUrl ? y + 8 : y, { align: 'center' });
+    y += logoUrl ? 13 : 7;
+    
+    // Información de contacto del taller
+    if (direccionTaller || telefonoTaller || emailTaller) {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        if (direccionTaller) {
+            doc.text(direccionTaller, 105, y, { align: 'center' });
+            y += 4;
+        }
+        if (telefonoTaller) {
+            doc.text(`Tel: ${telefonoTaller}`, 105, y, { align: 'center' });
+            y += 4;
+        }
+        if (emailTaller) {
+            doc.text(`Email: ${emailTaller}`, 105, y, { align: 'center' });
+            y += 4;
+        }
+        y += 2;
+    }
+    
     doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
     doc.text('ORDEN DE SERVICIO', 105, y, { align: 'center' });
     y += 10;
     
@@ -2824,12 +2891,14 @@ function generarPDFFacturaBlob(orden, cliente) {
     doc.text(`Garantía: ${garantiaTexto}`, 15, y);
     y += 10;
     
-    // POLÍTICAS DEL TALLER
+    // POLÍTICAS DEL TALLER (personalizadas)
     doc.setFillColor(255, 243, 205);
-    doc.rect(15, y, 180, 20, 'F');
+    const politicasLines = doc.splitTextToSize(politicasTexto, 170);
+    const boxHeight = 10 + (politicasLines.length * 4);
+    doc.rect(15, y, 180, boxHeight, 'F');
     doc.setLineWidth(0.3);
     doc.setDrawColor(255, 193, 7);
-    doc.rect(15, y, 180, 20);
+    doc.rect(15, y, 180, boxHeight);
     y += 5;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
@@ -2837,10 +2906,8 @@ function generarPDFFacturaBlob(orden, cliente) {
     y += 5;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    const politicasText = 'Luego de su equipo ser arreglado tiene un plazo de 15 días para retirarlo. Si pasa de un mes pasa al taller de repuesto si no está pago.';
-    const politicasLines = doc.splitTextToSize(politicasText, 170);
     doc.text(politicasLines, 105, y, { align: 'center' });
-    y += 15;
+    y += boxHeight - 5;
     
     // Firma del cliente
     y += 10;
@@ -2863,12 +2930,39 @@ function generarPDFFacturaBlob(orden, cliente) {
     });
 }
 
-function imprimirRecibo(ordenId) {
+async function imprimirRecibo(ordenId) {
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
     const orden = ordenes.find(o => o.id === ordenId);
     const cliente = clientes.find(c => c.id === orden.clienteId);
-    const recibo = `<div style="font-family: Arial, sans-serif; max-width: 300px; font-size: 11px; margin: 0 auto; padding: 20px; border: 2px solid #333;"><div style="text-align: center; margin-bottom: 20px;"><h2 style="margin: 0;">🔧 TALLER DE REPARACIONES</h2><p style="margin: 5px 0;">ORDEN DE SERVICIO</p></div><hr style="border: 1px solid #333;"><div style="margin: 6px 0;"><p style="margin: 2px 0;"><strong>Orden:</strong> #${orden.numero}</p><p><strong>Fecha:</strong> ${formatearFecha(orden.fechaIngreso)}</p>${orden.fechaEstimada ? `<p><strong>Entrega estimada:</strong> ${formatearFecha(orden.fechaEstimada)}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 4px 0; font-size: 12px;">DATOS DEL CLIENTE</h3><p><strong>Nombre:</strong> ${cliente.nombre} ${cliente.apellido}</p><p><strong>Celular:</strong> ${cliente.celular}</p>${cliente.email ? `<p><strong>Email:</strong> ${cliente.email}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">DATOS DEL EQUIPO</h3><p><strong>Tipo:</strong> ${orden.tipoDispositivo}</p><p><strong>Marca:</strong> ${orden.marca}</p><p><strong>Modelo:</strong> ${orden.modelo}</p>${orden.imei ? `<p><strong>IMEI/Serie:</strong> ${orden.imei}</p>` : ''}${orden.accesorios ? `<p><strong>Accesorios:</strong> ${orden.accesorios}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">PROBLEMA REPORTADO</h3><p>${orden.problema}</p></div>${orden.notas ? `<hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">NOTAS</h3><p>${orden.notas}</p></div>` : ''}<hr style="border: 1px solid #333;"><div style="margin: 15px 0;">${orden.presupuesto ? `<p><strong>Presupuesto:</strong> <span style="font-size: 1.3em;">$${orden.presupuesto.toFixed(2)}</span></p><p><strong>Anticipo:</strong> $${(orden.anticipo || 0).toFixed(2)}</p><p><strong>Saldo:</strong> $${((orden.presupuesto || 0) - (orden.anticipo || 0)).toFixed(2)}</p>` : '<p><em>Presupuesto pendiente</em></p>'}${orden.tieneGarantia !== false ? `<p><strong>Garantía:</strong> ${orden.garantia} días</p>` : '<p><strong>Garantía:</strong> ❌ Sin garantía</p>'}</div><hr style="border: 1px solid #333;"><div style="margin: 8px 0; padding: 6px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 3px;"><p style="margin: 0; font-size: 9px; text-align: center; font-weight: bold; color: #856404;">⚠️ POLÍTICAS DEL TALLER</p><p style="margin: 10px 0 0; font-size: 0.8em; text-align: justify; line-height: 1.4;">Luego de su equipo ser arreglado tiene un plazo de 15 días para retirarlo. Si pasa de un mes pasa al taller de repuesto si no está pago.</p></div><div style="margin-top: 12px;"><p style="margin: 15px 0 3px;">_____________________</p><p style="margin: 0; font-size: 10px;">Firma del Cliente</p></div><div style="margin-top: 20px; text-align: center; font-size: 0.9em;"><p><strong>Estado:</strong> ${orden.estado}</p><p>¡Gracias por su confianza!</p></div></div>`;
+    
+    // Obtener configuración del taller
+    const config = await obtenerConfiguracionTaller();
+    const nombreTaller = config?.nombreTaller || 'TALLER DE REPARACIONES';
+    const direccionTaller = config?.direccionTaller || '';
+    const telefonoTaller = config?.telefonoTaller || '';
+    const emailTaller = config?.emailTaller || '';
+    const politicasTexto = config?.politicasTaller || 'Luego de su equipo ser arreglado tiene un plazo de 15 días para retirarlo. Si pasa de un mes pasa al taller de repuesto si no está pago.';
+    const logoUrl = config?.logoUrl || null;
+    
+    // Construir HTML del encabezado con logo si existe
+    let encabezadoHTML = '<div style="text-align: center; margin-bottom: 20px;">';
+    if (logoUrl) {
+        encabezadoHTML += `<img src="${logoUrl}" style="max-width: 80px; max-height: 80px; object-fit: contain; margin-bottom: 10px;" alt="Logo">`;
+    }
+    encabezadoHTML += `<h2 style="margin: 0;">🔧 ${nombreTaller}</h2>`;
+    if (direccionTaller) {
+        encabezadoHTML += `<p style="margin: 3px 0; font-size: 10px;">${direccionTaller}</p>`;
+    }
+    if (telefonoTaller) {
+        encabezadoHTML += `<p style="margin: 3px 0; font-size: 10px;">Tel: ${telefonoTaller}</p>`;
+    }
+    if (emailTaller) {
+        encabezadoHTML += `<p style="margin: 3px 0; font-size: 10px;">Email: ${emailTaller}</p>`;
+    }
+    encabezadoHTML += '<p style="margin: 5px 0;">ORDEN DE SERVICIO</p></div>';
+    
+    const recibo = `<div style="font-family: Arial, sans-serif; max-width: 300px; font-size: 11px; margin: 0 auto; padding: 20px; border: 2px solid #333;">${encabezadoHTML}<hr style="border: 1px solid #333;"><div style="margin: 6px 0;"><p style="margin: 2px 0;"><strong>Orden:</strong> #${orden.numero}</p><p><strong>Fecha:</strong> ${formatearFecha(orden.fechaIngreso)}</p>${orden.fechaEstimada ? `<p><strong>Entrega estimada:</strong> ${formatearFecha(orden.fechaEstimada)}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 4px 0; font-size: 12px;">DATOS DEL CLIENTE</h3><p><strong>Nombre:</strong> ${cliente.nombre} ${cliente.apellido}</p><p><strong>Celular:</strong> ${cliente.celular}</p>${cliente.email ? `<p><strong>Email:</strong> ${cliente.email}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">DATOS DEL EQUIPO</h3><p><strong>Tipo:</strong> ${orden.tipoDispositivo}</p><p><strong>Marca:</strong> ${orden.marca}</p><p><strong>Modelo:</strong> ${orden.modelo}</p>${orden.imei ? `<p><strong>IMEI/Serie:</strong> ${orden.imei}</p>` : ''}${orden.accesorios ? `<p><strong>Accesorios:</strong> ${orden.accesorios}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">PROBLEMA REPORTADO</h3><p>${orden.problema}</p></div>${orden.notas ? `<hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">NOTAS</h3><p>${orden.notas}</p></div>` : ''}<hr style="border: 1px solid #333;"><div style="margin: 15px 0;">${orden.presupuesto ? `<p><strong>Presupuesto:</strong> <span style="font-size: 1.3em;">$${orden.presupuesto.toFixed(2)}</span></p><p><strong>Anticipo:</strong> $${(orden.anticipo || 0).toFixed(2)}</p><p><strong>Saldo:</strong> $${((orden.presupuesto || 0) - (orden.anticipo || 0)).toFixed(2)}</p>` : '<p><em>Presupuesto pendiente</em></p>'}${orden.tieneGarantia !== false ? `<p><strong>Garantía:</strong> ${orden.garantia} días</p>` : '<p><strong>Garantía:</strong> ❌ Sin garantía</p>'}</div><hr style="border: 1px solid #333;"><div style="margin: 8px 0; padding: 6px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 3px;"><p style="margin: 0; font-size: 9px; text-align: center; font-weight: bold; color: #856404;">⚠️ POLÍTICAS DEL TALLER</p><p style="margin: 10px 0 0; font-size: 0.8em; text-align: justify; line-height: 1.4;">${politicasTexto}</p></div><div style="margin-top: 12px;"><p style="margin: 15px 0 3px;">_____________________</p><p style="margin: 0; font-size: 10px;">Firma del Cliente</p></div><div style="margin-top: 20px; text-align: center; font-size: 0.9em;"><p><strong>Estado:</strong> ${orden.estado}</p><p>¡Gracias por su confianza!</p></div></div>`;
     const ventana = window.open('', '', 'width=800,height=600');
     ventana.document.write('<html><head><title>Orden de Servicio</title></head><body>');
     ventana.document.write(recibo);
@@ -2971,3 +3065,274 @@ window.filtrarInventario = filtrarInventario;
 window.exportarDatos = exportarDatos;
 window.imprimirReporte = imprimirReporte;
 window.buscar = buscar;
+
+// === CONFIGURACIÓN DEL TALLER ===
+let configuracionTallerCache = null;
+
+// Variable global para almacenar el logo en base64 temporalmente
+let logoBase64Temporal = null;
+
+// Función para previsualizar el logo antes de guardar
+function previsualizarLogo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validar tamaño (máximo 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        mostrarNotificacion('El archivo es muy grande. Máximo 2MB', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    // Validar tipo
+    if (!file.type.startsWith('image/')) {
+        mostrarNotificacion('Solo se permiten archivos de imagen', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const preview = document.getElementById('logoPreview');
+        const img = new Image();
+        img.onload = function() {
+            // Redimensionar si es necesario (máximo 400px de ancho)
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const maxWidth = 400;
+            
+            if (width > maxWidth) {
+                height = (height * maxWidth) / width;
+                width = maxWidth;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Convertir a base64 con calidad optimizada
+            logoBase64Temporal = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Mostrar preview
+            preview.innerHTML = `<img src="${logoBase64Temporal}" style="width: 100%; height: 100%; object-fit: contain;" alt="Logo">`;
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Función para cargar la configuración del taller
+async function cargarConfiguracion() {
+    try {
+        const usuarioActual = obtenerUsuarioActual();
+        if (!usuarioActual) {
+            console.log('No hay usuario autenticado');
+            return;
+        }
+
+        // Intentar cargar desde Firebase primero
+        if (typeof db !== 'undefined' && db) {
+            try {
+                const docRef = db.collection('configuraciones').doc(usuarioActual);
+                const doc = await docRef.get();
+                
+                if (doc.exists) {
+                    const config = doc.data();
+                    configuracionTallerCache = config;
+                    
+                    // Llenar el formulario
+                    document.getElementById('nombreTaller').value = config.nombreTaller || '';
+                    document.getElementById('direccionTaller').value = config.direccionTaller || '';
+                    document.getElementById('telefonoTaller').value = config.telefonoTaller || '';
+                    document.getElementById('emailTaller').value = config.emailTaller || '';
+                    document.getElementById('politicasTaller').value = config.politicasTaller || '';
+                    
+                    // Cargar logo si existe
+                    if (config.logoUrl) {
+                        const preview = document.getElementById('logoPreview');
+                        preview.innerHTML = `<img src="${config.logoUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="Logo">`;
+                        logoBase64Temporal = config.logoUrl;
+                    }
+                    
+                    console.log('✅ Configuración cargada desde Firebase');
+                    mostrarNotificacion('Configuración cargada correctamente', 'success');
+                    return;
+                }
+            } catch (error) {
+                console.log('No se pudo cargar desde Firebase, intentando localStorage...', error);
+            }
+        }
+        
+        // Cargar desde localStorage como respaldo
+        const configLocal = localStorage.getItem(`configuracion_${usuarioActual}`);
+        if (configLocal) {
+            const config = JSON.parse(configLocal);
+            configuracionTallerCache = config;
+            
+            document.getElementById('nombreTaller').value = config.nombreTaller || '';
+            document.getElementById('direccionTaller').value = config.direccionTaller || '';
+            document.getElementById('telefonoTaller').value = config.telefonoTaller || '';
+            document.getElementById('emailTaller').value = config.emailTaller || '';
+            document.getElementById('politicasTaller').value = config.politicasTaller || '';
+            
+            if (config.logoUrl) {
+                const preview = document.getElementById('logoPreview');
+                preview.innerHTML = `<img src="${config.logoUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="Logo">`;
+                logoBase64Temporal = config.logoUrl;
+            }
+            
+            console.log('✅ Configuración cargada desde localStorage');
+        }
+    } catch (error) {
+        console.error('Error al cargar configuración:', error);
+        mostrarNotificacion('Error al cargar la configuración', 'error');
+    }
+}
+
+// Función para obtener el usuario actual
+function obtenerUsuarioActual() {
+    // Primero intentar con Firebase Auth
+    if (typeof auth !== 'undefined' && auth && auth.currentUser) {
+        return auth.currentUser.uid;
+    }
+    
+    // Luego con el usuario de localStorage
+    const usuario = localStorage.getItem('usuarioActual');
+    if (usuario) {
+        return usuario;
+    }
+    
+    return null;
+}
+
+// Función para guardar la configuración
+async function guardarConfiguracion(event) {
+    if (event) event.preventDefault();
+    
+    const usuarioActual = obtenerUsuarioActual();
+    if (!usuarioActual) {
+        mostrarNotificacion('No hay usuario autenticado', 'error');
+        return;
+    }
+    
+    const config = {
+        nombreTaller: document.getElementById('nombreTaller').value,
+        direccionTaller: document.getElementById('direccionTaller').value,
+        telefonoTaller: document.getElementById('telefonoTaller').value,
+        emailTaller: document.getElementById('emailTaller').value,
+        politicasTaller: document.getElementById('politicasTaller').value,
+        logoUrl: logoBase64Temporal || configuracionTallerCache?.logoUrl || null,
+        fechaActualizacion: new Date().toISOString()
+    };
+    
+    try {
+        // Guardar en Firebase
+        if (typeof db !== 'undefined' && db) {
+            try {
+                await db.collection('configuraciones').doc(usuarioActual).set(config, { merge: true });
+                console.log('✅ Configuración guardada en Firebase');
+            } catch (error) {
+                console.error('Error al guardar en Firebase:', error);
+                mostrarNotificacion('Advertencia: No se pudo sincronizar con Firebase. Guardado solo localmente.', 'warning');
+            }
+        }
+        
+        // Guardar en localStorage como respaldo
+        localStorage.setItem(`configuracion_${usuarioActual}`, JSON.stringify(config));
+        configuracionTallerCache = config;
+        
+        mostrarNotificacion('✅ Configuración guardada exitosamente', 'success');
+        
+        // Mostrar mensaje de éxito en el formulario
+        const mensaje = document.getElementById('configuracionMensaje');
+        mensaje.style.display = 'block';
+        mensaje.style.background = '#d4edda';
+        mensaje.style.color = '#155724';
+        mensaje.style.border = '1px solid #c3e6cb';
+        mensaje.textContent = '✅ Tu configuración se ha guardado correctamente y estará disponible en todos tus dispositivos.';
+        
+        setTimeout(() => {
+            mensaje.style.display = 'none';
+        }, 5000);
+        
+    } catch (error) {
+        console.error('Error al guardar configuración:', error);
+        mostrarNotificacion('Error al guardar la configuración', 'error');
+        
+        const mensaje = document.getElementById('configuracionMensaje');
+        mensaje.style.display = 'block';
+        mensaje.style.background = '#f8d7da';
+        mensaje.style.color = '#721c24';
+        mensaje.style.border = '1px solid #f5c6cb';
+        mensaje.textContent = '❌ Error al guardar la configuración. Por favor, intenta nuevamente.';
+    }
+}
+
+// Función para obtener la configuración (usada por otras funciones)
+async function obtenerConfiguracionTaller() {
+    if (configuracionTallerCache) {
+        return configuracionTallerCache;
+    }
+    
+    const usuarioActual = obtenerUsuarioActual();
+    if (!usuarioActual) return null;
+    
+    // Intentar cargar desde Firebase
+    if (typeof db !== 'undefined' && db) {
+        try {
+            const docRef = db.collection('configuraciones').doc(usuarioActual);
+            const doc = await docRef.get();
+            
+            if (doc.exists) {
+                configuracionTallerCache = doc.data();
+                return configuracionTallerCache;
+            }
+        } catch (error) {
+            console.log('Error al cargar desde Firebase:', error);
+        }
+    }
+    
+    // Cargar desde localStorage
+    const configLocal = localStorage.getItem(`configuracion_${usuarioActual}`);
+    if (configLocal) {
+        configuracionTallerCache = JSON.parse(configLocal);
+        return configuracionTallerCache;
+    }
+    
+    return null;
+}
+
+// Función auxiliar para mostrar secciones (usada desde el botón del header)
+window.mostrarSeccion = function(seccionId) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    
+    const seccion = document.getElementById(seccionId);
+    if (seccion) {
+        seccion.classList.add('active');
+    }
+    
+    const btn = document.querySelector(`[data-section="${seccionId}"]`);
+    if (btn) {
+        btn.classList.add('active');
+    }
+    
+    // Cargar datos específicos de la sección
+    if (seccionId === 'configuracion') {
+        cargarConfiguracion();
+    }
+    if (seccionId === 'dashboard') actualizarDashboard();
+    if (seccionId === 'clientes') cargarClientes();
+    if (seccionId === 'ordenes') cargarOrdenes();
+    if (seccionId === 'pagos') cargarPagos();
+    if (seccionId === 'inventario') filtrarInventario();
+    if (seccionId === 'reportes') generarReportes();
+};
+
+// Exponer funciones al scope global
+window.previsualizarLogo = previsualizarLogo;
+window.cargarConfiguracion = cargarConfiguracion;
+window.guardarConfiguracion = guardarConfiguracion;
+window.obtenerConfiguracionTaller = obtenerConfiguracionTaller;

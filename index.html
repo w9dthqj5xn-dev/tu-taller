@@ -122,6 +122,7 @@
                 <div style="display: flex; gap: 10px;">
                     <button onclick="importarDatos()" class="btn-logout" style="background: #10b981;" title="Importar backup de datos">📤 Importar</button>
                     <button onclick="exportarDatos()" class="btn-logout" style="background: #8b5cf6;" title="Exportar backup de datos">📥 Exportar</button>
+                    <button onclick="mostrarSeccion('configuracion')" class="btn-logout" style="background: #6366f1;" title="Configuración de taller">⚙️ Configuración</button>
                     <button onclick="cerrarSesion()" class="btn-logout">🚪 Cerrar Sesión</button>
                 </div>
             </div>
@@ -133,6 +134,7 @@
                 <button class="nav-btn" data-section="inventario">Inventario</button>
                 <button class="nav-btn" data-section="reportes">Reportes</button>
                 <button class="nav-btn" data-section="buscar">Buscar</button>
+                <button class="nav-btn" data-section="configuracion">⚙️ Configuración</button>
             </nav>
         </header>
 
@@ -617,6 +619,78 @@
                     <button class="btn-primary" onclick="buscar()">🔍 Buscar</button>
                 </div>
                 <div id="resultadosBusqueda"></div>
+
+            <!-- Configuración del Taller -->
+            <section id="configuracion" class="section">
+                <h2>⚙️ Configuración del Taller</h2>
+                <p style="color: #666; margin-bottom: 25px;">Personaliza la información de tu taller que aparecerá en las facturas y recibos.</p>
+                
+                <div class="form-container" style="display: block; max-width: 700px; margin: 0 auto;">
+                    <form id="configuracionForm" onsubmit="guardarConfiguracion(event)">
+                        <!-- Logo del Taller -->
+                        <div class="form-group">
+                            <label style="font-weight: bold; font-size: 16px; margin-bottom: 15px; display: block;">📷 Logo del Taller</label>
+                            <div style="display: flex; gap: 20px; align-items: start;">
+                                <div style="flex: 1;">
+                                    <input type="file" id="logoInput" accept="image/*" onchange="previsualizarLogo(event)" 
+                                           style="display: block; margin-bottom: 10px; padding: 10px; border: 2px dashed #ddd; border-radius: 8px; width: 100%;">
+                                    <small style="color: #666; display: block;">Formatos: JPG, PNG, GIF. Tamaño máximo: 2MB</small>
+                                </div>
+                                <div id="logoPreview" style="width: 120px; height: 120px; border: 2px solid #ddd; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; overflow: hidden;">
+                                    <span style="color: #999; font-size: 12px; text-align: center;">Vista previa<br>del logo</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 25px 0;">
+
+                        <!-- Nombre del Taller -->
+                        <div class="form-group">
+                            <label style="font-weight: bold;">🏪 Nombre del Taller</label>
+                            <input type="text" id="nombreTaller" placeholder="Ej: Taller Electrónica XYZ" 
+                                   style="width: 100%; padding: 12px; font-size: 15px;">
+                        </div>
+
+                        <!-- Dirección -->
+                        <div class="form-group">
+                            <label style="font-weight: bold;">📍 Dirección del Taller</label>
+                            <textarea id="direccionTaller" rows="2" placeholder="Ej: Calle 123 #45-67, Local 3, Ciudad"
+                                      style="width: 100%; padding: 12px; font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
+                        </div>
+
+                        <!-- Teléfono -->
+                        <div class="form-group">
+                            <label style="font-weight: bold;">📱 Teléfono de Contacto</label>
+                            <input type="tel" id="telefonoTaller" placeholder="Ej: +57 300 123 4567" 
+                                   style="width: 100%; padding: 12px; font-size: 14px;">
+                        </div>
+
+                        <!-- Email -->
+                        <div class="form-group">
+                            <label style="font-weight: bold;">📧 Email de Contacto</label>
+                            <input type="email" id="emailTaller" placeholder="Ej: contacto@mitaller.com" 
+                                   style="width: 100%; padding: 12px; font-size: 14px;">
+                        </div>
+
+                        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 25px 0;">
+
+                        <!-- Políticas del Taller -->
+                        <div class="form-group">
+                            <label style="font-weight: bold;">📋 Políticas del Taller</label>
+                            <textarea id="politicasTaller" rows="4" placeholder="Ej: Luego de su equipo ser arreglado tiene un plazo de 15 días para retirarlo. Si pasa de un mes pasa al taller de repuesto si no está pago."
+                                      style="width: 100%; padding: 12px; font-size: 14px; resize: vertical; font-family: inherit; line-height: 1.5;"></textarea>
+                            <small style="color: #666; display: block; margin-top: 5px;">Este texto aparecerá en todas las facturas y recibos.</small>
+                        </div>
+
+                        <div class="form-actions" style="margin-top: 30px; display: flex; gap: 10px; justify-content: center;">
+                            <button type="submit" class="btn-primary" style="padding: 12px 30px; font-size: 15px;">💾 Guardar Configuración</button>
+                            <button type="button" class="btn-secondary" onclick="cargarConfiguracion()" style="padding: 12px 30px; font-size: 15px;">🔄 Recargar</button>
+                        </div>
+                    </form>
+
+                    <div id="configuracionMensaje" style="margin-top: 20px; padding: 15px; border-radius: 8px; display: none;"></div>
+                </div>
+            </section>
             </section>
         </main>
     </div>
@@ -631,6 +705,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="firebase-config.js?v=10"></script>
     <script src="app.js?v=10"></script>
 </body>

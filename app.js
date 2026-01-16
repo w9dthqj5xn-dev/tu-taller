@@ -2695,19 +2695,29 @@ function generarReportes() {
     const gastos = Storage.get('gastos') || [];
     let gastosDelPeriodo = 0;
     
+    console.log('🔍 Calculando gastos del período...');
+    console.log('Total de gastos en localStorage:', gastos.length);
+    console.log('Período filtrado:', fechaInicio.toISOString().split('T')[0], 'a', fechaFin.toISOString().split('T')[0]);
+    
     gastos.forEach(gasto => {
-        const fechaGasto = new Date(gasto.fecha);
+        const fechaGasto = new Date(gasto.fecha + 'T00:00:00'); // Asegurar formato correcto
         const fechaGastoNormalizada = new Date(fechaGasto.getFullYear(), fechaGasto.getMonth(), fechaGasto.getDate());
         const fechaInicioNormalizada = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth(), fechaInicio.getDate());
         const fechaFinNormalizada = new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaFin.getDate());
         
         if (fechaGastoNormalizada >= fechaInicioNormalizada && fechaGastoNormalizada <= fechaFinNormalizada) {
-            gastosDelPeriodo += parseFloat(gasto.monto) || 0;
+            const montoGasto = parseFloat(gasto.monto) || 0;
+            gastosDelPeriodo += montoGasto;
+            console.log(`✅ Gasto incluido: ${gasto.descripcion} - $${montoGasto} (${gasto.fecha})`);
         }
     });
     
+    console.log('💸 Total gastos del período:', gastosDelPeriodo);
+    
     // Restar gastos de la ganancia neta
     gananciaNetaTotal -= gastosDelPeriodo;
+    
+    console.log('📊 Ganancia Neta Total (con gastos restados):', gananciaNetaTotal);
     
     document.getElementById('reporteIngresos').textContent = `$${formatearMonto(ingresosTotales)}`;
     document.getElementById('reporteCompletadas').textContent = ordenesFiltradas.length;
@@ -2736,7 +2746,6 @@ function generarReportes() {
     let costosTotalesRepuestos = 0;
     let anticiposTotales = 0;
     let comisionesTotalesReporte = 0;
-    let gastosTotalesReporte = 0;
     
     ordenesFiltradas.forEach(orden => {
         const presupuesto = orden.presupuesto || 0;
@@ -2764,21 +2773,19 @@ function generarReportes() {
         anticiposTotales += orden.anticipo || 0;
     });
     
-    // Calcular gastos del período
-    const gastosReporte = Storage.get('gastos') || [];
-    gastosReporte.forEach(gasto => {
-        const fechaGasto = new Date(gasto.fecha);
-        const fechaGastoNormalizada = new Date(fechaGasto.getFullYear(), fechaGasto.getMonth(), fechaGasto.getDate());
-        const fechaInicioNormalizada = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth(), fechaInicio.getDate());
-        const fechaFinNormalizada = new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaFin.getDate());
-        
-        if (fechaGastoNormalizada >= fechaInicioNormalizada && fechaGastoNormalizada <= fechaFinNormalizada) {
-            gastosTotalesReporte += parseFloat(gasto.monto) || 0;
-        }
-    });
+    // Usar el mismo valor de gastos calculado anteriormente
+    const gastosTotalesReporte = gastosDelPeriodo;
     
     // Ganancia Real = Presupuesto - (Costo Piezas + Costo Repuestos + Comisiones + Gastos)
     gananciaReal = ingresosTotales - costosTotalesPiezas - costosTotalesRepuestos - comisionesTotalesReporte - gastosTotalesReporte;
+    
+    console.log('📈 Desglose de Ganancia Real:');
+    console.log('  Ingresos:', ingresosTotales);
+    console.log('  - Costos Piezas:', costosTotalesPiezas);
+    console.log('  - Costos Repuestos:', costosTotalesRepuestos);
+    console.log('  - Comisiones:', comisionesTotalesReporte);
+    console.log('  - Gastos:', gastosTotalesReporte);
+    console.log('  = Ganancia Real:', gananciaReal);
     
     const porcentajeGanancia = ingresosTotales > 0 ? (gananciaReal / ingresosTotales * 100) : 0;
     const porcentajeCostosPiezas = ingresosTotales > 0 ? (costosTotalesPiezas / ingresosTotales * 100) : 0;

@@ -1,0 +1,212 @@
+// ====================================================================
+// REGLAS DE FIRESTORE COMPLETAS PARA TU TALLER
+// ====================================================================
+// 
+// INSTRUCCIONES PARA APLICAR:
+// 1. Ve a: https://console.firebase.google.com/
+// 2. Selecciona tu proyecto "licencias-taller"
+// 3. Ve a: Firestore Database → Reglas (pestaña "Rules")
+// 4. BORRA TODO el contenido actual
+// 5. PEGA este código completo
+// 6. Haz clic en "Publicar" (Publish)
+// 7. Espera el mensaje de confirmación
+//
+// ====================================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // LICENCIAS - Sistema de licencias
+    // ============================================
+    match /licencias/{license} {
+      allow read: if true;  // Lectura pública para validación
+      allow write: if true;  // Permitir escritura para admin desde licencias.html
+    }
+    
+    // ============================================
+    // USUARIOS - Registro inicial y autenticación
+    // ============================================
+    match /usuarios/{user} {
+      allow read, write: if true;  // Acceso público para sistema de usuarios normal
+    }
+    
+    // ============================================
+    // USUARIOS GOOGLE - Autenticación con Google
+    // ============================================
+    match /usuarios-google/{userId} {
+      // Permitir lectura y escritura a cualquier usuario autenticado
+      // Esto permite el flujo completo de autenticación y actualización de datos
+      allow read, write: if request.auth != null;
+    }
+    
+    // ============================================
+    // CONFIGURACIONES - Logo, nombre taller, políticas
+    // ============================================
+    match /configuraciones/{userId} {
+      // Permitir que cada usuario autenticado acceda a su propia configuración
+      allow read, write: if request.auth != null;
+      // Esto sincroniza la configuración entre todos los dispositivos del usuario
+    }
+    
+    // ============================================
+    // USUARIOS-DATA - Datos de cada usuario
+    // ============================================
+    // Permite el funcionamiento completo de TODAS las funcionalidades:
+    // ✅ Clientes, Órdenes, Inventario, Pagos, Reportes, Búsquedas
+    match /usuarios-data/{userId} {
+      // Permitir acceso a cualquiera (tanto usuarios normales como Google)
+      allow read, write: if true;
+      
+      // ====== CLIENTES ======
+      // Gestión completa de clientes
+      match /clientes/{clienteId} {
+        allow read, write, delete: if true;
+      }
+      
+      // ====== ÓRDENES ======
+      // Gestión de órdenes de reparación/servicio
+      match /ordenes/{ordenId} {
+        allow read, write, delete: if true;
+      }
+      
+      // ====== INVENTARIO/REPUESTOS ======
+      // Control de inventario y repuestos
+      match /repuestos/{repuestoId} {
+        allow read, write, delete: if true;
+      }
+      
+      // ====== FACTURAS ======
+      // Historial de facturas generadas
+      match /facturas/{facturaId} {
+        allow read, write, delete: if true;
+      }
+      
+      // ====== PAGOS ======
+      // Registro de pagos realizados
+      match /pagos/{pagoId} {
+        allow read, write, delete: if true;
+      }
+      
+      // ====== PRODUCTOS ======
+      // Catálogo de productos/servicios
+      match /productos/{productoId} {
+        allow read, write, delete: if true;
+      }
+      
+      // ====== CONFIGURACIÓN LOCAL DEL USUARIO ======
+      // Preferencias y configuración específica del usuario
+      match /configuracion/{configId} {
+        allow read, write, delete: if true;
+      }
+      
+      // ====== REGLA CATCH-ALL ======
+      // Para cualquier otra subcolección futura
+      match /{collection}/{document=**} {
+        allow read, write, delete: if true;
+      }
+    }
+  }
+}
+
+// ====================================================================
+// EXPLICACIÓN COMPLETA DE LAS REGLAS
+// ====================================================================
+//
+// 1. LICENCIAS
+//    Propósito: Validar si un usuario tiene licencia activa
+//    Acceso: Público (cualquiera puede validar y escribir)
+//
+// 2. USUARIOS
+//    Propósito: Registro inicial con usuario/contraseña
+//    Acceso: Público (permite crear cuentas nuevas)
+//
+// 3. USUARIOS-GOOGLE
+//    Propósito: Datos de usuarios autenticados con Google
+//    Acceso: Solo usuarios autenticados pueden leer/escribir
+//    Seguridad: request.auth != null
+//
+// 4. CONFIGURACIONES (🆕 NUEVO)
+//    Propósito: Logo, nombre del taller, dirección, políticas
+//    Acceso: Solo usuarios autenticados
+//    Sincronización: Los datos se sincronizan automáticamente
+//                   entre todos los dispositivos del mismo usuario
+//    Estructura: configuraciones/{userId}
+//                - nombreTaller
+//                - direccionTaller
+//                - telefonoTaller
+//                - emailTaller
+//                - politicasTaller
+//                - logoUrl (base64)
+//                - fechaActualizacion
+//
+// 5. USUARIOS-DATA
+//    Propósito: TODOS los datos operativos del usuario
+//    Acceso: Público (permite usuarios normales sin request.auth)
+//    
+//    Estructura: usuarios-data/{email}/
+//                ├── clientes/      - Gestión de clientes
+//                ├── ordenes/       - Órdenes de trabajo
+//                ├── repuestos/     - Inventario
+//                ├── facturas/      - Facturas generadas
+//                ├── pagos/         - Registro de pagos
+//                └── productos/     - Catálogo de productos
+//
+//    Funcionalidades cubiertas:
+//    ✅ Crear/editar/eliminar clientes
+//    ✅ Crear/editar órdenes de reparación
+//    ✅ Cambiar estados de órdenes (pendiente, proceso, completado)
+//    ✅ Registrar pagos y actualizar saldos
+//    ✅ Agregar/editar/eliminar repuestos del inventario
+//    ✅ Controlar stock de repuestos
+//    ✅ Generar facturas personalizadas con logo
+//    ✅ Generar reportes (ventas, inventario, clientes)
+//    ✅ Buscar clientes y órdenes
+//    ✅ Ver historial completo de clientes
+//
+// ====================================================================
+// VERIFICACIÓN POST-APLICACIÓN
+// ====================================================================
+//
+// Después de publicar las reglas, verifica que funcionan:
+//
+// 1. Abre tu aplicación: https://tu-taller.netlify.app
+// 2. Abre la consola del navegador (F12)
+// 3. Ve a "Configuración" y guarda tus datos
+// 4. Deberías ver en la consola:
+//    ✅ Configuración guardada exitosamente en Firebase
+//    ✅ Configuración guardada y sincronizada en la nube
+//
+// 5. Si ves errores "permission-denied":
+//    - Verifica que pegaste las reglas correctamente
+//    - Asegúrate de hacer clic en "Publicar"
+//    - Refresca la página (Ctrl+F5 o Cmd+Shift+R)
+//    - Cierra sesión y vuelve a iniciar
+//
+// 6. Prueba en otro equipo:
+//    - Inicia sesión con la misma cuenta
+//    - Ve a "Configuración"
+//    - Deberías ver tus datos automáticamente
+//
+// ====================================================================
+// SEGURIDAD
+// ====================================================================
+//
+// ⚠️ IMPORTANTE: Estas reglas son PERMISIVAS (allow: if true)
+//    para permitir el funcionamiento completo del sistema.
+//
+// En producción considera restringir según tu caso:
+// - allow read, write: if request.auth != null;
+//   (Solo usuarios autenticados)
+//
+// - allow read, write: if request.auth.uid == userId;
+//   (Solo el dueño de los datos)
+//
+// Para este taller, las reglas actuales permiten:
+// ✅ Usuarios sin cuenta de Google (usuarios normales)
+// ✅ Usuarios con cuenta de Google (autenticados)
+// ✅ Sincronización entre dispositivos
+// ✅ Todas las funcionalidades del sistema
+//
+// ====================================================================

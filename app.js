@@ -3182,7 +3182,13 @@ async function imprimirFacturaCompleta() {
     
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
-    const orden = ordenes.find(o => o.id === ordenIdTemporal);
+    const orden = ordenes.find(o => o.id == ordenIdTemporal);
+    
+    if (!orden) {
+        alert('Error: No se encontró la orden');
+        return;
+    }
+    
     const cliente = clientes.find(c => c.id === orden.clienteId);
     
     // Obtener configuración del taller
@@ -3312,7 +3318,13 @@ async function imprimirSoloTicket() {
     
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
-    const orden = ordenes.find(o => o.id === ordenIdTemporal);
+    const orden = ordenes.find(o => o.id == ordenIdTemporal);
+    
+    if (!orden) {
+        alert('Error: No se encontró la orden');
+        return;
+    }
+    
     const cliente = clientes.find(c => c.id === orden.clienteId);
     
     // Obtener configuración del taller

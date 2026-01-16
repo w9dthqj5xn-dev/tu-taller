@@ -1055,6 +1055,11 @@ tr:hover {
 
 
 /* === CONFIGURACIÓN DEL TALLER === */
+#configuracion .form-container {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
 #logoPreview img {
     transition: all 0.3s ease;
 }

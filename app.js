@@ -3490,6 +3490,10 @@ window.filtrarInventario = filtrarInventario;
 window.exportarDatos = exportarDatos;
 window.imprimirReporte = imprimirReporte;
 window.buscar = buscar;
+window.imprimirRecibo = imprimirRecibo;
+window.imprimirFacturaCompleta = imprimirFacturaCompleta;
+window.imprimirSoloTicket = imprimirSoloTicket;
+window.cerrarModalSeleccionImpresion = cerrarModalSeleccionImpresion;
 
 // === CONFIGURACIÓN DEL TALLER ===
 let configuracionTallerCache = null;

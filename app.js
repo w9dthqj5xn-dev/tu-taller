@@ -3192,12 +3192,93 @@ async function imprimirRecibo(ordenId) {
     encabezadoHTML += '<p style="margin: 5px 0;">ORDEN DE SERVICIO</p></div>';
     
     const recibo = `<div style="font-family: Arial, sans-serif; max-width: 300px; font-size: 11px; margin: 0 auto; padding: 20px; border: 2px solid #333;">${encabezadoHTML}<hr style="border: 1px solid #333;"><div style="margin: 6px 0;"><p style="margin: 2px 0;"><strong>Orden:</strong> #${orden.numero}</p><p><strong>Fecha:</strong> ${formatearFecha(orden.fechaIngreso)}</p>${orden.fechaEstimada ? `<p><strong>Entrega estimada:</strong> ${formatearFecha(orden.fechaEstimada)}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 4px 0; font-size: 12px;">DATOS DEL CLIENTE</h3><p><strong>Nombre:</strong> ${cliente.nombre} ${cliente.apellido}</p><p><strong>Celular:</strong> ${cliente.celular}</p>${cliente.email ? `<p><strong>Email:</strong> ${cliente.email}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">DATOS DEL EQUIPO</h3><p><strong>Tipo:</strong> ${orden.tipoDispositivo}</p><p><strong>Marca:</strong> ${orden.marca}</p><p><strong>Modelo:</strong> ${orden.modelo}</p>${orden.imei ? `<p><strong>IMEI/Serie:</strong> ${orden.imei}</p>` : ''}${orden.accesorios ? `<p><strong>Accesorios:</strong> ${orden.accesorios}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">PROBLEMA REPORTADO</h3><p>${orden.problema}</p></div>${orden.notas ? `<hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">NOTAS</h3><p>${orden.notas}</p></div>` : ''}<hr style="border: 1px solid #333;"><div style="margin: 15px 0;">${orden.presupuesto ? `<p><strong>Presupuesto:</strong> <span style="font-size: 1.3em;">$${orden.presupuesto.toFixed(2)}</span></p><p><strong>Anticipo:</strong> $${(orden.anticipo || 0).toFixed(2)}</p><p><strong>Saldo:</strong> $${((orden.presupuesto || 0) - (orden.anticipo || 0)).toFixed(2)}</p>` : '<p><em>Presupuesto pendiente</em></p>'}${orden.tieneGarantia !== false ? `<p><strong>Garantía:</strong> ${orden.garantia} días</p>` : '<p><strong>Garantía:</strong> ❌ Sin garantía</p>'}</div><hr style="border: 1px solid #333;"><div style="margin: 8px 0; padding: 6px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 3px;"><p style="margin: 0; font-size: 9px; text-align: center; font-weight: bold; color: #856404;">⚠️ POLÍTICAS DEL TALLER</p><p style="margin: 10px 0 0; font-size: 0.8em; text-align: justify; line-height: 1.4;">${politicasTexto}</p></div><div style="margin-top: 12px;"><p style="margin: 15px 0 3px;">_____________________</p><p style="margin: 0; font-size: 10px;">Firma del Cliente</p></div><div style="margin-top: 20px; text-align: center; font-size: 0.9em;"><p><strong>Estado:</strong> ${orden.estado}</p><p>¡Gracias por su confianza!</p></div></div>`;
+    
+    // 1. Imprimir FACTURA
     const ventana = window.open('', '', 'width=800,height=600');
     ventana.document.write('<html><head><title>Orden de Servicio</title></head><body>');
     ventana.document.write(recibo);
     ventana.document.write('</body></html>');
     ventana.document.close();
     ventana.print();
+    
+    // 2. Esperar un momento y luego imprimir TICKET PEQUEÑO
+    setTimeout(() => {
+        imprimirTicketPequeno(orden, cliente, nombreTaller);
+    }, 1000);
+}
+
+// Nueva función para imprimir ticket pequeño para impresora de códigos/etiquetas
+function imprimirTicketPequeno(orden, cliente, nombreTaller) {
+    // Ticket pequeño optimizado para impresoras de etiquetas (58mm o 80mm)
+    const ticket = `
+    <div style="font-family: 'Courier New', monospace; width: 58mm; font-size: 10px; padding: 5mm; margin: 0;">
+        <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 3mm; margin-bottom: 3mm;">
+            <div style="font-size: 12px; font-weight: bold;">${nombreTaller}</div>
+            <div style="font-size: 9px; margin-top: 2mm;">TICKET DE IDENTIFICACIÓN</div>
+        </div>
+        
+        <div style="margin: 3mm 0; border: 2px solid #000; padding: 3mm; background: #f0f0f0;">
+            <div style="font-size: 16px; font-weight: bold; text-align: center; letter-spacing: 1px;">
+                ORDEN #${orden.numero}
+            </div>
+        </div>
+        
+        <div style="margin: 3mm 0; line-height: 1.6;">
+            <div style="border-bottom: 1px dashed #666; padding: 2mm 0;">
+                <strong>EQUIPO:</strong><br>
+                ${orden.marca} ${orden.modelo}
+            </div>
+            
+            <div style="border-bottom: 1px dashed #666; padding: 2mm 0;">
+                <strong>CLIENTE:</strong><br>
+                ${cliente.nombre} ${cliente.apellido}
+            </div>
+            
+            <div style="padding: 2mm 0;">
+                <strong>TELÉFONO:</strong><br>
+                ${cliente.celular}
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 5mm; padding-top: 3mm; border-top: 2px dashed #000; font-size: 8px;">
+            Fecha: ${formatearFecha(orden.fechaIngreso)}
+        </div>
+    </div>`;
+    
+    // Abrir ventana para ticket pequeño
+    const ventanaTicket = window.open('', '', 'width=300,height=400');
+    ventanaTicket.document.write(`
+        <html>
+        <head>
+            <title>Ticket - Orden #${orden.numero}</title>
+            <style>
+                @media print {
+                    @page {
+                        size: 58mm auto;
+                        margin: 0;
+                    }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                    }
+                }
+                body {
+                    margin: 0;
+                    padding: 0;
+                }
+            </style>
+        </head>
+        <body>
+            ${ticket}
+        </body>
+        </html>
+    `);
+    ventanaTicket.document.close();
+    
+    // Imprimir automáticamente después de cargar
+    setTimeout(() => {
+        ventanaTicket.print();
+    }, 500);
 }
 
 // DASHBOARD

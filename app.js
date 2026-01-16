@@ -4052,16 +4052,19 @@ async function guardarArticulosOrden() {
     }, 0);
     
     const diferenciaCosto = costoArticulos - costoArticulosOriginales;
-    liminar la función cargarInventarioSelectModal ya que no se usa
-// Solo mantener las funciones necesarias
-
-// Eordenes[ordenIndex].presupuesto = (ordenes[ordenIndex].presupuesto || 0) + diferenciaCosto;
+    ordenes[ordenIndex].presupuesto = (ordenes[ordenIndex].presupuesto || 0) + diferenciaCosto;
     
     // Guardar cambios
     await Storage.saveAndSync('repuestos', inventario);
     await Storage.saveAndSync('ordenes', ordenes);
     
-    alert(`✅ Artículos agregados exitosamente\n\nNuevo presupuesto: $${ordenes[ordenIndex].presupuesto.toFixed(2)}\nCosto de artículos: $${costoArticulos.toFixed(2)}`
+    alert(`✅ Artículos agregados exitosamente\n\nNuevo presupuesto: $${ordenes[ordenIndex].presupuesto.toFixed(2)}\nCosto de artículos: $${costoArticulos.toFixed(2)}`);
+    
+    cerrarModalArticulos();
+    cargarOrdenes();
+}
+
+// Cerrar el modal
 function cerrarModalArticulos() {
     document.getElementById('modalAgregarArticulos').style.display = 'none';
     ordenActualArticulos = null;

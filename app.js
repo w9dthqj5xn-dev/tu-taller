@@ -3160,11 +3160,21 @@ function generarPDFFacturaBlob(orden, cliente) {
 }
 
 // Variable global para almacenar temporalmente el ID de la orden a imprimir
+// Variable global para almacenar temporalmente el ID de la orden a imprimir
 let ordenIdTemporal = null;
 
 // Función principal que abre el modal de selección
 function imprimirRecibo(ordenId) {
+    console.log('📝 imprimirRecibo llamado con ID:', ordenId, 'Tipo:', typeof ordenId);
+    
+    if (!ordenId) {
+        alert('Error: ID de orden inválido');
+        console.error('❌ ordenId es undefined o null');
+        return;
+    }
+    
     ordenIdTemporal = ordenId;
+    console.log('✅ ordenIdTemporal guardado:', ordenIdTemporal);
     document.getElementById('modalSeleccionImpresion').style.display = 'block';
 }
 

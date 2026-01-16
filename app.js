@@ -3180,6 +3180,15 @@ async function imprimirFacturaCompleta() {
     
     cerrarModalSeleccionImpresion();
     
+    // Cargar datos actualizados desde Firebase
+    const usuario = firebase.auth().currentUser;
+    if (usuario) {
+        const ordenesFirebase = await Storage.loadFromFirebase(usuario.uid, 'ordenes');
+        const clientesFirebase = await Storage.loadFromFirebase(usuario.uid, 'clientes');
+        Storage.set('ordenes', ordenesFirebase);
+        Storage.set('clientes', clientesFirebase);
+    }
+    
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
     const orden = ordenes.find(o => o.id == ordenIdTemporal);
@@ -3315,6 +3324,15 @@ async function imprimirSoloTicket() {
     if (!ordenIdTemporal) return;
     
     cerrarModalSeleccionImpresion();
+    
+    // Cargar datos actualizados desde Firebase
+    const usuario = firebase.auth().currentUser;
+    if (usuario) {
+        const ordenesFirebase = await Storage.loadFromFirebase(usuario.uid, 'ordenes');
+        const clientesFirebase = await Storage.loadFromFirebase(usuario.uid, 'clientes');
+        Storage.set('ordenes', ordenesFirebase);
+        Storage.set('clientes', clientesFirebase);
+    }
     
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');

@@ -3997,13 +3997,7 @@ function actualizarArticulosActualesOrden() {
 async function guardarArticulosOrden() {
     if (!ordenActualArticulos) return;
     
-    if (!confirm('¿Deseas guardar los artículos agregados a esta orden?\n\nEsto actualizará el inventario.')) {
-        return;
-    }
-    
-    const ordenes = Storage.get('ordenes');
-    const ordenIndex = ordenes.findIndex(o => o.id === ordenActualArticulos.id);
-    presupuesto de la orden.')) {
+    if (!confirm('¿Deseas guardar los artículos agregados a esta orden?\n\nEsto actualizará el presupuesto de la orden.')) {
         return;
     }
     

@@ -3186,9 +3186,19 @@ function cerrarModalSeleccionImpresion() {
 
 // Función para imprimir la factura completa (80mm)
 async function imprimirFacturaCompleta() {
-    if (!ordenIdTemporal) return;
+    console.log('🗄️ imprimirFacturaCompleta llamada, ordenIdTemporal:', ordenIdTemporal);
     
+    if (!ordenIdTemporal) {
+        alert('Error: No se ha seleccionado ninguna orden');
+        cerrarModalSeleccionImpresion();
+        return;
+    }
+    
+    // Guardar el ID localmente ANTES de cerrar el modal
+    const ordenId = ordenIdTemporal;
     cerrarModalSeleccionImpresion();
+    
+    console.log('✅ ID de orden capturado:', ordenId);
     
     // Intentar cargar datos actualizados desde Firebase (sin sobrescribir si falla)
     const usuario = firebase.auth().currentUser;
@@ -3348,9 +3358,19 @@ async function imprimirFacturaCompleta() {
 
 // Función para imprimir solo el ticket pequeño (58mm)
 async function imprimirSoloTicket() {
-    if (!ordenIdTemporal) return;
+    console.log('🏷️ imprimirSoloTicket llamada, ordenIdTemporal:', ordenIdTemporal);
     
+    if (!ordenIdTemporal) {
+        alert('Error: No se ha seleccionado ninguna orden');
+        cerrarModalSeleccionImpresion();
+        return;
+    }
+    
+    // Guardar el ID localmente ANTES de cerrar el modal
+    const ordenId = ordenIdTemporal;
     cerrarModalSeleccionImpresion();
+    
+    console.log('✅ ID de orden capturado:', ordenId);
     
     // Intentar cargar datos actualizados desde Firebase (sin sobrescribir si falla)
     const usuario = firebase.auth().currentUser;

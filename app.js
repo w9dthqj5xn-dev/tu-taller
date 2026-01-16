@@ -3180,13 +3180,23 @@ async function imprimirFacturaCompleta() {
     
     cerrarModalSeleccionImpresion();
     
-    // Cargar datos actualizados desde Firebase
+    // Intentar cargar datos actualizados desde Firebase (sin sobrescribir si falla)
     const usuario = firebase.auth().currentUser;
     if (usuario) {
-        const ordenesFirebase = await Storage.loadFromFirebase(usuario.uid, 'ordenes');
-        const clientesFirebase = await Storage.loadFromFirebase(usuario.uid, 'clientes');
-        Storage.set('ordenes', ordenesFirebase);
-        Storage.set('clientes', clientesFirebase);
+        try {
+            const ordenesFirebase = await Storage.loadFromFirebase(usuario.uid, 'ordenes');
+            const clientesFirebase = await Storage.loadFromFirebase(usuario.uid, 'clientes');
+            
+            // Solo actualizar si se cargaron datos
+            if (ordenesFirebase && ordenesFirebase.length > 0) {
+                Storage.set('ordenes', ordenesFirebase);
+            }
+            if (clientesFirebase && clientesFirebase.length > 0) {
+                Storage.set('clientes', clientesFirebase);
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudieron cargar datos desde Firebase, usando datos locales:', error);
+        }
     }
     
     const ordenes = Storage.get('ordenes');
@@ -3332,13 +3342,23 @@ async function imprimirSoloTicket() {
     
     cerrarModalSeleccionImpresion();
     
-    // Cargar datos actualizados desde Firebase
+    // Intentar cargar datos actualizados desde Firebase (sin sobrescribir si falla)
     const usuario = firebase.auth().currentUser;
     if (usuario) {
-        const ordenesFirebase = await Storage.loadFromFirebase(usuario.uid, 'ordenes');
-        const clientesFirebase = await Storage.loadFromFirebase(usuario.uid, 'clientes');
-        Storage.set('ordenes', ordenesFirebase);
-        Storage.set('clientes', clientesFirebase);
+        try {
+            const ordenesFirebase = await Storage.loadFromFirebase(usuario.uid, 'ordenes');
+            const clientesFirebase = await Storage.loadFromFirebase(usuario.uid, 'clientes');
+            
+            // Solo actualizar si se cargaron datos
+            if (ordenesFirebase && ordenesFirebase.length > 0) {
+                Storage.set('ordenes', ordenesFirebase);
+            }
+            if (clientesFirebase && clientesFirebase.length > 0) {
+                Storage.set('clientes', clientesFirebase);
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudieron cargar datos desde Firebase, usando datos locales:', error);
+        }
     }
     
     const ordenes = Storage.get('ordenes');

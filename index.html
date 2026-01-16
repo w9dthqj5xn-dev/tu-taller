@@ -803,6 +803,50 @@
     <!-- Modal para impresión de recibos -->
     <div id="modalImpresion" style="display: none;"></div>
 
+    <!-- Modal para agregar artículos a orden existente -->
+    <div id="modalAgregarArticulos" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7);">
+        <div class="modal-content" style="background-color: #fefefe; margin: 2% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 800px; box-shadow: 0 5px 30px rgba(0,0,0,0.3); animation: slideDown 0.3s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h3 style="margin: 0; color: #2c3e50;">🔧 Agregar Artículos a la Orden</h3>
+                <button onclick="cerrarModalArticulos()" style="background: none; border: none; font-size: 28px; color: #999; cursor: pointer; padding: 0; width: 40px; height: 40px;">&times;</button>
+            </div>
+            
+            <div id="infoOrdenArticulos" style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #2196F3;"></div>
+            
+            <div style="background: #fff3cd; padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+                <p style="margin: 0; font-size: 14px; color: #856404;">
+                    <strong>💡 Nota:</strong> Los artículos agregados aquí se descontarán automáticamente del inventario y se sumarán al costo de la orden.
+                </p>
+            </div>
+            
+            <div id="articulosActualesOrden" style="margin-bottom: 20px;"></div>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border: 2px dashed #dee2e6;">
+                <h4 style="margin-bottom: 15px;">➕ Agregar Nuevo Artículo</h4>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label>Seleccionar Repuesto del Inventario</label>
+                        <select id="selectRepuestoModal">
+                            <option value="">-- Seleccionar repuesto --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cantidad</label>
+                        <input type="number" id="cantidadRepuestoModal" min="1" value="1" style="text-align: center;">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end;">
+                        <button type="button" class="btn-success" onclick="agregarArticuloModal()" style="margin-bottom: 0; padding: 10px 20px;">+ Agregar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 25px; display: flex; gap: 15px; justify-content: flex-end;">
+                <button type="button" class="btn-secondary" onclick="cerrarModalArticulos()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="guardarArticulosOrden()">💾 Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Environment Variables -->
     <script src="env.js?v=10"></script>
     

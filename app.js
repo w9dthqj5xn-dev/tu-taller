@@ -2074,7 +2074,7 @@ function filtrarOrdenes() {
             garantiaHtml = `<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px; border-left: 4px solid #ffc107;"><strong>⚠️ Sin garantía</strong></div>`;
         }
         
-        html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><div class="orden-info"><div class="info-item"><span class="info-label">Cliente:</span> ${clienteNombre}</div><div class="info-item"><span class="info-label">Dispositivo:</span> ${orden.marca} ${orden.modelo}</div><div class="info-item"><span class="info-label">Tipo:</span> ${orden.tipoDispositivo}</div><div class="info-item"><span class="info-label">Fecha Ingreso:</span> ${formatearFecha(orden.fechaIngreso)}</div>${orden.presupuesto ? `<div class="info-item"><span class="info-label">Presupuesto:</span> $${orden.presupuesto.toFixed(2)}</div><div class="info-item"><span class="info-label">Anticipo:</span> $${orden.anticipo.toFixed(2)}</div><div class="info-item"><span class="info-label">Saldo:</span> <strong>$${saldo.toFixed(2)}</strong></div>` : ''}${orden.tecnico ? `<div class="info-item"><span class="info-label">Técnico:</span> ${orden.tecnico}</div>` : ''}</div><p><strong>Problema:</strong> ${orden.problema}</p>${orden.notas ? `<p><strong>Notas:</strong> ${orden.notas}</p>` : ''}${repuestosHtml}${garantiaHtml}<div style="margin-top: 15px;"><button class="btn-success" onclick="editarOrden(${orden.id})">Editar</button><button class="btn-secondary" onclick="cambiarEstadoOrden(${orden.id})">Cambiar Estado</button><button class="btn-primary" onclick="imprimirRecibo(${orden.id})">📄 Imprimir</button><button class="btn-primary" onclick="enviarWhatsApp(${orden.id})" style="background: #25d366;">📱 WhatsApp</button>${saldo > 0 ? `<button class="btn-primary" onclick="registrarPago(${orden.id})">💰 Pagar</button>` : ''}<button class="btn-danger" onclick="eliminarOrden(${orden.id})">Eliminar</button></div></div>`;
+        html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><div class="orden-info"><div class="info-item"><span class="info-label">Cliente:</span> ${clienteNombre}</div><div class="info-item"><span class="info-label">Dispositivo:</span> ${orden.marca} ${orden.modelo}</div><div class="info-item"><span class="info-label">Tipo:</span> ${orden.tipoDispositivo}</div><div class="info-item"><span class="info-label">Fecha Ingreso:</span> ${formatearFecha(orden.fechaIngreso)}</div>${orden.presupuesto ? `<div class="info-item"><span class="info-label">Presupuesto:</span> $${orden.presupuesto.toFixed(2)}</div><div class="info-item"><span class="info-label">Anticipo:</span> $${orden.anticipo.toFixed(2)}</div><div class="info-item"><span class="info-label">Saldo:</span> <strong>$${saldo.toFixed(2)}</strong></div>` : ''}${orden.tecnico ? `<div class="info-item"><span class="info-label">Técnico:</span> ${orden.tecnico}</div>` : ''}</div><p><strong>Problema:</strong> ${orden.problema}</p>${orden.notas ? `<p><strong>Notas:</strong> ${orden.notas}</p>` : ''}${repuestosHtml}${garantiaHtml}<div style="margin-top: 15px;"><button class="btn-success" onclick="editarOrden(${orden.id})">Editar</button><button class="btn-secondary" onclick="cambiarEstadoOrden(${orden.id})">Cambiar Estado</button>${orden.estado !== 'Entregado' && orden.estado !== 'Cancelado' ? `<button class="btn-primary" onclick="abrirModalArticulos(${orden.id})" style="background: #ff9800;">🔧 + Artículos</button>` : ''}<button class="btn-primary" onclick="imprimirRecibo(${orden.id})">📄 Imprimir</button><button class="btn-primary" onclick="enviarWhatsApp(${orden.id})" style="background: #25d366;">📱 WhatsApp</button>${saldo > 0 ? `<button class="btn-primary" onclick="registrarPago(${orden.id})">💰 Pagar</button>` : ''}<button class="btn-danger" onclick="eliminarOrden(${orden.id})">Eliminar</button></div></div>`;
     });
     container.innerHTML = html;
 }
@@ -3857,3 +3857,255 @@ window.limpiarFormGasto = limpiarFormGasto;
 window.editarGasto = editarGasto;
 window.eliminarGasto = eliminarGasto;
 
+// ============================================
+// AGREGAR ARTÍCULOS A ORDEN EXISTENTE
+// ============================================
+
+let ordenActualArticulos = null;
+let articulosTemporales = [];
+
+// Abrir el modal para agregar artículos a una orden
+function abrirModalArticulos(ordenId) {
+    const ordenes = Storage.get('ordenes');
+    const orden = ordenes.find(o => o.id === ordenId);
+    
+    if (!orden) {
+        alert('Orden no encontrada');
+        return;
+    }
+    
+    if (orden.estado === 'Entregado' || orden.estado === 'Cancelado') {
+        alert('No se pueden agregar artículos a una orden entregada o cancelada');
+        return;
+    }
+    
+    ordenActualArticulos = orden;
+    articulosTemporales = orden.repuestos ? [...orden.repuestos] : [];
+    
+    // Mostrar información de la orden
+    const clientes = Storage.get('clientes');
+    const cliente = clientes.find(c => c.id === orden.clienteId);
+    const clienteNombre = cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado';
+    
+    document.getElementById('infoOrdenArticulos').innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+            <div><strong>Orden:</strong> #${orden.numero}</div>
+            <div><strong>Cliente:</strong> ${clienteNombre}</div>
+            <div><strong>Dispositivo:</strong> ${orden.marca} ${orden.modelo}</div>
+            <div><strong>Estado:</strong> <span style="color: #2196F3; font-weight: bold;">${orden.estado}</span></div>
+        </div>
+    `;
+    
+    // Cargar inventario en el select
+    cargarInventarioSelectModal();
+    
+    // Mostrar artículos actuales
+    actualizarArticulosActualesOrden();
+    
+    // Mostrar el modal
+    document.getElementById('modalAgregarArticulos').style.display = 'block';
+}
+
+// Cargar inventario en el select del modal
+function cargarInventarioSelectModal() {
+    const inventario = Storage.get('repuestos');
+    const select = document.getElementById('selectRepuestoModal');
+    
+    select.innerHTML = '<option value="">-- Seleccionar repuesto --</option>';
+    
+    if (inventario.length === 0) {
+        const option = document.createElement('option');
+        option.disabled = true;
+        option.textContent = 'No hay repuestos en el inventario';
+        select.appendChild(option);
+        return;
+    }
+    
+    // Agrupar por categorías
+    const categorias = {};
+    inventario.forEach(item => {
+        const categoria = item.categoria || 'Sin Categoría';
+        if (!categorias[categoria]) {
+            categorias[categoria] = [];
+        }
+        categorias[categoria].push(item);
+    });
+    
+    // Ordenar categorías alfabéticamente
+    const categoriasOrdenadas = Object.keys(categorias).sort();
+    
+    categoriasOrdenadas.forEach(categoria => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = categoria;
+        
+        categorias[categoria].forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = `${item.nombre} - Stock: ${item.stock} - $${item.precioVenta}`;
+            if (item.stock <= 0) {
+                option.disabled = true;
+                option.textContent += ' (Sin stock)';
+            }
+            optgroup.appendChild(option);
+        });
+        
+        select.appendChild(optgroup);
+    });
+}
+
+// Agregar artículo al temporal
+function agregarArticuloModal() {
+    const selectRepuesto = document.getElementById('selectRepuestoModal');
+    const cantidad = parseInt(document.getElementById('cantidadRepuestoModal').value) || 1;
+    const repuestoId = parseInt(selectRepuesto.value);
+    
+    if (!repuestoId) {
+        alert('Por favor selecciona un repuesto');
+        return;
+    }
+    
+    const inventario = Storage.get('repuestos');
+    const repuesto = inventario.find(p => p.id === repuestoId);
+    
+    if (!repuesto) {
+        alert('Repuesto no encontrado');
+        return;
+    }
+    
+    if (cantidad > repuesto.stock) {
+        alert(`Solo hay ${repuesto.stock} unidades disponibles en stock`);
+        return;
+    }
+    
+    // Verificar si ya existe este repuesto en los artículos temporales
+    const existente = articulosTemporales.find(p => p.id === repuestoId);
+    if (existente) {
+        const nuevaCantidad = existente.cantidad + cantidad;
+        if (nuevaCantidad > repuesto.stock) {
+            alert(`Solo hay ${repuesto.stock} unidades disponibles en stock`);
+            return;
+        }
+        existente.cantidad = nuevaCantidad;
+    } else {
+        articulosTemporales.push({
+            id: repuestoId,
+            nombre: repuesto.nombre,
+            cantidad: cantidad,
+            precio: repuesto.precioVenta
+        });
+    }
+    
+    actualizarArticulosActualesOrden();
+    document.getElementById('cantidadRepuestoModal').value = 1;
+    selectRepuesto.value = '';
+}
+
+// Eliminar artículo temporal
+function eliminarArticuloModal(index) {
+    articulosTemporales.splice(index, 1);
+    actualizarArticulosActualesOrden();
+}
+
+// Actualizar la vista de artículos actuales
+function actualizarArticulosActualesOrden() {
+    const container = document.getElementById('articulosActualesOrden');
+    
+    if (articulosTemporales.length === 0) {
+        container.innerHTML = '<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; color: #999; font-style: italic;">No hay artículos agregados a esta orden</div>';
+        return;
+    }
+    
+    let total = 0;
+    let html = '<div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">';
+    html += '<div style="background: #f8f9fa; padding: 12px; border-bottom: 2px solid #dee2e6;"><strong>🔧 Artículos en esta orden:</strong></div>';
+    html += '<table style="width: 100%; border-collapse: collapse;">';
+    html += '<thead><tr style="background: #f8f9fa; border-bottom: 1px solid #dee2e6;"><th style="text-align: left; padding: 10px;">Repuesto</th><th style="text-align: center; padding: 10px;">Cantidad</th><th style="text-align: right; padding: 10px;">Precio Unit.</th><th style="text-align: right; padding: 10px;">Subtotal</th><th style="text-align: center; padding: 10px;">Acción</th></tr></thead>';
+    html += '<tbody>';
+    
+    articulosTemporales.forEach((repuesto, index) => {
+        const subtotal = repuesto.cantidad * repuesto.precio;
+        total += subtotal;
+        html += `<tr style="border-bottom: 1px solid #f0f0f0;">
+            <td style="padding: 12px;">${repuesto.nombre}</td>
+            <td style="text-align: center; padding: 12px; font-weight: bold;">${repuesto.cantidad}</td>
+            <td style="text-align: right; padding: 12px;">$${repuesto.precio.toFixed(2)}</td>
+            <td style="text-align: right; padding: 12px; font-weight: bold;">$${subtotal.toFixed(2)}</td>
+            <td style="text-align: center; padding: 12px;">
+                <button onclick="eliminarArticuloModal(${index})" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px;">🗑️ Quitar</button>
+            </td>
+        </tr>`;
+    });
+    
+    html += '</tbody>';
+    html += `<tfoot><tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #dee2e6;"><td colspan="3" style="text-align: right; padding: 12px;">TOTAL REPUESTOS:</td><td style="text-align: right; padding: 12px; font-size: 16px; color: #28a745;">$${total.toFixed(2)}</td><td></td></tr></tfoot>`;
+    html += '</table>';
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// Guardar los artículos en la orden
+async function guardarArticulosOrden() {
+    if (!ordenActualArticulos) return;
+    
+    if (!confirm('¿Deseas guardar los artículos agregados a esta orden?\n\nEsto actualizará el inventario.')) {
+        return;
+    }
+    
+    const ordenes = Storage.get('ordenes');
+    const ordenIndex = ordenes.findIndex(o => o.id === ordenActualArticulos.id);
+    
+    if (ordenIndex === -1) {
+        alert('Error: Orden no encontrada');
+        return;
+    }
+    
+    // Obtener los artículos originales de la orden
+    const articulosOriginales = ordenActualArticulos.repuestos || [];
+    
+    // Restaurar al inventario los artículos originales
+    let inventario = Storage.get('repuestos');
+    articulosOriginales.forEach(repuesto => {
+        const itemInventario = inventario.find(i => i.id === repuesto.id);
+        if (itemInventario) {
+            itemInventario.stock += repuesto.cantidad;
+        }
+    });
+    
+    // Descontar del inventario los nuevos artículos
+    articulosTemporales.forEach(repuesto => {
+        const itemInventario = inventario.find(i => i.id === repuesto.id);
+        if (itemInventario) {
+            itemInventario.stock -= repuesto.cantidad;
+            if (itemInventario.stock < 0) {
+                itemInventario.stock = 0;
+            }
+        }
+    });
+    
+    // Actualizar la orden con los nuevos artículos
+    ordenes[ordenIndex].repuestos = [...articulosTemporales];
+    
+    // Guardar cambios
+    await Storage.saveAndSync('repuestos', inventario);
+    await Storage.saveAndSync('ordenes', ordenes);
+    
+    alert('✅ Artículos agregados exitosamente a la orden');
+    
+    cerrarModalArticulos();
+    cargarOrdenes();
+}
+
+// Cerrar el modal
+function cerrarModalArticulos() {
+    document.getElementById('modalAgregarArticulos').style.display = 'none';
+    ordenActualArticulos = null;
+    articulosTemporales = [];
+}
+
+// Exponer funciones del modal de artículos
+window.abrirModalArticulos = abrirModalArticulos;
+window.cerrarModalArticulos = cerrarModalArticulos;
+window.agregarArticuloModal = agregarArticuloModal;
+window.eliminarArticuloModal = eliminarArticuloModal;
+window.guardarArticulosOrden = guardarArticulosOrden;

@@ -3264,7 +3264,7 @@ async function imprimirFacturaCompleta() {
     encabezadoHTML += '<div style="font-size: 11px; margin-top: 5px; font-weight: bold;">ORDEN DE SERVICIO</div></div>';
     
     const recibo = `
-    <div style="font-family: 'Courier New', monospace; width: 80mm; font-size: 11px; padding: 5mm; margin: 0;">
+    <div style="font-family: 'Courier New', monospace; width: 4in; font-size: 11px; padding: 0.2in; margin: 0;">
         ${encabezadoHTML}
         <div style="border-top: 2px solid #000; border-bottom: 1px solid #000; padding: 5px 0; margin: 8px 0;">
             <div><strong>Orden:</strong> #${orden.numero}</div>
@@ -3333,7 +3333,7 @@ async function imprimirFacturaCompleta() {
             <style>
                 @media print {
                     @page {
-                        size: 80mm auto;
+                        size: 4in 6in;
                         margin: 0;
                     }
                     body {
@@ -3455,7 +3455,7 @@ function imprimirTicketPequeno(orden, cliente, nombreTaller) {
     </div>`;
     
     // Abrir ventana para ticket pequeño
-    const ventanaTicket = window.open('', '', 'width=300,height=400');
+    const ventanaTicket = window.open('', '', 'width=400,height=600');
     ventanaTicket.document.write(`
         <html>
         <head>
@@ -3463,7 +3463,7 @@ function imprimirTicketPequeno(orden, cliente, nombreTaller) {
             <style>
                 @media print {
                     @page {
-                        size: 58mm auto;
+                        size: 4in 6in;
                         margin: 0;
                     }
                     body {

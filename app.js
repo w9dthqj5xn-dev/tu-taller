@@ -471,6 +471,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             localStorage.setItem('sesionActiva', 'true');
             localStorage.setItem('usuario', username);
             localStorage.setItem('nombreTaller', nombreTaller);
+            localStorage.setItem('usuarioActual', username); // Para identificar la configuración
+            localStorage.setItem('ultimoUsuarioLogin', username); // Backup para configuración
             
             // Cargar datos desde Firebase
             console.log('📥 Cargando datos del usuario...');
@@ -3175,7 +3177,13 @@ async function cargarConfiguracion() {
                     return;
                 }
             } catch (error) {
-                console.log('⚠️ No se pudo cargar desde Firebase, intentando localStorage...', error);
+                console.log('⚠️ No se pudo cargar desde Firebase:', error.code);
+                console.log('💡 Trabajando en modo local con localStorage');
+                // Si es error de permisos, mostrar mensaje informativo
+                if (error.code === 'permission-denied') {
+                    console.warn('🔒 Firebase requiere configuración de reglas. Ver FIRESTORE-RULES-CONFIGURACION.txt');
+                    console.info('📝 Por ahora, la configuración se guardará solo localmente');
+                }
             }
         }
         
@@ -3212,15 +3220,29 @@ async function cargarConfiguracion() {
 function obtenerUsuarioActual() {
     // Primero intentar con Firebase Auth
     if (typeof auth !== 'undefined' && auth && auth.currentUser) {
+        console.log('👤 Usuario de Firebase Auth:', auth.currentUser.uid);
         return auth.currentUser.uid;
     }
     
     // Luego con el usuario de localStorage
     const usuario = localStorage.getItem('usuarioActual');
     if (usuario) {
+        console.log('👤 Usuario de localStorage:', usuario);
         return usuario;
     }
     
+    // Como último recurso, usar el nombre de usuario del login
+    const sesion = localStorage.getItem('sesionActiva');
+    if (sesion === 'true') {
+        // Buscar el último usuario que inició sesión
+        const ultimoUsuario = localStorage.getItem('ultimoUsuarioLogin');
+        if (ultimoUsuario) {
+            console.log('👤 Último usuario login:', ultimoUsuario);
+            return ultimoUsuario;
+        }
+    }
+    
+    console.warn('⚠️ No se pudo obtener el usuario actual');
     return null;
 }
 
@@ -3245,14 +3267,20 @@ async function guardarConfiguracion(event) {
     };
     
     try {
+        let guardadoEnFirebase = false;
+        
         // Guardar en Firebase
         if (typeof db !== 'undefined' && db) {
             try {
                 await db.collection('configuraciones').doc(usuarioActual).set(config, { merge: true });
                 console.log('✅ Configuración guardada en Firebase');
+                guardadoEnFirebase = true;
             } catch (error) {
-                console.error('Error al guardar en Firebase:', error);
-                mostrarNotificacion('Advertencia: No se pudo sincronizar con Firebase. Guardado solo localmente.', 'warning');
+                console.error('⚠️ No se pudo guardar en Firebase:', error.code);
+                if (error.code === 'permission-denied') {
+                    console.warn('🔒 Firebase requiere configuración de reglas. Ver FIRESTORE-RULES-CONFIGURACION.txt');
+                }
+                console.info('💾 Guardando solo en localStorage...');
             }
         }
         
@@ -3260,7 +3288,11 @@ async function guardarConfiguracion(event) {
         localStorage.setItem(`configuracion_${usuarioActual}`, JSON.stringify(config));
         configuracionTallerCache = config;
         
-        mostrarNotificacion('✅ Configuración guardada exitosamente', 'success');
+        const mensajeExito = guardadoEnFirebase 
+            ? '✅ Configuración guardada y sincronizada en la nube'
+            : '✅ Configuración guardada localmente (Firebase no disponible)';
+        
+        mostrarNotificacion(mensajeExito, 'success');
         
         // Mostrar mensaje de éxito en el formulario
         const mensaje = document.getElementById('configuracionMensaje');

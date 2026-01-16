@@ -1,0 +1,82 @@
+// ============================================
+// REGLAS DE FIRESTORE PARA CONFIGURACIÓN
+// ============================================
+// Estas reglas permiten que cada usuario gestione su propia configuración
+// Copia y pega estas reglas en Firebase Console > Firestore > Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Reglas para la colección de licencias (existente)
+    match /licencias/{licenseId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Reglas para la colección de usuarios (existente)
+    match /usuarios/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // ✨ NUEVAS REGLAS PARA CONFIGURACIÓN
+    match /configuraciones/{userId} {
+      // Permitir lectura si el usuario está autenticado Y es el dueño de la configuración
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Permitir escritura si el usuario está autenticado Y es el dueño de la configuración
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Denegar acceso a cualquier otra colección no especificada
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ============================================
+// PASOS PARA APLICAR ESTAS REGLAS:
+// ============================================
+// 1. Ve a https://console.firebase.google.com
+// 2. Selecciona tu proyecto "licencias-taller"
+// 3. En el menú lateral, ve a "Firestore Database"
+// 4. Haz clic en la pestaña "Reglas" (Rules)
+// 5. Copia y pega todo el código de arriba
+// 6. Haz clic en "Publicar" (Publish)
+
+// ============================================
+// IMPORTANTE: PROBLEMA ACTUAL
+// ============================================
+// El error que estás viendo es porque:
+// - Tu aplicación usa autenticación con usuario/contraseña en localStorage
+// - Firebase Auth no está siendo usado para autenticar al usuario
+// - Las reglas de Firestore requieren request.auth.uid (que viene de Firebase Auth)
+//
+// SOLUCIONES:
+// 1. Usar Firebase Auth para autenticación (recomendado)
+// 2. O usar reglas más permisivas temporalmente (menos seguro)
+// 3. O trabajar solo con localStorage (funciona sin Firebase)
+
+// ============================================
+// REGLAS TEMPORALES PERMISIVAS (para testing)
+// ============================================
+// Si quieres probar rápidamente, usa estas reglas (SOLO PARA DESARROLLO):
+
+/*
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /configuraciones/{document=**} {
+      allow read, write: if true;  // ⚠️ PELIGRO: Cualquiera puede leer/escribir
+    }
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+*/
+
+// ⚠️ NO USES LAS REGLAS PERMISIVAS EN PRODUCCIÓN
+// Son solo para testing. Luego cambia a las reglas seguras de arriba.

@@ -3222,15 +3222,15 @@ async function imprimirFacturaCompleta() {
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
     
-    console.log('🔍 Buscando orden:', ordenIdTemporal, 'Tipo:', typeof ordenIdTemporal);
+    console.log('🔍 Buscando orden:', ordenId, 'Tipo:', typeof ordenId);
     console.log('📋 Órdenes disponibles:', ordenes.map(o => ({id: o.id, tipo: typeof o.id, numero: o.numero})));
     
-    // Convertir ordenIdTemporal a número si es string
-    const ordenId = typeof ordenIdTemporal === 'string' ? parseInt(ordenIdTemporal) : ordenIdTemporal;
-    const orden = ordenes.find(o => o.id === ordenId);
+    // Convertir ordenId a número si es string
+    const ordenIdNumero = typeof ordenId === 'string' ? parseInt(ordenId) : ordenId;
+    const orden = ordenes.find(o => o.id === ordenIdNumero);
     
     if (!orden) {
-        console.error('❌ Orden no encontrada. ID buscado:', ordenId);
+        console.error('❌ Orden no encontrada. ID buscado:', ordenIdNumero);
         alert('Error: No se encontró la orden. Por favor, recarga la página e intenta nuevamente.');
         return;
     }
@@ -3394,15 +3394,15 @@ async function imprimirSoloTicket() {
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
     
-    console.log('🔍 Buscando orden:', ordenIdTemporal, 'Tipo:', typeof ordenIdTemporal);
+    console.log('🔍 Buscando orden:', ordenId, 'Tipo:', typeof ordenId);
     console.log('📋 Órdenes disponibles:', ordenes.map(o => ({id: o.id, tipo: typeof o.id, numero: o.numero})));
     
-    // Convertir ordenIdTemporal a número si es string
-    const ordenId = typeof ordenIdTemporal === 'string' ? parseInt(ordenIdTemporal) : ordenIdTemporal;
-    const orden = ordenes.find(o => o.id === ordenId);
+    // Convertir ordenId a número si es string
+    const ordenIdNumero = typeof ordenId === 'string' ? parseInt(ordenId) : ordenId;
+    const orden = ordenes.find(o => o.id === ordenIdNumero);
     
     if (!orden) {
-        console.error('❌ Orden no encontrada. ID buscado:', ordenId);
+        console.error('❌ Orden no encontrada. ID buscado:', ordenIdNumero);
         alert('Error: No se encontró la orden. Por favor, recarga la página e intenta nuevamente.');
         return;
     }

@@ -2667,7 +2667,7 @@ function generarReportes() {
         }
     });
     
-    // Calcular ganancia neta para las tarjetas superiores (restando comisiones)
+    // Calcular ganancia neta para las tarjetas superiores (restando comisiones y gastos)
     let gananciaNetaTotal = 0;
     ordenesFiltradas.forEach(orden => {
         const presupuesto = orden.presupuesto || 0;
@@ -2690,6 +2690,24 @@ function generarReportes() {
         
         gananciaNetaTotal += (presupuesto - costoPiezas - costoRepuestosOrden - comisionesOrden);
     });
+    
+    // Calcular gastos del período
+    const gastos = Storage.get('gastos') || [];
+    let gastosDelPeriodo = 0;
+    
+    gastos.forEach(gasto => {
+        const fechaGasto = new Date(gasto.fecha);
+        const fechaGastoNormalizada = new Date(fechaGasto.getFullYear(), fechaGasto.getMonth(), fechaGasto.getDate());
+        const fechaInicioNormalizada = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth(), fechaInicio.getDate());
+        const fechaFinNormalizada = new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaFin.getDate());
+        
+        if (fechaGastoNormalizada >= fechaInicioNormalizada && fechaGastoNormalizada <= fechaFinNormalizada) {
+            gastosDelPeriodo += parseFloat(gasto.monto) || 0;
+        }
+    });
+    
+    // Restar gastos de la ganancia neta
+    gananciaNetaTotal -= gastosDelPeriodo;
     
     document.getElementById('reporteIngresos').textContent = `$${formatearMonto(ingresosTotales)}`;
     document.getElementById('reporteCompletadas').textContent = ordenesFiltradas.length;
@@ -2718,6 +2736,7 @@ function generarReportes() {
     let costosTotalesRepuestos = 0;
     let anticiposTotales = 0;
     let comisionesTotalesReporte = 0;
+    let gastosTotalesReporte = 0;
     
     ordenesFiltradas.forEach(orden => {
         const presupuesto = orden.presupuesto || 0;
@@ -2739,26 +2758,40 @@ function generarReportes() {
             });
         }
         
-        // Ganancia Real = Presupuesto - (Costo Piezas + Costo Repuestos + Comisiones)
-        const gananciaOrden = presupuesto - costoPiezas - costoRepuestosOrden - comisionesOrden;
-        
-        gananciaReal += gananciaOrden;
         costosTotalesPiezas += costoPiezas;
         costosTotalesRepuestos += costoRepuestosOrden;
         comisionesTotalesReporte += comisionesOrden;
         anticiposTotales += orden.anticipo || 0;
     });
     
+    // Calcular gastos del período
+    const gastosReporte = Storage.get('gastos') || [];
+    gastosReporte.forEach(gasto => {
+        const fechaGasto = new Date(gasto.fecha);
+        const fechaGastoNormalizada = new Date(fechaGasto.getFullYear(), fechaGasto.getMonth(), fechaGasto.getDate());
+        const fechaInicioNormalizada = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth(), fechaInicio.getDate());
+        const fechaFinNormalizada = new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaFin.getDate());
+        
+        if (fechaGastoNormalizada >= fechaInicioNormalizada && fechaGastoNormalizada <= fechaFinNormalizada) {
+            gastosTotalesReporte += parseFloat(gasto.monto) || 0;
+        }
+    });
+    
+    // Ganancia Real = Presupuesto - (Costo Piezas + Costo Repuestos + Comisiones + Gastos)
+    gananciaReal = ingresosTotales - costosTotalesPiezas - costosTotalesRepuestos - comisionesTotalesReporte - gastosTotalesReporte;
+    
     const porcentajeGanancia = ingresosTotales > 0 ? (gananciaReal / ingresosTotales * 100) : 0;
     const porcentajeCostosPiezas = ingresosTotales > 0 ? (costosTotalesPiezas / ingresosTotales * 100) : 0;
     const porcentajeCostosRepuestos = ingresosTotales > 0 ? (costosTotalesRepuestos / ingresosTotales * 100) : 0;
     const porcentajeComisiones = ingresosTotales > 0 ? (comisionesTotalesReporte / ingresosTotales * 100) : 0;
+    const porcentajeGastos = ingresosTotales > 0 ? (gastosTotalesReporte / ingresosTotales * 100) : 0;
     
     let htmlGanancias = '<table><thead><tr><th>Concepto</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
     htmlGanancias += `<tr style="background: #c8e6c9; font-weight: bold;"><td><strong>💰 TOTAL COBRADO</strong></td><td><strong>$${formatearMonto(ingresosTotales)}</strong></td><td>100%</td></tr>`;
     htmlGanancias += `<tr style="background: #ffebee;"><td><strong>🔧 Costos Piezas Externas</strong></td><td><strong>-$${formatearMonto(costosTotalesPiezas)}</strong></td><td>-${porcentajeCostosPiezas.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #fce4ec;"><td><strong>📦 Costos Repuestos</strong></td><td><strong>-$${formatearMonto(costosTotalesRepuestos)}</strong></td><td>-${porcentajeCostosRepuestos.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #fff3e0;"><td><strong>🏦 Comisiones Bancarias</strong></td><td><strong>-$${formatearMonto(comisionesTotalesReporte)}</strong></td><td>-${porcentajeComisiones.toFixed(1)}%</td></tr>`;
+    htmlGanancias += `<tr style="background: #ffe0e0;"><td><strong>💸 Gastos de Utilería</strong></td><td><strong>-$${formatearMonto(gastosTotalesReporte)}</strong></td><td>-${porcentajeGastos.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #e8f5e9; font-weight: bold; font-size: 1.1em;"><td><strong>✅ GANANCIA NETA</strong></td><td><strong>$${formatearMonto(gananciaReal)}</strong></td><td>${porcentajeGanancia.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #fff9c4;"><td><strong>💵 Anticipos Recibidos</strong></td><td><strong>$${formatearMonto(anticiposTotales)}</strong></td><td>${ingresosTotales > 0 ? (anticiposTotales / ingresosTotales * 100).toFixed(1) : 0}%</td></tr>`;
     htmlGanancias += '</tbody></table>';
@@ -3594,10 +3627,226 @@ window.mostrarSeccion = function(seccionId) {
     if (seccionId === 'pagos') cargarPagos();
     if (seccionId === 'inventario') filtrarInventario();
     if (seccionId === 'reportes') generarReportes();
+    if (seccionId === 'gastos') cargarGastos();
 };
+
+// ============================================
+// GASTOS DE UTILERÍA
+// ============================================
+
+function cargarGastos() {
+    const gastos = Storage.get('gastos') || [];
+    const hoy = new Date().toISOString().split('T')[0];
+    const fechaInicioMes = new Date();
+    fechaInicioMes.setDate(1);
+    fechaInicioMes.setHours(0, 0, 0, 0);
+    
+    // Establecer fecha de hoy por defecto en el formulario
+    document.getElementById('gastoFecha').value = hoy;
+    
+    // Calcular totales
+    let totalGastos = 0;
+    let gastosMes = 0;
+    let gastosHoy = 0;
+    
+    gastos.forEach(gasto => {
+        const fechaGasto = new Date(gasto.fecha);
+        const monto = parseFloat(gasto.monto) || 0;
+        totalGastos += monto;
+        
+        if (fechaGasto >= fechaInicioMes) {
+            gastosMes += monto;
+        }
+        
+        if (gasto.fecha === hoy) {
+            gastosHoy += monto;
+        }
+    });
+    
+    document.getElementById('totalGastos').textContent = `$${formatearMonto(totalGastos)}`;
+    document.getElementById('gastosMes').textContent = `$${formatearMonto(gastosMes)}`;
+    document.getElementById('gastosHoy').textContent = `$${formatearMonto(gastosHoy)}`;
+    
+    filtrarGastos();
+}
+
+function filtrarGastos() {
+    const gastos = Storage.get('gastos') || [];
+    const periodo = document.getElementById('filtroGastosPeriodo').value;
+    const categoria = document.getElementById('filtroGastosCategoria').value;
+    
+    let gastosFiltrados = gastos.filter(gasto => {
+        // Filtrar por categoría
+        if (categoria !== 'todos' && gasto.categoria !== categoria) {
+            return false;
+        }
+        
+        // Filtrar por período
+        if (periodo === 'todos') {
+            return true;
+        }
+        
+        const fechaGasto = new Date(gasto.fecha);
+        const ahora = new Date();
+        
+        switch(periodo) {
+            case 'hoy':
+                return gasto.fecha === ahora.toISOString().split('T')[0];
+            case 'semana':
+                const inicioSemana = new Date(ahora);
+                const diaSemana = inicioSemana.getDay();
+                const diasHastaLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+                inicioSemana.setDate(inicioSemana.getDate() + diasHastaLunes);
+                inicioSemana.setHours(0, 0, 0, 0);
+                return fechaGasto >= inicioSemana;
+            case 'mes':
+                return fechaGasto.getMonth() === ahora.getMonth() && 
+                       fechaGasto.getFullYear() === ahora.getFullYear();
+            case 'año':
+                return fechaGasto.getFullYear() === ahora.getFullYear();
+            default:
+                return true;
+        }
+    });
+    
+    // Ordenar por fecha descendente (más recientes primero)
+    gastosFiltrados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    
+    const container = document.getElementById('listaGastos');
+    
+    if (gastosFiltrados.length === 0) {
+        container.innerHTML = '<div class="empty-state"><h3>📭 No hay gastos registrados</h3><p>Los gastos que registres aparecerán aquí</p></div>';
+        return;
+    }
+    
+    let html = '<table><thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>';
+    
+    gastosFiltrados.forEach(gasto => {
+        const iconosCategoria = {
+            'Herramientas': '🔧',
+            'Material de Oficina': '📄',
+            'Servicios': '💡',
+            'Transporte': '🚗',
+            'Alquiler': '🏠',
+            'Publicidad': '📢',
+            'Mantenimiento': '🔨',
+            'Otros': '📦'
+        };
+        
+        const icono = iconosCategoria[gasto.categoria] || '📦';
+        const fechaFormateada = formatearFecha(gasto.fecha);
+        
+        html += `
+            <tr>
+                <td>${fechaFormateada}</td>
+                <td style="max-width: 300px;">${gasto.descripcion}</td>
+                <td>${icono} ${gasto.categoria}</td>
+                <td style="font-weight: bold; color: #ef4444;">$${formatearMonto(gasto.monto)}</td>
+                <td>
+                    <button class="btn-secondary" onclick="editarGasto(${gasto.id})" style="padding: 5px 10px; font-size: 12px;">✏️ Editar</button>
+                    <button class="btn-danger" onclick="eliminarGasto(${gasto.id})" style="padding: 5px 10px; font-size: 12px;">🗑️ Eliminar</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function guardarGasto(event) {
+    event.preventDefault();
+    
+    const gastoId = document.getElementById('gastoId') ? document.getElementById('gastoId').value : null;
+    const gastos = Storage.get('gastos') || [];
+    
+    const gasto = {
+        id: gastoId ? parseInt(gastoId) : Date.now(),
+        monto: parseFloat(document.getElementById('gastoMonto').value),
+        fecha: document.getElementById('gastoFecha').value,
+        descripcion: document.getElementById('gastoDescripcion').value.trim(),
+        categoria: document.getElementById('gastoCategoria').value,
+        fechaRegistro: new Date().toISOString()
+    };
+    
+    if (gastoId) {
+        // Editar gasto existente
+        const index = gastos.findIndex(g => g.id === parseInt(gastoId));
+        if (index !== -1) {
+            gastos[index] = gasto;
+        }
+    } else {
+        // Nuevo gasto
+        gastos.push(gasto);
+    }
+    
+    await Storage.saveAndSync('gastos', gastos);
+    mostrarNotificacion(gastoId ? 'Gasto actualizado exitosamente' : 'Gasto registrado exitosamente', 'success');
+    limpiarFormGasto();
+    cargarGastos();
+}
+
+function limpiarFormGasto() {
+    document.getElementById('gastoForm').reset();
+    document.getElementById('gastoFecha').value = new Date().toISOString().split('T')[0];
+    
+    // Remover campo oculto de ID si existe
+    const gastoIdField = document.getElementById('gastoId');
+    if (gastoIdField) {
+        gastoIdField.remove();
+    }
+}
+
+function editarGasto(id) {
+    const gastos = Storage.get('gastos') || [];
+    const gasto = gastos.find(g => g.id === id);
+    
+    if (!gasto) {
+        mostrarNotificacion('Gasto no encontrado', 'error');
+        return;
+    }
+    
+    // Llenar el formulario con los datos del gasto
+    document.getElementById('gastoMonto').value = gasto.monto;
+    document.getElementById('gastoFecha').value = gasto.fecha;
+    document.getElementById('gastoDescripcion').value = gasto.descripcion;
+    document.getElementById('gastoCategoria').value = gasto.categoria;
+    
+    // Agregar campo oculto con el ID
+    let gastoIdField = document.getElementById('gastoId');
+    if (!gastoIdField) {
+        gastoIdField = document.createElement('input');
+        gastoIdField.type = 'hidden';
+        gastoIdField.id = 'gastoId';
+        document.getElementById('gastoForm').appendChild(gastoIdField);
+    }
+    gastoIdField.value = id;
+    
+    // Scroll al formulario
+    document.getElementById('gastoForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    mostrarNotificacion('Editando gasto - Modifica los campos y guarda', 'info');
+}
+
+async function eliminarGasto(id) {
+    if (!confirm('¿Estás seguro de eliminar este gasto?')) return;
+    
+    let gastos = Storage.get('gastos') || [];
+    gastos = gastos.filter(g => g.id !== id);
+    
+    await Storage.saveAndSync('gastos', gastos);
+    mostrarNotificacion('Gasto eliminado exitosamente', 'success');
+    cargarGastos();
+}
 
 // Exponer funciones al scope global
 window.previsualizarLogo = previsualizarLogo;
 window.cargarConfiguracion = cargarConfiguracion;
 window.guardarConfiguracion = guardarConfiguracion;
 window.obtenerConfiguracionTaller = obtenerConfiguracionTaller;
+window.cargarGastos = cargarGastos;
+window.filtrarGastos = filtrarGastos;
+window.guardarGasto = guardarGasto;
+window.limpiarFormGasto = limpiarFormGasto;
+window.editarGasto = editarGasto;
+window.eliminarGasto = eliminarGasto;
+

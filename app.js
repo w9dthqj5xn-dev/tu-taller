@@ -2125,6 +2125,47 @@ async function cambiarEstadoOrden(id) {
         orden.estado = estados[index];
         if (estados[index] === 'Entregado') {
             orden.fechaEntrega = new Date().toISOString();
+            
+            // Si hay saldo pendiente, solicitar pago final
+            const saldo = (orden.presupuesto || 0) - (orden.anticipo || 0);
+            if (saldo > 0) {
+                if (confirm(`Saldo pendiente: $${formatearMonto(saldo)}\n\n¿Deseas registrar el pago final ahora?`)) {
+                    // Solicitar método de pago
+                    const metodoPago = prompt(`Selecciona el método de pago:\n1. Efectivo\n2. Transferencia\n3. Tarjeta de Crédito/Débito\n\nIngresa el número (1, 2 o 3):`);
+                    const metodos = {
+                        '1': { nombre: 'Efectivo', comision: 0 },
+                        '2': { nombre: 'Transferencia', comision: 0.015 }, // 1.5% comisión
+                        '3': { nombre: 'Tarjeta', comision: 0.03 } // 3% comisión
+                    };
+                    
+                    if (metodos[metodoPago]) {
+                        const metodoSeleccionado = metodos[metodoPago];
+                        const comision = saldo * metodoSeleccionado.comision;
+                        const montoNeto = saldo - comision;
+                        
+                        orden.anticipo = orden.presupuesto; // Marca como pagado completo
+                        
+                        // Registrar el pago en el historial
+                        if (!orden.historialPagos) {
+                            orden.historialPagos = [];
+                        }
+                        orden.historialPagos.push({
+                            monto: saldo,
+                            montoNeto: montoNeto,
+                            comision: comision,
+                            metodoPago: metodoSeleccionado.nombre,
+                            fecha: new Date().toISOString(),
+                            tipo: 'Pago Final'
+                        });
+                        
+                        let mensajePago = `✅ Orden entregada y pago registrado!\nMétodo: ${metodoSeleccionado.nombre}\nMonto: $${formatearMonto(saldo)}`;
+                        if (comision > 0) {
+                            mensajePago += `\nComisión: $${formatearMonto(comision)} (${(metodoSeleccionado.comision * 100)}%)\nMonto neto: $${formatearMonto(montoNeto)}`;
+                        }
+                        alert(mensajePago);
+                    }
+                }
+            }
         }
         await Storage.saveAndSync('ordenes', ordenes);
         cargarOrdenes();
@@ -2146,8 +2187,12 @@ function cargarPagos() {
     let totalCobrado = 0;
     let porCobrar = 0;
     let cobradoHoy = 0;
+    let dineroEfectivo = 0;
+    let dineroBanco = 0; // Transferencias + Tarjetas
+    let comisionesTotales = 0;
     const hoy = new Date().toISOString().split('T')[0];
     const ordenesPendientes = [];
+    
     ordenes.forEach(orden => {
         const presupuesto = orden.presupuesto || 0;
         const anticipo = orden.anticipo || 0;
@@ -2161,9 +2206,20 @@ function cargarPagos() {
                 totalCobrado += presupuesto;
             }
         }
-        // Calcular pagos realizados hoy (usando historial de pagos)
+        
+        // Calcular pagos realizados hoy y por método de pago
         if (orden.historialPagos && orden.historialPagos.length > 0) {
             orden.historialPagos.forEach(pago => {
+                const metodoPago = pago.metodoPago || 'Efectivo';
+                const comision = pago.comision || 0;
+                
+                if (metodoPago === 'Efectivo') {
+                    dineroEfectivo += pago.monto;
+                } else {
+                    dineroBanco += (pago.montoNeto || pago.monto);
+                    comisionesTotales += comision;
+                }
+                
                 if (pago.fecha && pago.fecha.split('T')[0] === hoy) {
                     cobradoHoy += pago.monto;
                 }
@@ -2171,17 +2227,49 @@ function cargarPagos() {
         } else if (orden.fechaCreacion && orden.fechaCreacion.split('T')[0] === hoy && anticipo > 0) {
             // Fallback: si no hay historial, usar la fecha de creación (órdenes antiguas)
             cobradoHoy += anticipo;
+            dineroEfectivo += anticipo; // Asumir efectivo para órdenes antiguas
         }
     });
+    
     document.getElementById('totalCobrado').textContent = `$${formatearMonto(totalCobrado)}`;
     document.getElementById('porCobrar').textContent = `$${formatearMonto(porCobrar)}`;
     document.getElementById('cobradoHoy').textContent = `$${formatearMonto(cobradoHoy)}`;
+    
+    // Agregar nueva sección de dinero en banco
+    const bancoSection = document.getElementById('dineroBanco');
+    if (bancoSection) {
+        bancoSection.textContent = `$${formatearMonto(dineroBanco)}`;
+    }
+    
     const container = document.getElementById('listaPagos');
     if (ordenesPendientes.length === 0) {
         container.innerHTML = '<div class="empty-state"><h3>¡Todo pagado! 🎉</h3><p>No hay cuentas por cobrar pendientes</p></div>';
         return;
     }
-    let html = '<h3 style="margin: 20px 0;">Cuentas por Cobrar</h3>';
+    
+    // Mostrar resumen de métodos de pago
+    let resumenMetodos = `
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px; color: white;">
+            <h3 style="margin: 0 0 15px 0; text-align: center;">💰 Resumen de Cobros</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px;">
+                    <div style="font-size: 0.9em; opacity: 0.9;">💵 Efectivo</div>
+                    <div style="font-size: 1.4em; font-weight: bold; margin-top: 5px;">$${formatearMonto(dineroEfectivo)}</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px;">
+                    <div style="font-size: 0.9em; opacity: 0.9;">🏦 Dinero en Banco</div>
+                    <div style="font-size: 1.4em; font-weight: bold; margin-top: 5px;">$${formatearMonto(dineroBanco)}</div>
+                    <div style="font-size: 0.75em; opacity: 0.8; margin-top: 5px;">(Neto después de comisiones)</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px;">
+                    <div style="font-size: 0.9em; opacity: 0.9;">📊 Comisiones Pagadas</div>
+                    <div style="font-size: 1.4em; font-weight: bold; margin-top: 5px;">$${formatearMonto(comisionesTotales)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    let html = resumenMetodos + '<h3 style="margin: 20px 0;">Cuentas por Cobrar</h3>';
     ordenesPendientes.forEach(({ orden, saldo, cliente }) => {
         const clienteNombre = cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado';
         html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><div class="orden-info"><div class="info-item"><span class="info-label">Cliente:</span> ${clienteNombre}</div><div class="info-item"><span class="info-label">Dispositivo:</span> ${orden.marca} ${orden.modelo}</div><div class="info-item"><span class="info-label">Total:</span> $${orden.presupuesto.toFixed(2)}</div><div class="info-item"><span class="info-label">Anticipo:</span> $${orden.anticipo.toFixed(2)}</div><div class="info-item"><span class="info-label">Saldo:</span> <strong style="color: #f5576c;">$${saldo.toFixed(2)}</strong></div></div><button class="btn-primary" onclick="registrarPago(${orden.id})">💰 Registrar Pago</button></div>`;
@@ -2200,20 +2288,48 @@ async function registrarPago(ordenId) {
             alert('El monto ingresado es mayor al saldo pendiente');
             return;
         }
+        
+        // Solicitar método de pago
+        const metodoPago = prompt(`Selecciona el método de pago:\n1. Efectivo\n2. Transferencia\n3. Tarjeta de Crédito/Débito\n\nIngresa el número (1, 2 o 3):`);
+        const metodos = {
+            '1': { nombre: 'Efectivo', comision: 0 },
+            '2': { nombre: 'Transferencia', comision: 0.015 }, // 1.5% comisión
+            '3': { nombre: 'Tarjeta', comision: 0.03 } // 3% comisión
+        };
+        
+        if (!metodos[metodoPago]) {
+            alert('Método de pago no válido');
+            return;
+        }
+        
+        const metodoSeleccionado = metodos[metodoPago];
+        const comision = pago * metodoSeleccionado.comision;
+        const montoNeto = pago - comision;
+        
         orden.anticipo = (orden.anticipo || 0) + pago;
         
-        // Registrar el pago en el historial con fecha actual
+        // Registrar el pago en el historial con fecha actual y método de pago
         if (!orden.historialPagos) {
             orden.historialPagos = [];
         }
         orden.historialPagos.push({
             monto: pago,
+            montoNeto: montoNeto,
+            comision: comision,
+            metodoPago: metodoSeleccionado.nombre,
             fecha: new Date().toISOString(),
             tipo: 'Pago'
         });
         
         await Storage.saveAndSync('ordenes', ordenes);
-        alert(`Pago registrado exitosamente!\nNuevo saldo: $${(saldo - pago).toFixed(2)}`);
+        
+        let mensajePago = `Pago registrado exitosamente!\nMétodo: ${metodoSeleccionado.nombre}\nMonto: $${formatearMonto(pago)}`;
+        if (comision > 0) {
+            mensajePago += `\nComisión: $${formatearMonto(comision)} (${(metodoSeleccionado.comision * 100)}%)\nMonto neto: $${formatearMonto(montoNeto)}`;
+        }
+        mensajePago += `\nNuevo saldo: $${formatearMonto(saldo - pago)}`;
+        
+        alert(mensajePago);
         if (confirm('¿Deseas imprimir el recibo de pago?')) {
             imprimirReciboPago(ordenId, pago);
         }
@@ -2527,7 +2643,31 @@ function generarReportes() {
     });
     const promedioPorOrden = ordenesFiltradas.length > 0 ? ingresosTotales / ordenesFiltradas.length : 0;
     
-    // Calcular ganancia neta para las tarjetas superiores
+    // Calcular dinero en efectivo vs banco y comisiones
+    let dineroEfectivo = 0;
+    let dineroBanco = 0;
+    let comisionesTotales = 0;
+    
+    ordenesFiltradas.forEach(orden => {
+        if (orden.historialPagos && orden.historialPagos.length > 0) {
+            orden.historialPagos.forEach(pago => {
+                const metodoPago = pago.metodoPago || 'Efectivo';
+                const comision = pago.comision || 0;
+                
+                if (metodoPago === 'Efectivo') {
+                    dineroEfectivo += pago.monto;
+                } else {
+                    dineroBanco += (pago.montoNeto || pago.monto);
+                    comisionesTotales += comision;
+                }
+            });
+        } else {
+            // Fallback para órdenes sin historial: asumir efectivo
+            dineroEfectivo += (orden.anticipo || 0);
+        }
+    });
+    
+    // Calcular ganancia neta para las tarjetas superiores (restando comisiones)
     let gananciaNetaTotal = 0;
     ordenesFiltradas.forEach(orden => {
         const presupuesto = orden.presupuesto || 0;
@@ -2540,7 +2680,15 @@ function generarReportes() {
             });
         }
         
-        gananciaNetaTotal += (presupuesto - costoPiezas - costoRepuestosOrden);
+        // Calcular comisiones de esta orden
+        let comisionesOrden = 0;
+        if (orden.historialPagos && orden.historialPagos.length > 0) {
+            orden.historialPagos.forEach(pago => {
+                comisionesOrden += (pago.comision || 0);
+            });
+        }
+        
+        gananciaNetaTotal += (presupuesto - costoPiezas - costoRepuestosOrden - comisionesOrden);
     });
     
     document.getElementById('reporteIngresos').textContent = `$${formatearMonto(ingresosTotales)}`;
@@ -2569,6 +2717,7 @@ function generarReportes() {
     let costosTotalesPiezas = 0;
     let costosTotalesRepuestos = 0;
     let anticiposTotales = 0;
+    let comisionesTotalesReporte = 0;
     
     ordenesFiltradas.forEach(orden => {
         const presupuesto = orden.presupuesto || 0;
@@ -2582,27 +2731,58 @@ function generarReportes() {
             });
         }
         
-        // Ganancia Real = Presupuesto - (Costo Piezas + Costo Repuestos)
-        const gananciaOrden = presupuesto - costoPiezas - costoRepuestosOrden;
+        // Calcular comisiones bancarias de esta orden
+        let comisionesOrden = 0;
+        if (orden.historialPagos && orden.historialPagos.length > 0) {
+            orden.historialPagos.forEach(pago => {
+                comisionesOrden += (pago.comision || 0);
+            });
+        }
+        
+        // Ganancia Real = Presupuesto - (Costo Piezas + Costo Repuestos + Comisiones)
+        const gananciaOrden = presupuesto - costoPiezas - costoRepuestosOrden - comisionesOrden;
         
         gananciaReal += gananciaOrden;
         costosTotalesPiezas += costoPiezas;
         costosTotalesRepuestos += costoRepuestosOrden;
+        comisionesTotalesReporte += comisionesOrden;
         anticiposTotales += orden.anticipo || 0;
     });
     
     const porcentajeGanancia = ingresosTotales > 0 ? (gananciaReal / ingresosTotales * 100) : 0;
     const porcentajeCostosPiezas = ingresosTotales > 0 ? (costosTotalesPiezas / ingresosTotales * 100) : 0;
     const porcentajeCostosRepuestos = ingresosTotales > 0 ? (costosTotalesRepuestos / ingresosTotales * 100) : 0;
+    const porcentajeComisiones = ingresosTotales > 0 ? (comisionesTotalesReporte / ingresosTotales * 100) : 0;
     
     let htmlGanancias = '<table><thead><tr><th>Concepto</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
     htmlGanancias += `<tr style="background: #c8e6c9; font-weight: bold;"><td><strong>💰 TOTAL COBRADO</strong></td><td><strong>$${formatearMonto(ingresosTotales)}</strong></td><td>100%</td></tr>`;
     htmlGanancias += `<tr style="background: #ffebee;"><td><strong>🔧 Costos Piezas Externas</strong></td><td><strong>-$${formatearMonto(costosTotalesPiezas)}</strong></td><td>-${porcentajeCostosPiezas.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #fce4ec;"><td><strong>📦 Costos Repuestos</strong></td><td><strong>-$${formatearMonto(costosTotalesRepuestos)}</strong></td><td>-${porcentajeCostosRepuestos.toFixed(1)}%</td></tr>`;
+    htmlGanancias += `<tr style="background: #fff3e0;"><td><strong>🏦 Comisiones Bancarias</strong></td><td><strong>-$${formatearMonto(comisionesTotalesReporte)}</strong></td><td>-${porcentajeComisiones.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #e8f5e9; font-weight: bold; font-size: 1.1em;"><td><strong>✅ GANANCIA NETA</strong></td><td><strong>$${formatearMonto(gananciaReal)}</strong></td><td>${porcentajeGanancia.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #fff9c4;"><td><strong>💵 Anticipos Recibidos</strong></td><td><strong>$${formatearMonto(anticiposTotales)}</strong></td><td>${ingresosTotales > 0 ? (anticiposTotales / ingresosTotales * 100).toFixed(1) : 0}%</td></tr>`;
     htmlGanancias += '</tbody></table>';
     document.getElementById('desgloseganancias').innerHTML = htmlGanancias;
+    
+    // Nuevo: Desglose de métodos de pago (Efectivo vs Banco)
+    const porcentajeEfectivo = ingresosTotales > 0 ? (dineroEfectivo / ingresosTotales * 100) : 0;
+    const porcentajeBanco = ingresosTotales > 0 ? (dineroBanco / ingresosTotales * 100) : 0;
+    
+    let htmlMetodosPago = '<h3 style="margin: 30px 0 15px 0; color: #333;">💳 Métodos de Pago Recibidos</h3>';
+    htmlMetodosPago += '<table><thead><tr><th>Método de Pago</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
+    htmlMetodosPago += `<tr style="background: #c8e6c9;"><td><strong>💵 Efectivo</strong></td><td><strong>$${formatearMonto(dineroEfectivo)}</strong></td><td>${porcentajeEfectivo.toFixed(1)}%</td></tr>`;
+    htmlMetodosPago += `<tr style="background: #b3e5fc;"><td><strong>🏦 Dinero en Banco</strong></td><td><strong>$${formatearMonto(dineroBanco)}</strong></td><td>${porcentajeBanco.toFixed(1)}%</td></tr>`;
+    htmlMetodosPago += `<tr style="background: #ffebee;"><td><strong>📉 Comisiones Pagadas</strong></td><td><strong>-$${formatearMonto(comisionesTotales)}</strong></td><td>-${porcentajeComisiones.toFixed(1)}%</td></tr>`;
+    htmlMetodosPago += `<tr style="background: #e8eaf6; font-weight: bold;"><td><strong>💰 Total Cobrado Bruto</strong></td><td><strong>$${formatearMonto(dineroEfectivo + dineroBanco + comisionesTotales)}</strong></td><td>100%</td></tr>`;
+    htmlMetodosPago += '</tbody></table>';
+    
+    // Insertar después del desglose de ganancias
+    const desgloseElement = document.getElementById('desgloseganancias');
+    if (desgloseElement && desgloseElement.nextElementSibling) {
+        desgloseElement.insertAdjacentHTML('afterend', htmlMetodosPago);
+    } else if (desgloseElement) {
+        desgloseElement.insertAdjacentHTML('afterend', htmlMetodosPago);
+    }
     
     // Resumen de Ingresos sin inversiones
     const saldosPendientes = ingresosTotales - anticiposTotales;

@@ -3257,7 +3257,11 @@ function obtenerUsuarioActual() {
 async function guardarConfiguracion(event) {
     if (event) event.preventDefault();
     
+    console.log('💾 Iniciando guardado de configuración...');
+    
     const usuarioActual = obtenerUsuarioActual();
+    console.log('👤 Usuario actual:', usuarioActual);
+    
     if (!usuarioActual) {
         mostrarNotificacion('No hay usuario autenticado', 'error');
         return;
@@ -3273,32 +3277,51 @@ async function guardarConfiguracion(event) {
         fechaActualizacion: new Date().toISOString()
     };
     
+    console.log('📝 Datos a guardar:', {
+        nombreTaller: config.nombreTaller,
+        direccionTaller: config.direccionTaller,
+        tieneLogo: !!config.logoUrl
+    });
+    
     try {
         let guardadoEnFirebase = false;
         
         // Guardar en Firebase
+        console.log('🔥 Verificando Firebase...');
+        console.log('db disponible:', typeof db !== 'undefined' && db);
+        console.log('auth.currentUser:', auth?.currentUser?.uid);
+        
         if (typeof db !== 'undefined' && db) {
             try {
+                console.log('📤 Intentando guardar en Firebase colección: configuraciones, documento:', usuarioActual);
                 await db.collection('configuraciones').doc(usuarioActual).set(config, { merge: true });
-                console.log('✅ Configuración guardada en Firebase');
+                console.log('✅ Configuración guardada exitosamente en Firebase');
                 guardadoEnFirebase = true;
             } catch (error) {
-                console.error('⚠️ No se pudo guardar en Firebase:', error.code);
+                console.error('❌ Error al guardar en Firebase:', error);
+                console.error('Código de error:', error.code);
+                console.error('Mensaje:', error.message);
                 if (error.code === 'permission-denied') {
                     console.warn('🔒 Firebase requiere configuración de reglas. Ver FIRESTORE-RULES-CONFIGURACION.txt');
+                    console.warn('📋 Reglas sugeridas: allow read, write: if request.auth != null;');
                 }
                 console.info('💾 Guardando solo en localStorage...');
             }
+        } else {
+            console.warn('⚠️ Firebase no está disponible');
         }
         
         // Guardar en localStorage como respaldo
+        console.log('💾 Guardando en localStorage con clave:', `configuracion_${usuarioActual}`);
         localStorage.setItem(`configuracion_${usuarioActual}`, JSON.stringify(config));
         configuracionTallerCache = config;
+        console.log('✅ Guardado en localStorage completado');
         
         const mensajeExito = guardadoEnFirebase 
             ? '✅ Configuración guardada y sincronizada en la nube'
             : '✅ Configuración guardada localmente (Firebase no disponible)';
         
+        console.log('📢 Mensaje de éxito:', mensajeExito);
         mostrarNotificacion(mensajeExito, 'success');
         
         // Mostrar mensaje de éxito en el formulario

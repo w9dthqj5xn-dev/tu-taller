@@ -3191,10 +3191,17 @@ async function imprimirFacturaCompleta() {
     
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
-    const orden = ordenes.find(o => o.id == ordenIdTemporal);
+    
+    console.log('🔍 Buscando orden:', ordenIdTemporal, 'Tipo:', typeof ordenIdTemporal);
+    console.log('📋 Órdenes disponibles:', ordenes.map(o => ({id: o.id, tipo: typeof o.id, numero: o.numero})));
+    
+    // Convertir ordenIdTemporal a número si es string
+    const ordenId = typeof ordenIdTemporal === 'string' ? parseInt(ordenIdTemporal) : ordenIdTemporal;
+    const orden = ordenes.find(o => o.id === ordenId);
     
     if (!orden) {
-        alert('Error: No se encontró la orden');
+        console.error('❌ Orden no encontrada. ID buscado:', ordenId);
+        alert('Error: No se encontró la orden. Por favor, recarga la página e intenta nuevamente.');
         return;
     }
     
@@ -3336,10 +3343,17 @@ async function imprimirSoloTicket() {
     
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
-    const orden = ordenes.find(o => o.id == ordenIdTemporal);
+    
+    console.log('🔍 Buscando orden:', ordenIdTemporal, 'Tipo:', typeof ordenIdTemporal);
+    console.log('📋 Órdenes disponibles:', ordenes.map(o => ({id: o.id, tipo: typeof o.id, numero: o.numero})));
+    
+    // Convertir ordenIdTemporal a número si es string
+    const ordenId = typeof ordenIdTemporal === 'string' ? parseInt(ordenIdTemporal) : ordenIdTemporal;
+    const orden = ordenes.find(o => o.id === ordenId);
     
     if (!orden) {
-        alert('Error: No se encontró la orden');
+        console.error('❌ Orden no encontrada. ID buscado:', ordenId);
+        alert('Error: No se encontró la orden. Por favor, recarga la página e intenta nuevamente.');
         return;
     }
     

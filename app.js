@@ -3159,10 +3159,30 @@ function generarPDFFacturaBlob(orden, cliente) {
     });
 }
 
-async function imprimirRecibo(ordenId) {
+// Variable global para almacenar temporalmente el ID de la orden a imprimir
+let ordenIdTemporal = null;
+
+// Función principal que abre el modal de selección
+function imprimirRecibo(ordenId) {
+    ordenIdTemporal = ordenId;
+    document.getElementById('modalSeleccionImpresion').style.display = 'block';
+}
+
+// Función para cerrar el modal de selección
+function cerrarModalSeleccionImpresion() {
+    document.getElementById('modalSeleccionImpresion').style.display = 'none';
+    ordenIdTemporal = null;
+}
+
+// Función para imprimir la factura completa (80mm)
+async function imprimirFacturaCompleta() {
+    if (!ordenIdTemporal) return;
+    
+    cerrarModalSeleccionImpresion();
+    
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
-    const orden = ordenes.find(o => o.id === ordenId);
+    const orden = ordenes.find(o => o.id === ordenIdTemporal);
     const cliente = clientes.find(c => c.id === orden.clienteId);
     
     // Obtener configuración del taller
@@ -3175,36 +3195,131 @@ async function imprimirRecibo(ordenId) {
     const logoUrl = config?.logoUrl || null;
     
     // Construir HTML del encabezado con logo si existe
-    let encabezadoHTML = '<div style="text-align: center; margin-bottom: 20px;">';
+    let encabezadoHTML = '<div style="text-align: center; margin-bottom: 8px;">';
     if (logoUrl) {
-        encabezadoHTML += `<img src="${logoUrl}" style="max-width: 80px; max-height: 80px; object-fit: contain; margin-bottom: 10px;" alt="Logo">`;
+        encabezadoHTML += `<img src="${logoUrl}" style="max-width: 60px; max-height: 60px; object-fit: contain; margin-bottom: 5px;" alt="Logo">`;
     }
-    encabezadoHTML += `<h2 style="margin: 0;">🔧 ${nombreTaller}</h2>`;
+    encabezadoHTML += `<div style="font-size: 14px; font-weight: bold; margin: 2px 0;">${nombreTaller}</div>`;
     if (direccionTaller) {
-        encabezadoHTML += `<p style="margin: 3px 0; font-size: 10px;">${direccionTaller}</p>`;
+        encabezadoHTML += `<div style="font-size: 9px; margin: 1px 0;">${direccionTaller}</div>`;
     }
     if (telefonoTaller) {
-        encabezadoHTML += `<p style="margin: 3px 0; font-size: 10px;">Tel: ${telefonoTaller}</p>`;
+        encabezadoHTML += `<div style="font-size: 9px; margin: 1px 0;">Tel: ${telefonoTaller}</div>`;
     }
     if (emailTaller) {
-        encabezadoHTML += `<p style="margin: 3px 0; font-size: 10px;">Email: ${emailTaller}</p>`;
+        encabezadoHTML += `<div style="font-size: 9px; margin: 1px 0;">${emailTaller}</div>`;
     }
-    encabezadoHTML += '<p style="margin: 5px 0;">ORDEN DE SERVICIO</p></div>';
+    encabezadoHTML += '<div style="font-size: 11px; margin-top: 5px; font-weight: bold;">ORDEN DE SERVICIO</div></div>';
     
-    const recibo = `<div style="font-family: Arial, sans-serif; max-width: 300px; font-size: 11px; margin: 0 auto; padding: 20px; border: 2px solid #333;">${encabezadoHTML}<hr style="border: 1px solid #333;"><div style="margin: 6px 0;"><p style="margin: 2px 0;"><strong>Orden:</strong> #${orden.numero}</p><p><strong>Fecha:</strong> ${formatearFecha(orden.fechaIngreso)}</p>${orden.fechaEstimada ? `<p><strong>Entrega estimada:</strong> ${formatearFecha(orden.fechaEstimada)}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 4px 0; font-size: 12px;">DATOS DEL CLIENTE</h3><p><strong>Nombre:</strong> ${cliente.nombre} ${cliente.apellido}</p><p><strong>Celular:</strong> ${cliente.celular}</p>${cliente.email ? `<p><strong>Email:</strong> ${cliente.email}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">DATOS DEL EQUIPO</h3><p><strong>Tipo:</strong> ${orden.tipoDispositivo}</p><p><strong>Marca:</strong> ${orden.marca}</p><p><strong>Modelo:</strong> ${orden.modelo}</p>${orden.imei ? `<p><strong>IMEI/Serie:</strong> ${orden.imei}</p>` : ''}${orden.accesorios ? `<p><strong>Accesorios:</strong> ${orden.accesorios}</p>` : ''}</div><hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">PROBLEMA REPORTADO</h3><p>${orden.problema}</p></div>${orden.notas ? `<hr style="border: 1px dashed #666;"><div style="margin: 15px 0;"><h3 style="margin: 10px 0;">NOTAS</h3><p>${orden.notas}</p></div>` : ''}<hr style="border: 1px solid #333;"><div style="margin: 15px 0;">${orden.presupuesto ? `<p><strong>Presupuesto:</strong> <span style="font-size: 1.3em;">$${orden.presupuesto.toFixed(2)}</span></p><p><strong>Anticipo:</strong> $${(orden.anticipo || 0).toFixed(2)}</p><p><strong>Saldo:</strong> $${((orden.presupuesto || 0) - (orden.anticipo || 0)).toFixed(2)}</p>` : '<p><em>Presupuesto pendiente</em></p>'}${orden.tieneGarantia !== false ? `<p><strong>Garantía:</strong> ${orden.garantia} días</p>` : '<p><strong>Garantía:</strong> ❌ Sin garantía</p>'}</div><hr style="border: 1px solid #333;"><div style="margin: 8px 0; padding: 6px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 3px;"><p style="margin: 0; font-size: 9px; text-align: center; font-weight: bold; color: #856404;">⚠️ POLÍTICAS DEL TALLER</p><p style="margin: 10px 0 0; font-size: 0.8em; text-align: justify; line-height: 1.4;">${politicasTexto}</p></div><div style="margin-top: 12px;"><p style="margin: 15px 0 3px;">_____________________</p><p style="margin: 0; font-size: 10px;">Firma del Cliente</p></div><div style="margin-top: 20px; text-align: center; font-size: 0.9em;"><p><strong>Estado:</strong> ${orden.estado}</p><p>¡Gracias por su confianza!</p></div></div>`;
+    const recibo = `
+    <div style="font-family: 'Courier New', monospace; width: 80mm; font-size: 11px; padding: 5mm; margin: 0;">
+        ${encabezadoHTML}
+        <div style="border-top: 2px solid #000; border-bottom: 1px solid #000; padding: 5px 0; margin: 8px 0;">
+            <div><strong>Orden:</strong> #${orden.numero}</div>
+            <div><strong>Fecha:</strong> ${formatearFecha(orden.fechaIngreso)}</div>
+            ${orden.fechaEstimada ? `<div><strong>Entrega:</strong> ${formatearFecha(orden.fechaEstimada)}</div>` : ''}
+        </div>
+        
+        <div style="margin: 8px 0; padding: 5px 0; border-bottom: 1px dashed #666;">
+            <div style="font-weight: bold; margin-bottom: 3px;">DATOS DEL CLIENTE</div>
+            <div><strong>Nombre:</strong> ${cliente.nombre} ${cliente.apellido}</div>
+            <div><strong>Celular:</strong> ${cliente.celular}</div>
+            ${cliente.email ? `<div><strong>Email:</strong> ${cliente.email}</div>` : ''}
+        </div>
+        
+        <div style="margin: 8px 0; padding: 5px 0; border-bottom: 1px dashed #666;">
+            <div style="font-weight: bold; margin-bottom: 3px;">DATOS DEL EQUIPO</div>
+            <div><strong>Tipo:</strong> ${orden.tipoDispositivo}</div>
+            <div><strong>Marca:</strong> ${orden.marca}</div>
+            <div><strong>Modelo:</strong> ${orden.modelo}</div>
+            ${orden.imei ? `<div><strong>IMEI/Serie:</strong> ${orden.imei}</div>` : ''}
+            ${orden.accesorios ? `<div><strong>Accesorios:</strong> ${orden.accesorios}</div>` : ''}
+        </div>
+        
+        <div style="margin: 8px 0; padding: 5px 0; border-bottom: 1px dashed #666;">
+            <div style="font-weight: bold; margin-bottom: 3px;">PROBLEMA REPORTADO</div>
+            <div style="line-height: 1.4;">${orden.problema}</div>
+        </div>
+        
+        ${orden.notas ? `
+        <div style="margin: 8px 0; padding: 5px 0; border-bottom: 1px dashed #666;">
+            <div style="font-weight: bold; margin-bottom: 3px;">NOTAS</div>
+            <div style="line-height: 1.4;">${orden.notas}</div>
+        </div>` : ''}
+        
+        <div style="margin: 8px 0; padding: 8px 0; border-top: 2px solid #000; border-bottom: 2px solid #000;">
+            ${orden.presupuesto ? `
+            <div style="margin: 3px 0;"><strong>Presupuesto:</strong> <span style="font-size: 14px; font-weight: bold;">$${orden.presupuesto.toFixed(2)}</span></div>
+            <div style="margin: 3px 0;"><strong>Anticipo:</strong> $${(orden.anticipo || 0).toFixed(2)}</div>
+            <div style="margin: 3px 0;"><strong>Saldo:</strong> <span style="font-size: 13px; font-weight: bold;">$${((orden.presupuesto || 0) - (orden.anticipo || 0)).toFixed(2)}</span></div>
+            ` : '<div style="font-style: italic;">Presupuesto pendiente</div>'}
+            ${orden.tieneGarantia !== false ? `<div style="margin: 5px 0;"><strong>Garantía:</strong> ${orden.garantia} días</div>` : '<div style="margin: 5px 0;"><strong>Garantía:</strong> Sin garantía</div>'}
+        </div>
+        
+        <div style="margin: 8px 0; padding: 5px; background-color: #f0f0f0; border: 1px solid #999; font-size: 9px; line-height: 1.3;">
+            <div style="font-weight: bold; text-align: center; margin-bottom: 3px;">⚠️ POLÍTICAS DEL TALLER</div>
+            <div>${politicasTexto}</div>
+        </div>
+        
+        <div style="margin-top: 15px; text-align: center;">
+            <div style="margin: 10px 0;">_____________________</div>
+            <div style="font-size: 10px;">Firma del Cliente</div>
+        </div>
+        
+        <div style="margin-top: 15px; text-align: center; border-top: 1px dashed #666; padding-top: 8px;">
+            <div><strong>Estado:</strong> ${orden.estado}</div>
+            <div style="margin-top: 5px; font-size: 10px;">¡Gracias por su confianza!</div>
+        </div>
+    </div>`;
     
-    // 1. Imprimir FACTURA
-    const ventana = window.open('', '', 'width=800,height=600');
-    ventana.document.write('<html><head><title>Orden de Servicio</title></head><body>');
-    ventana.document.write(recibo);
-    ventana.document.write('</body></html>');
+    // 1. Imprimir FACTURA (optimizada para impresora térmica 80mm)
+    const ventana = window.open('', '', 'width=400,height=600');
+    ventana.document.write(`
+        <html>
+        <head>
+            <title>Orden de Servicio #${orden.numero}</title>
+            <style>
+                @media print {
+                    @page {
+                        size: 80mm auto;
+                        margin: 0;
+                    }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                    }
+                }
+                body {
+                    margin: 0;
+                    padding: 0;
+                }
+            </style>
+        </head>
+        <body>
+            ${recibo}
+        </body>
+        </html>
+    `);
     ventana.document.close();
     ventana.print();
+}
+
+// Función para imprimir solo el ticket pequeño (58mm)
+async function imprimirSoloTicket() {
+    if (!ordenIdTemporal) return;
     
-    // 2. Esperar un momento y luego imprimir TICKET PEQUEÑO
-    setTimeout(() => {
-        imprimirTicketPequeno(orden, cliente, nombreTaller);
-    }, 1000);
+    cerrarModalSeleccionImpresion();
+    
+    const ordenes = Storage.get('ordenes');
+    const clientes = Storage.get('clientes');
+    const orden = ordenes.find(o => o.id === ordenIdTemporal);
+    const cliente = clientes.find(c => c.id === orden.clienteId);
+    
+    // Obtener configuración del taller
+    const config = await obtenerConfiguracionTaller();
+    const nombreTaller = config?.nombreTaller || 'TALLER DE REPARACIONES';
+    
+    imprimirTicketPequeno(orden, cliente, nombreTaller);
 }
 
 // Nueva función para imprimir ticket pequeño para impresora de códigos/etiquetas

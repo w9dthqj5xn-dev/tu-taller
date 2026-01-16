@@ -3126,21 +3126,35 @@ function previsualizarLogo(event) {
 // Función para cargar la configuración del taller
 async function cargarConfiguracion() {
     try {
+        console.log('🔧 Iniciando carga de configuración...');
+        
         const usuarioActual = obtenerUsuarioActual();
         if (!usuarioActual) {
-            console.log('No hay usuario autenticado');
+            console.log('⚠️ No hay usuario autenticado');
+            return;
+        }
+        
+        console.log('👤 Usuario actual:', usuarioActual);
+
+        // Verificar que los elementos del formulario existan
+        const nombreInput = document.getElementById('nombreTaller');
+        if (!nombreInput) {
+            console.error('❌ No se encontró el formulario de configuración. Verificando DOM...');
+            setTimeout(() => cargarConfiguracion(), 500);
             return;
         }
 
         // Intentar cargar desde Firebase primero
         if (typeof db !== 'undefined' && db) {
             try {
+                console.log('🔍 Intentando cargar desde Firebase...');
                 const docRef = db.collection('configuraciones').doc(usuarioActual);
                 const doc = await docRef.get();
                 
                 if (doc.exists) {
                     const config = doc.data();
                     configuracionTallerCache = config;
+                    console.log('📦 Config encontrada en Firebase:', config);
                     
                     // Llenar el formulario
                     document.getElementById('nombreTaller').value = config.nombreTaller || '';
@@ -3161,7 +3175,7 @@ async function cargarConfiguracion() {
                     return;
                 }
             } catch (error) {
-                console.log('No se pudo cargar desde Firebase, intentando localStorage...', error);
+                console.log('⚠️ No se pudo cargar desde Firebase, intentando localStorage...', error);
             }
         }
         
@@ -3170,6 +3184,7 @@ async function cargarConfiguracion() {
         if (configLocal) {
             const config = JSON.parse(configLocal);
             configuracionTallerCache = config;
+            console.log('📦 Config encontrada en localStorage:', config);
             
             document.getElementById('nombreTaller').value = config.nombreTaller || '';
             document.getElementById('direccionTaller').value = config.direccionTaller || '';
@@ -3184,9 +3199,11 @@ async function cargarConfiguracion() {
             }
             
             console.log('✅ Configuración cargada desde localStorage');
+        } else {
+            console.log('ℹ️ No hay configuración guardada, formulario vacío');
         }
     } catch (error) {
-        console.error('Error al cargar configuración:', error);
+        console.error('❌ Error al cargar configuración:', error);
         mostrarNotificacion('Error al cargar la configuración', 'error');
     }
 }
@@ -3306,12 +3323,17 @@ async function obtenerConfiguracionTaller() {
 
 // Función auxiliar para mostrar secciones (usada desde el botón del header)
 window.mostrarSeccion = function(seccionId) {
+    console.log('🔄 Mostrando sección:', seccionId);
+    
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     
     const seccion = document.getElementById(seccionId);
     if (seccion) {
         seccion.classList.add('active');
+        console.log('✅ Sección activada:', seccionId);
+    } else {
+        console.error('❌ No se encontró la sección:', seccionId);
     }
     
     const btn = document.querySelector(`[data-section="${seccionId}"]`);
@@ -3321,6 +3343,7 @@ window.mostrarSeccion = function(seccionId) {
     
     // Cargar datos específicos de la sección
     if (seccionId === 'configuracion') {
+        console.log('🔧 Cargando configuración...');
         cargarConfiguracion();
     }
     if (seccionId === 'dashboard') actualizarDashboard();

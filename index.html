@@ -815,24 +815,26 @@
             
             <div style="background: #fff3cd; padding: 12px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
                 <p style="margin: 0; font-size: 14px; color: #856404;">
-                    <strong>💡 Nota:</strong> Los artículos agregados aquí se descontarán automáticamente del inventario y se sumarán al costo de la orden.
+                    <strong>💡 Nota:</strong> Los artículos/servicios agregados se sumarán al costo y ganancia de la orden. Escribe libremente cualquier servicio o repuesto adicional.
                 </p>
             </div>
             
             <div id="articulosActualesOrden" style="margin-bottom: 20px;"></div>
             
             <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border: 2px dashed #dee2e6;">
-                <h4 style="margin-bottom: 15px;">➕ Agregar Nuevo Artículo</h4>
+                <h4 style="margin-bottom: 15px;">➕ Agregar Nuevo Artículo/Servicio</h4>
                 <div class="form-row">
                     <div class="form-group" style="flex: 2;">
-                        <label>Seleccionar Repuesto del Inventario</label>
-                        <select id="selectRepuestoModal">
-                            <option value="">-- Seleccionar repuesto --</option>
-                        </select>
+                        <label>Descripción del Artículo/Servicio *</label>
+                        <input type="text" id="nombreArticuloModal" placeholder="Ej: Cambio de batería, Limpieza profunda, etc." style="width: 100%;">
                     </div>
                     <div class="form-group">
                         <label>Cantidad</label>
-                        <input type="number" id="cantidadRepuestoModal" min="1" value="1" style="text-align: center;">
+                        <input type="number" id="cantidadArticuloModal" min="1" value="1" style="text-align: center;">
+                    </div>
+                    <div class="form-group">
+                        <label>Precio Unitario ($) *</label>
+                        <input type="number" id="precioArticuloModal" min="0" step="0.01" placeholder="0.00" style="text-align: center;">
                     </div>
                     <div class="form-group" style="display: flex; align-items: flex-end;">
                         <button type="button" class="btn-success" onclick="agregarArticuloModal()" style="margin-bottom: 0; padding: 10px 20px;">+ Agregar</button>

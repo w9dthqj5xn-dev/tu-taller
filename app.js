@@ -3896,108 +3896,57 @@ function abrirModalArticulos(ordenId) {
         </div>
     `;
     
-    // Cargar inventario en el select
-    cargarInventarioSelectModal();
-    
     // Mostrar artículos actuales
     actualizarArticulosActualesOrden();
+    
+    // Limpiar campos
+    document.getElementById('nombreArticuloModal').value = '';
+    document.getElementById('cantidadArticuloModal').value = 1;
+    document.getElementById('precioArticuloModal').value = '';
     
     // Mostrar el modal
     document.getElementById('modalAgregarArticulos').style.display = 'block';
 }
 
-// Cargar inventario en el select del modal
-function cargarInventarioSelectModal() {
-    const inventario = Storage.get('repuestos');
-    const select = document.getElementById('selectRepuestoModal');
-    
-    select.innerHTML = '<option value="">-- Seleccionar repuesto --</option>';
-    
-    if (inventario.length === 0) {
-        const option = document.createElement('option');
-        option.disabled = true;
-        option.textContent = 'No hay repuestos en el inventario';
-        select.appendChild(option);
-        return;
-    }
-    
-    // Agrupar por categorías
-    const categorias = {};
-    inventario.forEach(item => {
-        const categoria = item.categoria || 'Sin Categoría';
-        if (!categorias[categoria]) {
-            categorias[categoria] = [];
-        }
-        categorias[categoria].push(item);
-    });
-    
-    // Ordenar categorías alfabéticamente
-    const categoriasOrdenadas = Object.keys(categorias).sort();
-    
-    categoriasOrdenadas.forEach(categoria => {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = categoria;
-        
-        categorias[categoria].forEach(item => {
-            const option = document.createElement('option');
-            option.value = item.id;
-            option.textContent = `${item.nombre} - Stock: ${item.stock} - $${item.precioVenta}`;
-            if (item.stock <= 0) {
-                option.disabled = true;
-                option.textContent += ' (Sin stock)';
-            }
-            optgroup.appendChild(option);
-        });
-        
-        select.appendChild(optgroup);
-    });
-}
-
 // Agregar artículo al temporal
 function agregarArticuloModal() {
-    const selectRepuesto = document.getElementById('selectRepuestoModal');
-    const cantidad = parseInt(document.getElementById('cantidadRepuestoModal').value) || 1;
-    const repuestoId = parseInt(selectRepuesto.value);
+    const nombre = document.getElementById('nombreArticuloModal').value.trim();
+    const cantidad = parseInt(document.getElementById('cantidadArticuloModal').value) || 1;
+    const precio = parseFloat(document.getElementById('precioArticuloModal').value) || 0;
     
-    if (!repuestoId) {
-        alert('Por favor selecciona un repuesto');
+    if (!nombre) {
+        alert('Por favor ingresa la descripción del artículo/servicio');
         return;
     }
     
-    const inventario = Storage.get('repuestos');
-    const repuesto = inventario.find(p => p.id === repuestoId);
-    
-    if (!repuesto) {
-        alert('Repuesto no encontrado');
+    if (precio <= 0) {
+        alert('Por favor ingresa un precio válido');
         return;
     }
     
-    if (cantidad > repuesto.stock) {
-        alert(`Solo hay ${repuesto.stock} unidades disponibles en stock`);
+    if (cantidad <= 0) {
+        alert('Por favor ingresa una cantidad válida');
         return;
     }
     
-    // Verificar si ya existe este repuesto en los artículos temporales
-    const existente = articulosTemporales.find(p => p.id === repuestoId);
-    if (existente) {
-        const nuevaCantidad = existente.cantidad + cantidad;
-        if (nuevaCantidad > repuesto.stock) {
-            alert(`Solo hay ${repuesto.stock} unidades disponibles en stock`);
-            return;
-        }
-        existente.cantidad = nuevaCantidad;
-    } else {
-        articulosTemporales.push({
-            id: repuestoId,
-            nombre: repuesto.nombre,
-            cantidad: cantidad,
-            precio: repuesto.precioVenta
-        });
-    }
+    // Agregar artículo personalizado
+    articulosTemporales.push({
+        id: null, // null indica que es un artículo personalizado, no del inventario
+        nombre: nombre,
+        cantidad: cantidad,
+        precio: precio,
+        esPersonalizado: true // Flag para identificar artículos personalizados
+    });
     
     actualizarArticulosActualesOrden();
-    document.getElementById('cantidadRepuestoModal').value = 1;
-    selectRepuesto.value = '';
+    
+    // Limpiar campos
+    document.getElementById('nombreArticuloModal').value = '';
+    document.getElementById('cantidadArticuloModal').value = 1;
+    document.getElementById('precioArticuloModal').value = '';
+    
+    // Enfocar el campo de nombre para agregar más rápido
+    document.getElementById('nombreArticuloModal').focus();
 }
 
 // Eliminar artículo temporal
@@ -4054,6 +4003,12 @@ async function guardarArticulosOrden() {
     
     const ordenes = Storage.get('ordenes');
     const ordenIndex = ordenes.findIndex(o => o.id === ordenActualArticulos.id);
+    presupuesto de la orden.')) {
+        return;
+    }
+    
+    const ordenes = Storage.get('ordenes');
+    const ordenIndex = ordenes.findIndex(o => o.id === ordenActualArticulos.id);
     
     if (ordenIndex === -1) {
         alert('Error: Orden no encontrada');
@@ -4063,40 +4018,56 @@ async function guardarArticulosOrden() {
     // Obtener los artículos originales de la orden
     const articulosOriginales = ordenActualArticulos.repuestos || [];
     
-    // Restaurar al inventario los artículos originales
+    // Restaurar al inventario solo los artículos que eran del inventario (no personalizados)
     let inventario = Storage.get('repuestos');
     articulosOriginales.forEach(repuesto => {
-        const itemInventario = inventario.find(i => i.id === repuesto.id);
-        if (itemInventario) {
-            itemInventario.stock += repuesto.cantidad;
-        }
-    });
-    
-    // Descontar del inventario los nuevos artículos
-    articulosTemporales.forEach(repuesto => {
-        const itemInventario = inventario.find(i => i.id === repuesto.id);
-        if (itemInventario) {
-            itemInventario.stock -= repuesto.cantidad;
-            if (itemInventario.stock < 0) {
-                itemInventario.stock = 0;
+        // Solo restaurar si NO es personalizado (tiene id del inventario)
+        if (repuesto.id && !repuesto.esPersonalizado) {
+            const itemInventario = inventario.find(i => i.id === repuesto.id);
+            if (itemInventario) {
+                itemInventario.stock += repuesto.cantidad;
             }
         }
     });
     
-    // Actualizar la orden con los nuevos artículos
+    // Descontar del inventario solo los artículos nuevos que vengan del inventario
+    articulosTemporales.forEach(repuesto => {
+        // Solo descontar si NO es personalizado (tiene id del inventario)
+        if (repuesto.id && !repuesto.esPersonalizado) {
+            const itemInventario = inventario.find(i => i.id === repuesto.id);
+            if (itemInventario) {
+                itemInventario.stock -= repuesto.cantidad;
+                if (itemInventario.stock < 0) {
+                    itemInventario.stock = 0;
+                }
+            }
+        }
+    });
+    
+    // Calcular el costo total de los artículos
+    const costoArticulos = articulosTemporales.reduce((total, articulo) => {
+        return total + (articulo.precio * articulo.cantidad);
+    }, 0);
+    
+    // Actualizar la orden con los nuevos artículos y presupuesto
     ordenes[ordenIndex].repuestos = [...articulosTemporales];
+    
+    // Sumar el costo de los artículos al presupuesto existente (solo los nuevos)
+    const costoArticulosOriginales = articulosOriginales.reduce((total, articulo) => {
+        return total + (articulo.precio * articulo.cantidad);
+    }, 0);
+    
+    const diferenciaCosto = costoArticulos - costoArticulosOriginales;
+    liminar la función cargarInventarioSelectModal ya que no se usa
+// Solo mantener las funciones necesarias
+
+// Eordenes[ordenIndex].presupuesto = (ordenes[ordenIndex].presupuesto || 0) + diferenciaCosto;
     
     // Guardar cambios
     await Storage.saveAndSync('repuestos', inventario);
     await Storage.saveAndSync('ordenes', ordenes);
     
-    alert('✅ Artículos agregados exitosamente a la orden');
-    
-    cerrarModalArticulos();
-    cargarOrdenes();
-}
-
-// Cerrar el modal
+    alert(`✅ Artículos agregados exitosamente\n\nNuevo presupuesto: $${ordenes[ordenIndex].presupuesto.toFixed(2)}\nCosto de artículos: $${costoArticulos.toFixed(2)}`
 function cerrarModalArticulos() {
     document.getElementById('modalAgregarArticulos').style.display = 'none';
     ordenActualArticulos = null;

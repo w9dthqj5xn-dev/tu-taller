@@ -2335,6 +2335,7 @@
                 
                 await db.collection('usuarios').add(nuevoUsuario);
                 
+                console.log('✅ Usuario guardado en Firebase');
                 alert(`✅ Usuario creado exitosamente\n\nUsuario: ${usuario}\nContraseña: ${password}\nTaller: ${nombreTaller}`);
                 
                 ocultarFormCrearUsuario();
@@ -2681,6 +2682,8 @@
             }
 
             try {
+                console.log('🗑️ Iniciando eliminación de usuario:', nombreUsuario);
+                
                 // Buscar y eliminar de Firebase
                 const snapshot = await db.collection('usuarios')
                     .where('usuario', '==', nombreUsuario)
@@ -2694,9 +2697,17 @@
                 // Eliminar todos los documentos que coincidan
                 snapshot.forEach(doc => {
                     doc.ref.delete();
+                    console.log('💥 Usuario eliminado de Firebase:', doc.id);
                 });
+                
+                // IMPORTANTE: También eliminar del localStorage para evitar que vuelva a aparecer
+                console.log('🧹 Limpiando usuario del localStorage...');
+                const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+                const usuariosFiltrados = usuariosLocal.filter(u => u.usuario !== nombreUsuario);
+                localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosFiltrados));
+                console.log(`✅ Usuarios en localStorage: ${usuariosLocal.length} → ${usuariosFiltrados.length}`);
 
-                alert('✅ Usuario eliminado correctamente de Firebase');
+                alert('✅ Usuario eliminado correctamente');
                 await cargarUsuarios();
             } catch (error) {
                 console.error('Error al eliminar usuario:', error);

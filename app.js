@@ -3588,6 +3588,11 @@ window.imprimirRecibo = imprimirRecibo;
 window.imprimirFacturaCompleta = imprimirFacturaCompleta;
 window.imprimirSoloTicket = imprimirSoloTicket;
 window.cerrarModalSeleccionImpresion = cerrarModalSeleccionImpresion;
+window.editarOrden = editarOrden;
+window.cambiarEstadoOrden = cambiarEstadoOrden;
+window.eliminarOrden = eliminarOrden;
+window.registrarPago = registrarPago;
+window.enviarWhatsApp = enviarWhatsApp;
 
 // === CONFIGURACIÓN DEL TALLER ===
 let configuracionTallerCache = null;

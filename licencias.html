@@ -1789,6 +1789,17 @@
                 // Mostrar resultado
                 if (licenciasMigradas > 0 || usuariosMigrados > 0) {
                     console.log(`✅ Migración completada: ${licenciasMigradas} licencias, ${usuariosMigrados} usuarios`);
+                    
+                    // Limpiar localStorage después de migrar exitosamente
+                    if (licenciasMigradas > 0) {
+                        console.log('🧹 Limpiando licencias del localStorage después de migrar...');
+                        localStorage.removeItem('licenciasGeneradas');
+                    }
+                    if (usuariosMigrados > 0) {
+                        console.log('🧹 Limpiando usuarios del localStorage después de migrar...');
+                        localStorage.removeItem('usuariosRegistrados');
+                    }
+                    
                     mostrarNotificacion(
                         `✅ Datos migrados a Firebase: ${licenciasMigradas} licencias, ${usuariosMigrados} usuarios`, 
                         'success'
@@ -1989,8 +2000,10 @@
             };
 
             try {
-                // Guardar licencia solo en Firebase
+                // Guardar licencia directamente en Firebase (fuente única de verdad)
                 await db.collection('licencias').add(licencia);
+                
+                console.log('✅ Licencia guardada en Firebase');
 
                 // Mostrar resultado
                 mostrarResultado(licencia);
@@ -2000,7 +2013,7 @@
                 // Limpiar formulario
                 document.getElementById('licenseForm').reset();
                 
-                alert('✅ Licencia generada y guardada en Firebase correctamente');
+                alert('✅ Licencia generada y guardada correctamente');
             } catch (error) {
                 console.error('Error al generar licencia:', error);
                 alert('❌ Error al guardar licencia. Por favor intenta de nuevo.');

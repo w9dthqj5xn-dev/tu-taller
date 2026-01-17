@@ -3429,37 +3429,28 @@ async function imprimirSoloTicket() {
 function imprimirTicketPequeno(orden, cliente, nombreTaller) {
     // Ticket pequeño optimizado para impresoras de etiquetas (58mm o 80mm)
     const ticket = `
-    <div style="font-family: 'Courier New', monospace; width: 58mm; font-size: 10px; padding: 5mm; margin: 0;">
-        <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 3mm; margin-bottom: 3mm;">
-            <div style="font-size: 12px; font-weight: bold;">${nombreTaller}</div>
-            <div style="font-size: 9px; margin-top: 2mm;">TICKET DE IDENTIFICACIÓN</div>
+    <div style="font-family: 'Courier New', monospace; width: 4in; font-size: 12px; padding: 0.2in; margin: 0;">
+        <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 5mm; margin-bottom: 5mm;">
+            <div style="font-size: 14px; font-weight: bold;">${nombreTaller}</div>
+            <div style="font-size: 10px; margin-top: 2mm;">TICKET DE IDENTIFICACIÓN</div>
         </div>
         
-        <div style="margin: 3mm 0; border: 2px solid #000; padding: 3mm; background: #f0f0f0;">
-            <div style="font-size: 16px; font-weight: bold; text-align: center; letter-spacing: 1px;">
+        <div style="margin: 5mm 0; border: 2px solid #000; padding: 5mm; background: #f0f0f0;">
+            <div style="font-size: 18px; font-weight: bold; text-align: center; letter-spacing: 1px;">
                 ORDEN #${orden.numero}
             </div>
         </div>
         
-        <div style="margin: 3mm 0; line-height: 1.6;">
-            <div style="border-bottom: 1px dashed #666; padding: 2mm 0;">
-                <strong>EQUIPO:</strong><br>
-                ${orden.marca} ${orden.modelo}
-            </div>
-            
-            <div style="border-bottom: 1px dashed #666; padding: 2mm 0;">
+        <div style="margin: 5mm 0; line-height: 1.8;">
+            <div style="border-bottom: 1px dashed #666; padding: 3mm 0;">
                 <strong>CLIENTE:</strong><br>
                 ${cliente.nombre} ${cliente.apellido}
             </div>
             
-            <div style="padding: 2mm 0;">
-                <strong>TELÉFONO:</strong><br>
-                ${cliente.celular}
+            <div style="padding: 3mm 0;">
+                <strong>PROBLEMA:</strong><br>
+                ${orden.problema}
             </div>
-        </div>
-        
-        <div style="text-align: center; margin-top: 5mm; padding-top: 3mm; border-top: 2px dashed #000; font-size: 8px;">
-            Fecha: ${formatearFecha(orden.fechaIngreso)}
         </div>
     </div>`;
     

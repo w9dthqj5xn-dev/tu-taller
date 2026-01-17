@@ -195,8 +195,15 @@ async function eliminarLicenciaFirebase(licenseKey) {
         console.log('💥 Eliminando documento con ID:', doc.id);
         await doc.ref.delete();
         
+        // IMPORTANTE: También eliminar del localStorage para evitar que vuelva a aparecer
+        console.log('🧹 Limpiando licencia del localStorage...');
+        const licenciasLocal = JSON.parse(localStorage.getItem('licenciasGeneradas') || '[]');
+        const licenciasFiltradas = licenciasLocal.filter(lic => lic.licenseKey !== licenseKey);
+        localStorage.setItem('licenciasGeneradas', JSON.stringify(licenciasFiltradas));
+        console.log(`✅ Licencias en localStorage: ${licenciasLocal.length} → ${licenciasFiltradas.length}`);
+        
         console.log('✅ Documento eliminado exitosamente de Firebase');
-        alert('✅ Licencia eliminada correctamente de Firebase');
+        alert('✅ Licencia eliminada correctamente');
         return true;
         
     } catch (error) {
@@ -275,6 +282,7 @@ async function eliminarUsuarioGoogle(email) {
         
         await doc.ref.delete();
         
+        console.log('✅ Usuario de Google eliminado de Firebase');
         alert('✅ Usuario de Google eliminado correctamente');
         return true;
         

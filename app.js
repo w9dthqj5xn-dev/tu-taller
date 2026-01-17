@@ -3299,6 +3299,15 @@ async function imprimirFacturaCompleta() {
             <div style="line-height: 1.4;">${orden.notas}</div>
         </div>` : ''}
         
+        ${orden.repuestos && orden.repuestos.length > 0 ? `
+        <div style="margin: 8px 0; padding: 5px 0; border-bottom: 1px dashed #666;">
+            <div style="font-weight: bold; margin-bottom: 3px;">🔧 ARTÍCULOS/REPUESTOS</div>
+            ${orden.repuestos.map(r => `
+            <div style="margin: 2px 0; font-size: 10px;">
+                • ${r.nombre} - Cant: ${r.cantidad} - $${(r.precio * r.cantidad).toFixed(2)}
+            </div>`).join('')}
+        </div>` : ''}
+        
         <div style="margin: 8px 0; padding: 8px 0; border-top: 2px solid #000; border-bottom: 2px solid #000;">
             ${orden.presupuesto ? `
             <div style="margin: 3px 0;"><strong>Presupuesto:</strong> <span style="font-size: 14px; font-weight: bold;">$${orden.presupuesto.toFixed(2)}</span></div>

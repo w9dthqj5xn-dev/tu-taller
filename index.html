@@ -267,9 +267,11 @@
                             <div class="form-group" style="flex: 2;">
                                 <label id="labelCliente">Cliente *</label>
                                 <div style="display: flex; gap: 10px;">
-                                    <select id="ordenCliente" required style="flex: 1;">
-                                        <option value="">Seleccionar cliente...</option>
-                                    </select>
+                                    <div style="flex: 1; position: relative;">
+                                        <input type="text" id="ordenClienteBusqueda" placeholder="Escribir nombre del cliente..." oninput="filtrarClientesOrden()" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <input type="hidden" id="ordenCliente" required>
+                                        <div id="dropdownClientesOrden" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; margin-top: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
+                                    </div>
                                     <button type="button" class="btn-success" onclick="mostrarFormClienteRapido()" style="padding: 10px 15px; white-space: nowrap;">+ Nuevo</button>
                                     <button type="button" class="btn-primary" onclick="crearOrdenClienteFinal()" style="padding: 10px 15px; white-space: nowrap; background: #ff9800;">👤 Cliente Final</button>
                                 </div>

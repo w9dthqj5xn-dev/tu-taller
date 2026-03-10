@@ -1634,6 +1634,84 @@ function limpiarBusquedaClientes() {
     cargarClientes();
 }
 
+// Función para filtrar clientes en el selector de órdenes
+function filtrarClientesOrden() {
+    const termino = document.getElementById('ordenClienteBusqueda').value.toLowerCase().trim();
+    const clientes = Storage.get('clientes');
+    const dropdown = document.getElementById('dropdownClientesOrden');
+    
+    // Si está vacío, mostrar todos los clientes
+    if (!termino) {
+        mostrarDropdownClientesOrden(clientes);
+        return;
+    }
+    
+    // Filtrar clientes que coincidan con el término de búsqueda
+    const clientesFiltrados = clientes.filter(cliente => {
+        const nombreCompleto = `${cliente.nombre} ${cliente.apellido}`.toLowerCase();
+        const celular = (cliente.celular || '').toLowerCase();
+        const email = (cliente.email || '').toLowerCase();
+        
+        return (
+            nombreCompleto.includes(termino) ||
+            celular.includes(termino) ||
+            email.includes(termino)
+        );
+    });
+    
+    mostrarDropdownClientesOrden(clientesFiltrados);
+}
+
+// Función para mostrar el dropdown de clientes
+function mostrarDropdownClientesOrden(clientes) {
+    const dropdown = document.getElementById('dropdownClientesOrden');
+    
+    // Ordenar clientes alfabéticamente
+    const clientesOrdenados = [...clientes].sort((a, b) => {
+        const nombreA = `${a.nombre} ${a.apellido}`.toLowerCase();
+        const nombreB = `${b.nombre} ${b.apellido}`.toLowerCase();
+        return nombreA.localeCompare(nombreB, 'es');
+    });
+    
+    if (clientesOrdenados.length === 0) {
+        dropdown.innerHTML = '<div style="padding: 10px; color: #999; text-align: center;">No se encontraron clientes</div>';
+        dropdown.style.display = 'block';
+        return;
+    }
+    
+    let html = '';
+    clientesOrdenados.forEach(cliente => {
+        html += `
+            <div style="padding: 10px 12px; border-bottom: 1px solid #eee; cursor: pointer; hover: background: #f5f5f5;" 
+                 onmouseover="this.style.background='#f5f5f5'" 
+                 onmouseout="this.style.background='white'"
+                 onclick="seleccionarClienteOrden(${cliente.id}, '${cliente.nombre.replace(/'/g, "\\'")} ${cliente.apellido.replace(/'/g, "\\'")}')">
+                <strong>${cliente.nombre} ${cliente.apellido}</strong><br>
+                <small style="color: #666;">📱 ${cliente.celular}${cliente.email ? ` | 📧 ${cliente.email}` : ''}</small>
+            </div>
+        `;
+    });
+    
+    dropdown.innerHTML = html;
+    dropdown.style.display = 'block';
+}
+
+// Función para seleccionar un cliente del dropdown
+function seleccionarClienteOrden(clienteId, nombreCliente) {
+    document.getElementById('ordenCliente').value = clienteId;
+    document.getElementById('ordenClienteBusqueda').value = nombreCliente;
+    document.getElementById('dropdownClientesOrden').style.display = 'none';
+}
+
+// Cerrar dropdown cuando se hace click fuera
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('dropdownClientesOrden');
+    const input = document.getElementById('ordenClienteBusqueda');
+    if (dropdown && input && !event.target.closest('[id="ordenClienteBusqueda"], [id="dropdownClientesOrden"]')) {
+        dropdown.style.display = 'none';
+    }
+});
+
 function editarCliente(id) {
     const clientes = Storage.get('clientes');
     const cliente = clientes.find(c => c.id === id);
@@ -1816,6 +1894,13 @@ function mostrarFormOrden() {
     document.getElementById('formOrden').style.display = 'block';
     document.getElementById('ordenForm').reset();
     document.getElementById('ordenId').value = '';
+    
+    // Limpiar el input de búsqueda de cliente si existe
+    const inputBusquedaCliente = document.getElementById('ordenClienteBusqueda');
+    if (inputBusquedaCliente) {
+        inputBusquedaCliente.value = '';
+    }
+    
     const hoy = new Date().toISOString().split('T')[0];
     document.getElementById('ordenFechaIngreso').value = hoy;
     document.querySelector('input[name="tipoGarantia"][value="con"]').checked = true;
@@ -2055,14 +2140,25 @@ function cargarClientesSelect() {
         const nombreB = `${b.nombre} ${b.apellido}`.toLowerCase();
         return nombreA.localeCompare(nombreB, 'es');
     });
+    
+    // Para el input de búsqueda (nuevo sistema)
+    const inputBusqueda = document.getElementById('ordenClienteBusqueda');
+    if (inputBusqueda) {
+        // Inicializar el dropdown con todos los clientes
+        mostrarDropdownClientesOrden(clientesOrdenados);
+    }
+    
+    // Mantener compatibilidad con el select antiguo si existe
     const select = document.getElementById('ordenCliente');
-    select.innerHTML = '<option value="">Seleccionar cliente...</option>';
-    clientesOrdenados.forEach(cliente => {
-        const option = document.createElement('option');
-        option.value = cliente.id;
-        option.textContent = `${cliente.nombre} ${cliente.apellido} - ${cliente.celular}`;
-        select.appendChild(option);
-    });
+    if (select && select.tagName === 'SELECT') {
+        select.innerHTML = '<option value="">Seleccionar cliente...</option>';
+        clientesOrdenados.forEach(cliente => {
+            const option = document.createElement('option');
+            option.value = cliente.id;
+            option.textContent = `${cliente.nombre} ${cliente.apellido} - ${cliente.celular}`;
+            select.appendChild(option);
+        });
+    }
 }
 
 function cargarTiendasSelect() {
@@ -2332,6 +2428,17 @@ function editarOrden(id) {
     document.getElementById('ordenId').value = orden.id;
     document.getElementById('ordenTienda').value = orden.tiendaId || '';
     document.getElementById('ordenCliente').value = orden.clienteId;
+    
+    // Si existe el input de búsqueda, llenar también el nombre del cliente
+    const inputBusquedaCliente = document.getElementById('ordenClienteBusqueda');
+    if (inputBusquedaCliente && orden.clienteId) {
+        const clientes = Storage.get('clientes');
+        const cliente = clientes.find(c => c.id === orden.clienteId);
+        if (cliente) {
+            inputBusquedaCliente.value = `${cliente.nombre} ${cliente.apellido}`;
+        }
+    }
+    
     document.getElementById('ordenTipoDispositivo').value = orden.tipoDispositivo;
     document.getElementById('ordenMarca').value = orden.marca;
     document.getElementById('ordenModelo').value = orden.modelo;
@@ -4071,6 +4178,9 @@ window.obtenerCategorias = obtenerCategorias;
 window.filtrarInventario = filtrarInventario;
 window.filtrarClientes = filtrarClientes;
 window.limpiarBusquedaClientes = limpiarBusquedaClientes;
+window.filtrarClientesOrden = filtrarClientesOrden;
+window.seleccionarClienteOrden = seleccionarClienteOrden;
+window.mostrarDropdownClientesOrden = mostrarDropdownClientesOrden;
 window.exportarDatos = exportarDatos;
 window.imprimirReporte = imprimirReporte;
 window.buscar = buscar;

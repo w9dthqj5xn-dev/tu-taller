@@ -514,21 +514,42 @@ async function cargarDatosUsuario(usuario) {
     try {
         console.log('🔄 Cargando datos desde Firebase para:', usuario);
         
-        // Cargar clientes, órdenes y repuestos desde Firebase
-        const clientes = await Storage.loadFromFirebase(usuario, 'clientes');
-        const ordenes = await Storage.loadFromFirebase(usuario, 'ordenes');
-        const repuestos = await Storage.loadFromFirebase(usuario, 'repuestos');
+        // Intentar cargar desde Firebase
+        let clientes = [];
+        let ordenes = [];
+        let repuestos = [];
         
-        // Siempre actualizar localStorage con los datos de Firebase (incluso si están vacíos)
+        try {
+            clientes = await Storage.loadFromFirebase(usuario, 'clientes') || [];
+            ordenes = await Storage.loadFromFirebase(usuario, 'ordenes') || [];
+            repuestos = await Storage.loadFromFirebase(usuario, 'repuestos') || [];
+            
+            console.log(`✅ Datos cargados desde Firebase:`, {
+                clientes: clientes.length,
+                ordenes: ordenes.length,
+                repuestos: repuestos.length
+            });
+        } catch (firebaseError) {
+            console.warn('⚠️ Error al cargar desde Firebase, intentando con datos locales:', firebaseError.message);
+            
+            // Fallback: Usar datos locales si existen
+            clientes = Storage.get('clientes') || [];
+            ordenes = Storage.get('ordenes') || [];
+            repuestos = Storage.get('repuestos') || [];
+            
+            console.log(`📦 Usando datos locales como fallback:`, {
+                clientes: clientes.length,
+                ordenes: ordenes.length,
+                repuestos: repuestos.length
+            });
+        }
+        
+        // Siempre actualizar localStorage con los datos cargados
         Storage.set('clientes', clientes);
         Storage.set('ordenes', ordenes);
         Storage.set('repuestos', repuestos);
         
-        console.log(`✅ Datos cargados desde Firebase:`, {
-            clientes: clientes.length,
-            ordenes: ordenes.length,
-            repuestos: repuestos.length
-        });
+        console.log(`💾 Datos guardados en localStorage para sesión actual`);
         
         // Mostrar notificación al usuario
         const totalRegistros = clientes.length + ordenes.length + repuestos.length;
@@ -547,9 +568,27 @@ async function cargarDatosUsuario(usuario) {
         
         return true;
     } catch (error) {
-        console.error('Error al cargar datos del usuario:', error);
-        mostrarNotificacion('⚠️ No se pudieron cargar los datos desde la nube', 'warning');
-        return false;
+        console.error('💥 Error crítico al cargar datos del usuario:', error);
+        console.error('Stack:', error.stack);
+        
+        // Último recurso: cargar del localStorage
+        try {
+            const clientesLocal = Storage.get('clientes') || [];
+            const ordenesLocal = Storage.get('ordenes') || [];
+            const repuestosLocal = Storage.get('repuestos') || [];
+            
+            console.log('📦 Usando datos del localStorage como último recurso');
+            
+            mostrarNotificacion(
+                `⚠️ Usando datos locales. Verifica tu conexión a internet.`, 
+                'warning'
+            );
+            return true;
+        } catch (fallbackError) {
+            console.error('❌ Error crítico: no hay datos disponibles', fallbackError);
+            mostrarNotificacion('❌ No se pudieron cargar tus datos. Por favor intenta de nuevo.', 'error');
+            return false;
+        }
     }
 }
 
@@ -1422,6 +1461,50 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
         if (section === 'configuracion') cargarConfiguracion();
     });
 });
+
+// === SINCRONIZACIÓN Y REFRESH DE DATOS ===
+
+// Función para refrescar todos los datos desde Firebase
+async function refrescarDatos() {
+    const usuario = localStorage.getItem('usuario');
+    if (!usuario) {
+        mostrarNotificacion('❌ No hay usuario activo', 'error');
+        return;
+    }
+    
+    console.log('🔄 Refrescando todos los datos desde Firebase...');
+    mostrarNotificacion('🔄 Sincronizando datos...', 'info');
+    
+    const success = await cargarDatosUsuario(usuario);
+    
+    if (success) {
+        // Recargar la sección activa
+        const activeSection = document.querySelector('.section.active');
+        if (activeSection) {
+            const sectionId = activeSection.id;
+            console.log('🎯 Recargando sección activa:', sectionId);
+            
+            if (sectionId === 'dashboard') {
+                actualizarDashboard();
+            } else if (sectionId === 'clientes') {
+                cargarClientes();
+            } else if (sectionId === 'ordenes') {
+                cargarOrdenes();
+            } else if (sectionId === 'tiendas') {
+                mostrarTiendas();
+            } else if (sectionId === 'inventario') {
+                filtrarInventario();
+            }
+        }
+        
+        mostrarNotificacion('✅ Datos sincronizados correctamente', 'success');
+    } else {
+        mostrarNotificacion('⚠️ No se pudieron sincronizar todos los datos', 'warning');
+    }
+}
+
+// Exportar función de refresh al scope global
+window.refrescarDatos = refrescarDatos;
 
 // CLIENTES
 function mostrarFormCliente() {
@@ -3697,6 +3780,16 @@ function imprimirTicketPequeno(orden, cliente, nombreTaller) {
 
 // DASHBOARD
 function actualizarDashboard() {
+    // Asegurar que los datos más recientes estén cargados
+    const usuario = localStorage.getItem('usuario');
+    if (usuario) {
+        // Intentar refrescar datos de Firebase en background (sin bloquear la UI)
+        console.log('🔄 Refrescando datos en background...');
+        cargarDatosUsuario(usuario).catch(error => {
+            console.warn('⚠️ No se pudo refrescar datos:', error.message);
+        });
+    }
+    
     const clientes = Storage.get('clientes');
     const ordenes = Storage.get('ordenes');
     document.getElementById('totalClientes').textContent = clientes.length;

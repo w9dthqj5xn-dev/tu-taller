@@ -2746,6 +2746,7 @@ function mostrarFormRepuesto() {
 function cancelarFormRepuesto() {
     document.getElementById('formRepuesto').style.display = 'none';
     document.getElementById('repuestoForm').reset();
+    cerrarModalCategoria();
 }
 
 // === FUNCIONES PARA AGREGAR NUEVAS CATEGORÍAS ===

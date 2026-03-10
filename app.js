@@ -2573,6 +2573,118 @@ function cancelarFormRepuesto() {
     document.getElementById('repuestoForm').reset();
 }
 
+// === FUNCIONES PARA AGREGAR NUEVAS CATEGORÍAS ===
+
+// Obtener todas las categorías disponibles
+function obtenerCategorias() {
+    const categoriasLocal = JSON.parse(localStorage.getItem('categorias') || '[]');
+    return categoriasLocal.length > 0 ? categoriasLocal : [
+        'Pantallas', 'Baterías', 'Cámaras', 'Conectores', 
+        'Altavoces', 'Botones', 'Carcasas', 'Otro'
+    ];
+}
+
+// Mostrar modal para agregar nueva categoría
+function mostrarAgregarCategoria() {
+    document.getElementById('modalNuevaCategoria').style.display = 'flex';
+    document.getElementById('nuevaCategoriaInput').value = '';
+    document.getElementById('nuevaCategoriaInput').focus();
+}
+
+// Cerrar modal de categoría
+function cerrarModalCategoria() {
+    document.getElementById('modalNuevaCategoria').style.display = 'none';
+    document.getElementById('nuevaCategoriaInput').value = '';
+}
+
+// Agregar nueva categoría
+function agregarNuevaCategoria() {
+    const nombreCategoria = document.getElementById('nuevaCategoriaInput').value.trim();
+    
+    if (!nombreCategoria) {
+        alert('⚠️ Por favor ingresa el nombre de la categoría');
+        return;
+    }
+    
+    if (nombreCategoria.length < 2) {
+        alert('⚠️ El nombre debe tener al menos 2 caracteres');
+        return;
+    }
+    
+    const categorias = obtenerCategorias();
+    
+    // Verificar si la categoría ya existe
+    if (categorias.find(c => c.toLowerCase() === nombreCategoria.toLowerCase())) {
+        alert('⚠️ Esta categoría ya existe');
+        return;
+    }
+    
+    // Agregar nueva categoría
+    categorias.push(nombreCategoria);
+    localStorage.setItem('categorias', JSON.stringify(categorias));
+    
+    // Actualizar los selects de categoría
+    actualizarSelectsCategorias();
+    
+    // Seleccionar automáticamente la nueva categoría
+    document.getElementById('repuestoCategoria').value = nombreCategoria;
+    
+    mostrarNotificacion(`✅ Categoría "${nombreCategoria}" agregada correctamente`, 'success');
+    
+    cerrarModalCategoria();
+}
+
+// Actualizar todos los selects de categoría en la página
+function actualizarSelectsCategorias() {
+    const categorias = obtenerCategorias();
+    const selects = document.querySelectorAll('#repuestoCategoria, #filtroCategoria');
+    
+    selects.forEach(select => {
+        const valorActual = select.value;
+        
+        // Limpiar opciones excepto la primera
+        while (select.options.length > 1) {
+            select.remove(1);
+        }
+        
+        // Agregar todas las categorías
+        categorias.forEach(categoria => {
+            const option = document.createElement('option');
+            option.value = categoria;
+            option.textContent = categoria;
+            select.appendChild(option);
+        });
+        
+        // Restaurar valor anterior si existe
+        if (categorias.includes(valorActual)) {
+            select.value = valorActual;
+        }
+    });
+}
+
+// Inicializar selects de categoría cuando carga la página
+document.addEventListener('DOMContentLoaded', () => {
+    actualizarSelectsCategorias();
+});
+
+// Cerrar modal al presionar Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('modalNuevaCategoria');
+        if (modal && modal.style.display === 'flex') {
+            cerrarModalCategoria();
+        }
+    }
+});
+
+// Cerrar modal al hacer clic fuera
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('modalNuevaCategoria');
+    if (modal && e.target === modal) {
+        cerrarModalCategoria();
+    }
+});
+
 document.getElementById('repuestoForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const repuestos = Storage.get('repuestos');
@@ -3884,6 +3996,10 @@ window.crearOrdenClienteFinal = crearOrdenClienteFinal;
 window.agregarRepuestoOrden = agregarRepuestoOrden;
 window.mostrarFormRepuesto = mostrarFormRepuesto;
 window.cancelarFormRepuesto = cancelarFormRepuesto;
+window.mostrarAgregarCategoria = mostrarAgregarCategoria;
+window.cerrarModalCategoria = cerrarModalCategoria;
+window.agregarNuevaCategoria = agregarNuevaCategoria;
+window.obtenerCategorias = obtenerCategorias;
 window.filtrarInventario = filtrarInventario;
 window.exportarDatos = exportarDatos;
 window.imprimirReporte = imprimirReporte;

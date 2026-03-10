@@ -2762,7 +2762,10 @@ function obtenerCategorias() {
 
 // Mostrar modal para agregar nueva categoría
 function mostrarAgregarCategoria() {
-    document.getElementById('modalNuevaCategoria').style.display = 'flex';
+    const modal = document.getElementById('modalNuevaCategoria');
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
     document.getElementById('nuevaCategoriaInput').value = '';
     document.getElementById('nuevaCategoriaInput').focus();
 }

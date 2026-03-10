@@ -1566,6 +1566,74 @@ function cargarClientes() {
     container.innerHTML = html;
 }
 
+// Función para filtrar clientes por búsqueda
+function filtrarClientes() {
+    const termino = document.getElementById('busquedaClientes').value.toLowerCase().trim();
+    const clientes = Storage.get('clientes');
+    const container = document.getElementById('listaClientes');
+    
+    // Si el campo está vacío, mostrar todos
+    if (!termino) {
+        cargarClientes();
+        return;
+    }
+    
+    // Filtrar clientes que coincidan con el término
+    const clientesFiltrados = clientes.filter(cliente => {
+        const nombreCompleto = `${cliente.nombre} ${cliente.apellido}`.toLowerCase();
+        const celular = (cliente.celular || '').toLowerCase();
+        const email = (cliente.email || '').toLowerCase();
+        
+        return (
+            nombreCompleto.includes(termino) ||
+            celular.includes(termino) ||
+            email.includes(termino)
+        );
+    });
+    
+    // Ordenar los resultados
+    const clientesOrdenados = [...clientesFiltrados].sort((a, b) => {
+        const nombreA = `${a.nombre} ${a.apellido}`.toLowerCase();
+        const nombreB = `${b.nombre} ${b.apellido}`.toLowerCase();
+        return nombreA.localeCompare(nombreB, 'es');
+    });
+    
+    // Mostrar resultados o mensaje de no encontrado
+    if (clientesFiltrados.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No se encontraron clientes</h3>
+                <p>Ningún cliente coincide con: "<strong>${termino}</strong>"</p>
+                <button class="btn-secondary" onclick="limpiarBusquedaClientes()" style="margin-top: 10px;">
+                    ✕ Limpiar búsqueda
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    // Mostrar resultados filtrados
+    let html = `
+        <div style="margin-bottom: 15px; padding: 10px; background: #e0f2fe; border-left: 4px solid #0284c7; border-radius: 6px;">
+            <strong>🔍 Resultados:</strong> ${clientesFiltrados.length} de ${clientes.length} cliente(s) encontrado(s)
+        </div>
+        <table><thead><tr><th>Nombre Completo</th><th>Celular</th><th>Email</th><th>Fecha Registro</th><th>Acciones</th></tr></thead><tbody>
+    `;
+    
+    clientesOrdenados.forEach(cliente => {
+        html += `<tr><td>${cliente.nombre} ${cliente.apellido}</td><td>${cliente.celular}</td><td>${cliente.email || '-'}</td><td>${formatearFecha(cliente.fechaRegistro)}</td><td><button class="btn-success" onclick="editarCliente(${cliente.id})">Editar</button><button class="btn-secondary" onclick="verHistorialCliente(${cliente.id})">Historial</button><button class="btn-danger" onclick="eliminarCliente(${cliente.id})">Eliminar</button></td></tr>`;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// Función para limpiar la búsqueda
+function limpiarBusquedaClientes() {
+    document.getElementById('busquedaClientes').value = '';
+    cargarClientes();
+}
+
 function editarCliente(id) {
     const clientes = Storage.get('clientes');
     const cliente = clientes.find(c => c.id === id);
@@ -4001,6 +4069,8 @@ window.cerrarModalCategoria = cerrarModalCategoria;
 window.agregarNuevaCategoria = agregarNuevaCategoria;
 window.obtenerCategorias = obtenerCategorias;
 window.filtrarInventario = filtrarInventario;
+window.filtrarClientes = filtrarClientes;
+window.limpiarBusquedaClientes = limpiarBusquedaClientes;
 window.exportarDatos = exportarDatos;
 window.imprimirReporte = imprimirReporte;
 window.buscar = buscar;

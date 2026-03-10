@@ -208,6 +208,11 @@
                     </form>
                 </div>
 
+                <div class="search-container" style="margin-bottom: 20px;">
+                    <input type="text" id="busquedaClientes" placeholder="Buscar por nombre, apellido, celular o email..." oninput="filtrarClientes()">
+                    <button class="btn-primary" onclick="filtrarClientes()">🔍 Buscar</button>
+                </div>
+
                 <div id="listaClientes" class="table-container"></div>
             </section>
 

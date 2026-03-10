@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="styles.css?v=2">
     <link rel="stylesheet" href="responsive.css?v=1">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <!-- Pantalla de Login -->
@@ -130,6 +132,7 @@
                 <button class="nav-btn active" data-section="dashboard">Dashboard</button>
                 <button class="nav-btn" data-section="clientes">Clientes</button>
                 <button class="nav-btn" data-section="ordenes">Órdenes</button>
+                <button class="nav-btn" data-section="tiendas">🏪 Tiendas</button>
                 <button class="nav-btn" data-section="pagos">Pagos</button>
                 <button class="nav-btn" data-section="inventario">Inventario</button>
                 <button class="nav-btn" data-section="reportes">Reportes</button>
@@ -250,8 +253,14 @@
                     <form id="ordenForm">
                         <input type="hidden" id="ordenId">
                         <div class="form-row">
+                            <div class="form-group">
+                                <label>Tienda (Opcional)</label>
+                                <select id="ordenTienda" onchange="validarClienteRequerido()">
+                                    <option value="">Sin tienda</option>
+                                </select>
+                            </div>
                             <div class="form-group" style="flex: 2;">
-                                <label>Cliente *</label>
+                                <label id="labelCliente">Cliente *</label>
                                 <div style="display: flex; gap: 10px;">
                                     <select id="ordenCliente" required style="flex: 1;">
                                         <option value="">Seleccionar cliente...</option>
@@ -322,6 +331,93 @@
                                 <input type="text" id="ordenAnticipo" placeholder="Ej: 500" value="0">
                             </div>
                         </div>
+                        
+                        <!-- Checklist de Inspección -->
+                        <div class="form-group" style="border-top: 2px solid #e0e0e0; padding-top: 20px; margin-top: 20px;">
+                            <h4 style="margin-bottom: 15px;">📋 Inspección del Equipo</h4>
+                            
+                            <!-- Selector de Sección -->
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label style="font-weight: 600; margin-bottom: 10px; display: block;">Seleccionar Sección de Inspección</label>
+                                <div style="display: flex; gap: 20px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="radio" name="seccionInspeccion" value="equipos-encendidos" onchange="cambiarSeccionInspeccion()" style="width: auto; cursor: pointer;">
+                                        <span>Equipos Encendidos (Piezas Probadas)</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="radio" name="seccionInspeccion" value="equipos-apagados" onchange="cambiarSeccionInspeccion()" style="width: auto; cursor: pointer;">
+                                        <span>Equipos Apagados (Características Físicas)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Sección: Equipos Encendidos -->
+                            <div id="seccionEncendidos" class="checklist-seccion" style="display: none; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6f00; margin-bottom: 15px;">
+                                <h5 style="margin-bottom: 12px; color: #e65100;">Piezas Probadas (Equipo Encendido)</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="piezasProbadas" value="Pantalla" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Pantalla</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="piezasProbadas" value="Camara trasera" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Cámara trasera</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="piezasProbadas" value="Camara frontal" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Cámara frontal</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="piezasProbadas" value="Face ID" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Face ID</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="piezasProbadas" value="Bocinas" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Bocinas</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="piezasProbadas" value="Carga" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Carga</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="piezasProbadas" value="Flash" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Flash</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="piezasProbadas" value="Botones" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Botones</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="piezasProbadas" value="Huellas" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Huella Dactilar</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Sección: Equipos Apagados -->
+                            <div id="seccionApagados" class="checklist-seccion" style="display: none; background: #f3e5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #6a1b9a; margin-bottom: 15px;">
+                                <h5 style="margin-bottom: 12px; color: #4a148c;">Características del Equipo Apagado (Físicas)</h5>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="equipoApagado" value="Desgaste del housing (Rayones, Abolladura)" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Desgaste del housing (Rayones, Abolladura)</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="equipoApagado" value="Cristal de camaras (Rayados o Rotos)" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Cristal de cámaras (Rayados o Rotos)</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="equipoApagado" value="Pantalla (Rayaduras o Crack)" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Pantalla (Rayaduras o Crack)</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" name="equipoApagado" value="Cristal trasero (Crack)" class="checkbox-inspeccion" style="width: auto; cursor: pointer;">
+                                        <span>Cristal trasero (Crack)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="form-group" style="border-top: 1px solid #e0e0e0; padding-top: 15px; margin-top: 15px;">
                             <label style="font-weight: 600; margin-bottom: 10px; display: block;">Garantía del Servicio</label>
                             <div style="display: flex; gap: 20px; margin-bottom: 15px;">
@@ -405,6 +501,59 @@
                 </div>
 
                 <div id="listaOrdenes" class="table-container"></div>
+            </section>
+
+            <!-- Tiendas -->
+            <section id="tiendas" class="section">
+                <div class="section-header">
+                    <h2>🏪 Gestión de Tiendas</h2>
+                    <button class="btn-primary" onclick="mostrarFormTienda()">+ Nueva Tienda</button>
+                </div>
+
+                <!-- Formulario de Tienda -->
+                <div id="formTienda" class="form-container" style="display: none;">
+                    <h3>Nueva Tienda</h3>
+                    <form id="tiendaForm" onsubmit="guardarTienda(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nombre de la Tienda *</label>
+                                <input type="text" id="tiendaNombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contacto</label>
+                                <input type="text" id="tiendaContacto">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Teléfono</label>
+                                <input type="tel" id="tiendaTelefono">
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="tiendaEmail">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Dirección</label>
+                            <textarea id="tiendaDireccion" rows="2"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Guardar Tienda</button>
+                            <button type="button" class="btn-secondary" onclick="cancelarFormTienda()">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Filtro de Búsqueda -->
+                <div style="margin-bottom: 20px;">
+                    <input type="text" id="buscarTienda" placeholder="🔍 Buscar tienda por nombre..." 
+                           style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;" 
+                           onkeyup="filtrarTiendas()">
+                </div>
+
+                <!-- Grid de Tiendas -->
+                <div id="listaTiendas" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 100%; box-sizing: border-box;"></div>
             </section>
 
             <!-- Pagos -->

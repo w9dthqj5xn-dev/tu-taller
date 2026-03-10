@@ -1415,6 +1415,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
         if (section === 'dashboard') actualizarDashboard();
         if (section === 'clientes') cargarClientes();
         if (section === 'ordenes') cargarOrdenes();
+        if (section === 'tiendas') mostrarTiendas();
         if (section === 'pagos') cargarPagos();
         if (section === 'inventario') filtrarInventario();
         if (section === 'reportes') generarReportes();
@@ -1647,7 +1648,8 @@ async function crearOrdenClienteFinal() {
         repuestos: [],
         fechaCreacion: new Date().toISOString(),
         fechaEntrega: null,
-        historialPagos: []
+        historialPagos: [],
+        cobrado: false
     };
     
     ordenes.push(orden);
@@ -1668,14 +1670,44 @@ function mostrarFormOrden() {
     document.querySelector('input[name="tipoGarantia"][value="con"]').checked = true;
     toggleGarantia();
     cargarClientesSelect();
+    cargarTiendasSelect();
     repuestosOrdenTemp = [];
     actualizarRepuestosSeleccionados();
+    
+    // Reset del checklist
+    document.querySelectorAll('input[name="seccionInspeccion"]').forEach(radio => radio.checked = false);
+    document.querySelectorAll('input[name="piezasProbadas"]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('input[name="equipoApagado"]').forEach(cb => cb.checked = false);
+    document.getElementById('seccionEncendidos').style.display = 'none';
+    document.getElementById('seccionApagados').style.display = 'none';
+    
     // Cargar inventario con un pequeño delay para asegurar que el DOM esté listo
     setTimeout(() => {
         cargarInventarioSelect();
     }, 100);
     // Agregar formateo automático a campos de dinero
     agregarFormateoMoneda();
+    
+    // Validar si cliente es requerido
+    validarClienteRequerido();
+}
+
+function validarClienteRequerido() {
+    const tiendaSeleccionada = document.getElementById('ordenTienda').value;
+    const clienteSelect = document.getElementById('ordenCliente');
+    const labelCliente = document.getElementById('labelCliente');
+    
+    if (tiendaSeleccionada) {
+        // Si hay tienda seleccionada, cliente NO es requerido
+        clienteSelect.removeAttribute('required');
+        labelCliente.innerHTML = 'Cliente (Opcional)';
+        labelCliente.style.color = '#666';
+    } else {
+        // Si NO hay tienda, cliente ES requerido
+        clienteSelect.setAttribute('required', 'required');
+        labelCliente.innerHTML = 'Cliente *';
+        labelCliente.style.color = 'inherit';
+    }
 }
 
 function agregarFormateoMoneda() {
@@ -1882,6 +1914,22 @@ function cargarClientesSelect() {
     });
 }
 
+function cargarTiendasSelect() {
+    const tiendas = Storage.get('tiendas');
+    // Ordenar tiendas alfabéticamente por nombre
+    const tiendasOrdenadas = [...tiendas].sort((a, b) => 
+        a.nombre.toLowerCase().localeCompare(b.nombre.toLowerCase(), 'es')
+    );
+    const select = document.getElementById('ordenTienda');
+    select.innerHTML = '<option value="">Sin tienda</option>';
+    tiendasOrdenadas.forEach(tienda => {
+        const option = document.createElement('option');
+        option.value = tienda.id;
+        option.textContent = tienda.nombre;
+        select.appendChild(option);
+    });
+}
+
 function limpiarNumero(valor) {
     if (!valor) return 0;
     let limpio = valor.toString().trim();
@@ -1941,9 +1989,13 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
     const tieneGarantia = document.querySelector('input[name="tipoGarantia"]:checked').value === 'con';
     const anticipo = limpiarNumero(document.getElementById('ordenAnticipo').value);
     
+    // Obtener las selecciones del checklist
+    const inspeccion = obtenerSeleccionesChecklist();
+    
     const orden = {
         id: id ? parseInt(id) : Storage.getNextId('ordenes'),
         numero: id ? ordenes.find(o => o.id === parseInt(id)).numero : generarNumeroOrden(),
+        tiendaId: document.getElementById('ordenTienda').value || null,
         clienteId: parseInt(document.getElementById('ordenCliente').value),
         tipoDispositivo: document.getElementById('ordenTipoDispositivo').value,
         marca: document.getElementById('ordenMarca').value,
@@ -1962,8 +2014,10 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
         tecnico: document.getElementById('ordenTecnico').value,
         notas: document.getElementById('ordenNotas').value,
         repuestos: [...repuestosOrdenTemp],
+        inspeccion: inspeccion,
         fechaCreacion: id ? ordenes.find(o => o.id === parseInt(id)).fechaCreacion : new Date().toISOString(),
-        fechaEntrega: null
+        fechaEntrega: null,
+        cobrado: false
     };
     
     // Registrar anticipo en el historial de pagos si es una orden nueva y tiene anticipo
@@ -2032,13 +2086,44 @@ function generarNumeroOrden() {
     return `${año}${String(cantidad).padStart(4, '0')}`;
 }
 
+function generarHtmlInspeccion(orden) {
+    if (!orden.inspeccion || !orden.inspeccion.seccion || orden.inspeccion.items.length === 0) {
+        return '';
+    }
+    
+    const { seccion, items } = orden.inspeccion;
+    let titulo = '';
+    let bg = '';
+    let borderColor = '';
+    
+    if (seccion === 'equipos-encendidos') {
+        titulo = '🔥 Piezas Probadas (Equipo Encendido)';
+        bg = '#fff3e0';
+        borderColor = '#ff6f00';
+    } else if (seccion === 'equipos-apagados') {
+        titulo = '⚫ Características del Equipo Apagado';
+        bg = '#f3e5f5';
+        borderColor = '#6a1b9a';
+    }
+    
+    let itemsHtml = '<ul style="margin: 5px 0 0 20px; padding: 0;">';
+    items.forEach(item => {
+        itemsHtml += `<li>✓ ${item}</li>`;
+    });
+    itemsHtml += '</ul>';
+    
+    return `<div style="background: ${bg}; padding: 10px; border-radius: 5px; margin-top: 10px; border-left: 4px solid ${borderColor};"><strong>${titulo}</strong>${itemsHtml}</div>`;
+}
+
 function cargarOrdenes() {
     cargarClientesSelect();
+    cargarTiendasSelect();
     filtrarOrdenes();
 }
 
 function filtrarOrdenes() {
     let ordenes = Storage.get('ordenes');
+    const tiendas = Storage.get('tiendas');
     const clientes = Storage.get('clientes');
     const filtroEstado = document.getElementById('filtroEstado').value;
     if (filtroEstado) {
@@ -2053,7 +2138,10 @@ function filtrarOrdenes() {
     let html = '';
     ordenes.forEach(orden => {
         const cliente = clientes.find(c => c.id === orden.clienteId);
-        const clienteNombre = cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado';
+        const tienda = orden.tiendaId ? tiendas.find(t => t.id === orden.tiendaId) : null;
+        // Si tiene tienda asignada, mostrar el nombre de la tienda; si no, mostrar el cliente
+        const clienteNombre = tienda ? tienda.nombre : (cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado');
+        const tiendaInfo = tienda ? `<div class="info-item"><span class="info-label">Tienda:</span> ${tienda.nombre}</div>` : '';
         const saldo = (orden.presupuesto || 0) - (orden.anticipo || 0);
         
         // Generar HTML de repuestos si existen
@@ -2074,7 +2162,10 @@ function filtrarOrdenes() {
             garantiaHtml = `<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px; border-left: 4px solid #ffc107;"><strong>⚠️ Sin garantía</strong></div>`;
         }
         
-        html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><div class="orden-info"><div class="info-item"><span class="info-label">Cliente:</span> ${clienteNombre}</div><div class="info-item"><span class="info-label">Dispositivo:</span> ${orden.marca} ${orden.modelo}</div><div class="info-item"><span class="info-label">Tipo:</span> ${orden.tipoDispositivo}</div><div class="info-item"><span class="info-label">Fecha Ingreso:</span> ${formatearFecha(orden.fechaIngreso)}</div>${orden.presupuesto ? `<div class="info-item"><span class="info-label">Presupuesto:</span> $${orden.presupuesto.toFixed(2)}</div><div class="info-item"><span class="info-label">Anticipo:</span> $${orden.anticipo.toFixed(2)}</div><div class="info-item"><span class="info-label">Saldo:</span> <strong>$${saldo.toFixed(2)}</strong></div>` : ''}${orden.tecnico ? `<div class="info-item"><span class="info-label">Técnico:</span> ${orden.tecnico}</div>` : ''}</div><p><strong>Problema:</strong> ${orden.problema}</p>${orden.notas ? `<p><strong>Notas:</strong> ${orden.notas}</p>` : ''}${repuestosHtml}${garantiaHtml}<div style="margin-top: 15px;"><button class="btn-success" onclick="editarOrden(${orden.id})">Editar</button><button class="btn-secondary" onclick="cambiarEstadoOrden(${orden.id})">Cambiar Estado</button>${orden.estado !== 'Entregado' && orden.estado !== 'Cancelado' ? `<button class="btn-primary" onclick="abrirModalArticulos(${orden.id})" style="background: #ff9800;">🔧 + Artículos</button>` : ''}<button class="btn-primary" onclick="imprimirRecibo(${orden.id})">📄 Imprimir</button><button class="btn-primary" onclick="enviarWhatsApp(${orden.id})" style="background: #25d366;">📱 WhatsApp</button>${saldo > 0 ? `<button class="btn-primary" onclick="registrarPago(${orden.id})">💰 Pagar</button>` : ''}<button class="btn-danger" onclick="eliminarOrden(${orden.id})">Eliminar</button></div></div>`;
+        // Generar HTML de inspección
+        let inspeccionHtml = generarHtmlInspeccion(orden);
+        
+        html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><div class="orden-info"><div class="info-item"><span class="info-label">Cliente:</span> ${clienteNombre}</div>${tiendaInfo}<div class="info-item"><span class="info-label">Dispositivo:</span> ${orden.marca} ${orden.modelo}</div><div class="info-item"><span class="info-label">Tipo:</span> ${orden.tipoDispositivo}</div><div class="info-item"><span class="info-label">Fecha Ingreso:</span> ${formatearFecha(orden.fechaIngreso)}</div>${orden.presupuesto ? `<div class="info-item"><span class="info-label">Presupuesto:</span> $${orden.presupuesto.toFixed(2)}</div><div class="info-item"><span class="info-label">Anticipo:</span> $${orden.anticipo.toFixed(2)}</div><div class="info-item"><span class="info-label">Saldo:</span> <strong>$${saldo.toFixed(2)}</strong></div>` : ''}${orden.tecnico ? `<div class="info-item"><span class="info-label">Técnico:</span> ${orden.tecnico}</div>` : ''}</div><p><strong>Problema:</strong> ${orden.problema}</p>${orden.notas ? `<p><strong>Notas:</strong> ${orden.notas}</p>` : ''}${repuestosHtml}${inspeccionHtml}${garantiaHtml}<div style="margin-top: 15px;"><button class="btn-success" onclick="editarOrden(${orden.id})">Editar</button><button class="btn-secondary" onclick="cambiarEstadoOrden(${orden.id})">Cambiar Estado</button>${orden.estado !== 'Entregado' && orden.estado !== 'Cancelado' ? `<button class="btn-primary" onclick="abrirModalArticulos(${orden.id})" style="background: #ff9800;">🔧 + Artículos</button>` : ''}<button class="btn-primary" onclick="imprimirRecibo(${orden.id})">📄 Imprimir</button><button class="btn-primary" onclick="enviarWhatsApp(${orden.id})" style="background: #25d366;">📱 WhatsApp</button>${saldo > 0 ? `<button class="btn-primary" onclick="registrarPago(${orden.id})">💰 Pagar</button>` : ''}<button class="btn-danger" onclick="eliminarOrden(${orden.id})">Eliminar</button></div></div>`;
     });
     container.innerHTML = html;
 }
@@ -2088,6 +2179,7 @@ function editarOrden(id) {
     const ordenes = Storage.get('ordenes');
     const orden = ordenes.find(o => o.id === id);
     document.getElementById('ordenId').value = orden.id;
+    document.getElementById('ordenTienda').value = orden.tiendaId || '';
     document.getElementById('ordenCliente').value = orden.clienteId;
     document.getElementById('ordenTipoDispositivo').value = orden.tipoDispositivo;
     document.getElementById('ordenMarca').value = orden.marca;
@@ -2111,6 +2203,12 @@ function editarOrden(id) {
     cargarInventarioSelect();
     repuestosOrdenTemp = orden.repuestos ? [...orden.repuestos] : [];
     actualizarRepuestosSeleccionados();
+    
+    // Cargar checklist de inspección
+    cargarChecklistEnFormulario(orden);
+    
+    // Validar si cliente es requerido
+    validarClienteRequerido();
     
     document.getElementById('formOrden').style.display = 'block';
 }
@@ -2293,8 +2391,8 @@ async function registrarPago(ordenId) {
         const metodoPago = prompt(`Selecciona el método de pago:\n1. Efectivo\n2. Transferencia\n3. Tarjeta de Crédito/Débito\n\nIngresa el número (1, 2 o 3):`);
         const metodos = {
             '1': { nombre: 'Efectivo', comision: 0 },
-            '2': { nombre: 'Transferencia', comision: 0.015 }, // 1.5% comisión
-            '3': { nombre: 'Tarjeta', comision: 0.03 } // 3% comisión
+            '2': { nombre: 'Transferencia', comision: 0 },
+            '3': { nombre: 'Tarjeta', comision: 0 }
         };
         
         if (!metodos[metodoPago]) {
@@ -2691,6 +2789,40 @@ function generarReportes() {
         gananciaNetaTotal += (presupuesto - costoPiezas - costoRepuestosOrden - comisionesOrden);
     });
     
+    // Agregar ganancias de órdenes de tienda cobradas
+    const allOrdenes = Storage.get('ordenes') || [];
+    allOrdenes.forEach(orden => {
+        // Si la orden es de tienda, está en "Listo para Entrega" o "Entregado", y está marcada como cobrada
+        if (orden.tiendaId && (orden.estado === 'Listo para Entrega' || orden.estado === 'Entregado') && orden.cobrado) {
+            const fechaOrden = new Date(orden.fechaCreacion);
+            const fechaOrdenNormalizada = new Date(fechaOrden.getFullYear(), fechaOrden.getMonth(), fechaOrden.getDate());
+            const fechaInicioNormalizada = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth(), fechaInicio.getDate());
+            const fechaFinNormalizada = new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaFin.getDate());
+            
+            if (fechaOrdenNormalizada >= fechaInicioNormalizada && fechaOrdenNormalizada <= fechaFinNormalizada) {
+                const presupuesto = parseFloat(orden.presupuesto) || 0;
+                const costoPiezas = parseFloat(orden.costoPiezas) || 0;
+                
+                let costoRepuestosOrden = 0;
+                if (orden.repuestos && orden.repuestos.length > 0) {
+                    orden.repuestos.forEach(repuesto => {
+                        costoRepuestosOrden += (repuesto.precio * repuesto.cantidad);
+                    });
+                }
+                
+                // Calcular comisiones
+                let comisionesOrden = 0;
+                if (orden.historialPagos && orden.historialPagos.length > 0) {
+                    orden.historialPagos.forEach(pago => {
+                        comisionesOrden += (pago.comision || 0);
+                    });
+                }
+                
+                gananciaNetaTotal += (presupuesto - costoPiezas - costoRepuestosOrden - comisionesOrden);
+            }
+        }
+    });
+    
     // Calcular gastos del período
     const gastos = Storage.get('gastos') || [];
     let gastosDelPeriodo = 0;
@@ -2746,6 +2878,7 @@ function generarReportes() {
     let costosTotalesRepuestos = 0;
     let anticiposTotales = 0;
     let comisionesTotalesReporte = 0;
+    let ingresosTiendasCobradas = 0;
     
     ordenesFiltradas.forEach(orden => {
         const presupuesto = orden.presupuesto || 0;
@@ -2773,28 +2906,70 @@ function generarReportes() {
         anticiposTotales += orden.anticipo || 0;
     });
     
+    // Agregar ingresos y costos de órdenes de tienda cobradas
+    allOrdenes.forEach(orden => {
+        if (orden.tiendaId && (orden.estado === 'Listo para Entrega' || orden.estado === 'Entregado') && orden.cobrado) {
+            const fechaOrden = new Date(orden.fechaCreacion);
+            const fechaOrdenNormalizada = new Date(fechaOrden.getFullYear(), fechaOrden.getMonth(), fechaOrden.getDate());
+            const fechaInicioNormalizada = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth(), fechaInicio.getDate());
+            const fechaFinNormalizada = new Date(fechaFin.getFullYear(), fechaFin.getMonth(), fechaFin.getDate());
+            
+            if (fechaOrdenNormalizada >= fechaInicioNormalizada && fechaOrdenNormalizada <= fechaFinNormalizada) {
+                const presupuesto = parseFloat(orden.presupuesto) || 0;
+                const costoPiezas = parseFloat(orden.costoPiezas) || 0;
+                
+                let costoRepuestosOrden = 0;
+                if (orden.repuestos && orden.repuestos.length > 0) {
+                    orden.repuestos.forEach(repuesto => {
+                        costoRepuestosOrden += (repuesto.precio * repuesto.cantidad);
+                    });
+                }
+                
+                let comisionesOrden = 0;
+                if (orden.historialPagos && orden.historialPagos.length > 0) {
+                    orden.historialPagos.forEach(pago => {
+                        comisionesOrden += (pago.comision || 0);
+                    });
+                }
+                
+                ingresosTiendasCobradas += presupuesto;
+                costosTotalesPiezas += costoPiezas;
+                costosTotalesRepuestos += costoRepuestosOrden;
+                comisionesTotalesReporte += comisionesOrden;
+            }
+        }
+    });
+    
+    // Sumar ingresos de tiendas cobradas al total
+    const ingresosTotalesConTiendas = ingresosTotales + ingresosTiendasCobradas;
+    
     // Usar el mismo valor de gastos calculado anteriormente
     const gastosTotalesReporte = gastosDelPeriodo;
     
     // Ganancia Real = Presupuesto - (Costo Piezas + Costo Repuestos + Comisiones + Gastos)
-    gananciaReal = ingresosTotales - costosTotalesPiezas - costosTotalesRepuestos - comisionesTotalesReporte - gastosTotalesReporte;
+    gananciaReal = ingresosTotalesConTiendas - costosTotalesPiezas - costosTotalesRepuestos - comisionesTotalesReporte - gastosTotalesReporte;
     
     console.log('📈 Desglose de Ganancia Real:');
-    console.log('  Ingresos:', ingresosTotales);
+    console.log('  Ingresos (clientes):', ingresosTotales);
+    console.log('  Ingresos (tiendas cobradas):', ingresosTiendasCobradas);
+    console.log('  Ingresos Totales:', ingresosTotalesConTiendas);
     console.log('  - Costos Piezas:', costosTotalesPiezas);
     console.log('  - Costos Repuestos:', costosTotalesRepuestos);
     console.log('  - Comisiones:', comisionesTotalesReporte);
     console.log('  - Gastos:', gastosTotalesReporte);
     console.log('  = Ganancia Real:', gananciaReal);
     
-    const porcentajeGanancia = ingresosTotales > 0 ? (gananciaReal / ingresosTotales * 100) : 0;
-    const porcentajeCostosPiezas = ingresosTotales > 0 ? (costosTotalesPiezas / ingresosTotales * 100) : 0;
-    const porcentajeCostosRepuestos = ingresosTotales > 0 ? (costosTotalesRepuestos / ingresosTotales * 100) : 0;
-    const porcentajeComisiones = ingresosTotales > 0 ? (comisionesTotalesReporte / ingresosTotales * 100) : 0;
-    const porcentajeGastos = ingresosTotales > 0 ? (gastosTotalesReporte / ingresosTotales * 100) : 0;
+    const porcentajeGanancia = ingresosTotalesConTiendas > 0 ? (gananciaReal / ingresosTotalesConTiendas * 100) : 0;
+    const porcentajeCostosPiezas = ingresosTotalesConTiendas > 0 ? (costosTotalesPiezas / ingresosTotalesConTiendas * 100) : 0;
+    const porcentajeCostosRepuestos = ingresosTotalesConTiendas > 0 ? (costosTotalesRepuestos / ingresosTotalesConTiendas * 100) : 0;
+    const porcentajeComisiones = ingresosTotalesConTiendas > 0 ? (comisionesTotalesReporte / ingresosTotalesConTiendas * 100) : 0;
+    const porcentajeGastos = ingresosTotalesConTiendas > 0 ? (gastosTotalesReporte / ingresosTotalesConTiendas * 100) : 0;
     
     let htmlGanancias = '<table><thead><tr><th>Concepto</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
-    htmlGanancias += `<tr style="background: #c8e6c9; font-weight: bold;"><td><strong>💰 TOTAL COBRADO</strong></td><td><strong>$${formatearMonto(ingresosTotales)}</strong></td><td>100%</td></tr>`;
+    htmlGanancias += `<tr style="background: #c8e6c9; font-weight: bold;"><td><strong>💰 TOTAL COBRADO</strong></td><td><strong>$${formatearMonto(ingresosTotalesConTiendas)}</strong></td><td>100%</td></tr>`;
+    if (ingresosTiendasCobradas > 0) {
+        htmlGanancias += `<tr style="background: #e3f2fd;"><td><strong>🏪 Ingresos Tiendas (Cobradas)</strong></td><td><strong>$${formatearMonto(ingresosTiendasCobradas)}</strong></td><td>${(ingresosTiendasCobradas / ingresosTotalesConTiendas * 100).toFixed(1)}%</td></tr>`;
+    }
     htmlGanancias += `<tr style="background: #ffebee;"><td><strong>🔧 Costos Piezas Externas</strong></td><td><strong>-$${formatearMonto(costosTotalesPiezas)}</strong></td><td>-${porcentajeCostosPiezas.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #fce4ec;"><td><strong>📦 Costos Repuestos</strong></td><td><strong>-$${formatearMonto(costosTotalesRepuestos)}</strong></td><td>-${porcentajeCostosRepuestos.toFixed(1)}%</td></tr>`;
     htmlGanancias += `<tr style="background: #fff3e0;"><td><strong>🏦 Comisiones Bancarias</strong></td><td><strong>-$${formatearMonto(comisionesTotalesReporte)}</strong></td><td>-${porcentajeComisiones.toFixed(1)}%</td></tr>`;
@@ -3070,6 +3245,27 @@ function generarPDFFacturaBlob(orden, cliente) {
     doc.text(problemaLines, 15, y);
     y += problemaLines.length * 5 + 3;
     
+    // INSPECCIÓN DEL EQUIPO (si existe)
+    if (orden.inspeccion && orden.inspeccion.seccion && orden.inspeccion.items && orden.inspeccion.items.length > 0) {
+        doc.setLineWidth(0.2);
+        doc.line(15, y, 195, y);
+        y += 6;
+        doc.setFont('helvetica', 'bold');
+        const tituloInspeccion = orden.inspeccion.seccion === 'equipos-encendidos' 
+            ? '🔥 PIEZAS PROBADAS (EQUIPO ENCENDIDO)' 
+            : '⚫ CARACTERÍSTICAS DEL EQUIPO APAGADO';
+        doc.text(tituloInspeccion, 15, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        orden.inspeccion.items.forEach(item => {
+            doc.text(`✓ ${item}`, 20, y);
+            y += 5;
+        });
+        doc.setFontSize(10);
+        y += 2;
+    }
+    
     // NOTAS (si existen)
     if (orden.notas) {
         doc.setLineWidth(0.2);
@@ -3293,6 +3489,15 @@ async function imprimirFacturaCompleta() {
             <div style="line-height: 1.4;">${orden.problema}</div>
         </div>
         
+        ${orden.inspeccion && orden.inspeccion.seccion && orden.inspeccion.items && orden.inspeccion.items.length > 0 ? `
+        <div style="margin: 8px 0; padding: 5px 0; border-bottom: 1px dashed #666;">
+            <div style="font-weight: bold; margin-bottom: 3px;">${orden.inspeccion.seccion === 'equipos-encendidos' ? 'PIEZAS PROBADAS' : '⚫ CARACTERÍSTICAS EQUIPO'}</div>
+            ${orden.inspeccion.items.map(item => `
+            <div style="margin: 2px 0; font-size: 10px;">
+                ✓ ${item}
+            </div>`).join('')}
+        </div>` : ''}
+        
         ${orden.notas ? `
         <div style="margin: 8px 0; padding: 5px 0; border-bottom: 1px dashed #666;">
             <div style="font-weight: bold; margin-bottom: 3px;">NOTAS</div>
@@ -3514,7 +3719,10 @@ function actualizarDashboard() {
     let html = '';
     ordenesRecientes.forEach(orden => {
         const cliente = clientes.find(c => c.id === orden.clienteId);
-        const clienteNombre = cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado';
+        const tiendas = Storage.get('tiendas');
+        const tienda = orden.tiendaId ? tiendas.find(t => t.id === orden.tiendaId) : null;
+        // Si tiene tienda asignada, mostrar el nombre de la tienda; si no, mostrar el cliente
+        const clienteNombre = tienda ? tienda.nombre : (cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado');
         html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><p><strong>Cliente:</strong> ${clienteNombre}</p><p><strong>Dispositivo:</strong> ${orden.marca} ${orden.modelo}</p></div>`;
     });
     container.innerHTML = html;
@@ -3547,9 +3755,12 @@ function mostrarResultados(resultados) {
     }
     if (resultados.ordenes.length > 0) {
         html += '<h3>Órdenes Encontradas</h3>';
+        const tiendas = Storage.get('tiendas');
         resultados.ordenes.forEach(orden => {
             const cliente = clientes.find(c => c.id === orden.clienteId);
-            const clienteNombre = cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado';
+            const tienda = orden.tiendaId ? tiendas.find(t => t.id === orden.tiendaId) : null;
+            // Si tiene tienda asignada, mostrar el nombre de la tienda; si no, mostrar el cliente
+            const clienteNombre = tienda ? tienda.nombre : (cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado');
             html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><p><strong>Cliente:</strong> ${clienteNombre}</p><p><strong>Dispositivo:</strong> ${orden.marca} ${orden.modelo}</p><p><strong>Problema:</strong> ${orden.problema}</p><button class="btn-success" onclick="editarOrden(${orden.id})">Editar</button><button class="btn-primary" onclick="imprimirRecibo(${orden.id})">Imprimir</button></div>`;
         });
     }
@@ -4183,8 +4394,11 @@ function abrirModalArticulos(ordenId) {
     
     // Mostrar información de la orden
     const clientes = Storage.get('clientes');
+    const tiendas = Storage.get('tiendas');
     const cliente = clientes.find(c => c.id === orden.clienteId);
-    const clienteNombre = cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado';
+    const tienda = orden.tiendaId ? tiendas.find(t => t.id === orden.tiendaId) : null;
+    // Si tiene tienda asignada, mostrar el nombre de la tienda; si no, mostrar el cliente
+    const clienteNombre = tienda ? tienda.nombre : (cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado');
     
     document.getElementById('infoOrdenArticulos').innerHTML = `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
@@ -4363,6 +4577,79 @@ async function guardarArticulosOrden() {
     cargarOrdenes();
 }
 
+// ===== FUNCIONES PARA CHECKLIST DE INSPECCIÓN =====
+
+function cambiarSeccionInspeccion() {
+    const seccion = document.querySelector('input[name="seccionInspeccion"]:checked').value;
+    
+    // Ocultar todas las secciones
+    document.getElementById('seccionEncendidos').style.display = 'none';
+    document.getElementById('seccionApagados').style.display = 'none';
+    
+    // Limpiar checkboxes de la otra sección
+    document.querySelectorAll('input[name="piezasProbadas"]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('input[name="equipoApagado"]').forEach(cb => cb.checked = false);
+    
+    // Mostrar la sección seleccionada
+    if (seccion === 'equipos-encendidos') {
+        document.getElementById('seccionEncendidos').style.display = 'block';
+    } else if (seccion === 'equipos-apagados') {
+        document.getElementById('seccionApagados').style.display = 'block';
+    }
+}
+
+function obtenerSeleccionesChecklist() {
+    const seccion = document.querySelector('input[name="seccionInspeccion"]:checked');
+    
+    if (!seccion) {
+        return {
+            seccion: null,
+            items: []
+        };
+    }
+    
+    const tipoSeccion = seccion.value;
+    let items = [];
+    
+    if (tipoSeccion === 'equipos-encendidos') {
+        items = Array.from(document.querySelectorAll('input[name="piezasProbadas"]:checked'))
+            .map(cb => cb.value);
+    } else if (tipoSeccion === 'equipos-apagados') {
+        items = Array.from(document.querySelectorAll('input[name="equipoApagado"]:checked'))
+            .map(cb => cb.value);
+    }
+    
+    return {
+        seccion: tipoSeccion,
+        items: items
+    };
+}
+
+function cargarChecklistEnFormulario(orden) {
+    if (!orden.inspeccion) return;
+    
+    const { seccion, items } = orden.inspeccion;
+    
+    if (!seccion) return;
+    
+    // Seleccionar la sección
+    document.querySelector(`input[name="seccionInspeccion"][value="${seccion}"]`).checked = true;
+    cambiarSeccionInspeccion();
+    
+    // Marcar los items
+    if (seccion === 'equipos-encendidos') {
+        items.forEach(item => {
+            const checkbox = document.querySelector(`input[name="piezasProbadas"][value="${item}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+    } else if (seccion === 'equipos-apagados') {
+        items.forEach(item => {
+            const checkbox = document.querySelector(`input[name="equipoApagado"][value="${item}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+}
+
 // Cerrar el modal
 function cerrarModalArticulos() {
     document.getElementById('modalAgregarArticulos').style.display = 'none';
@@ -4376,3 +4663,1427 @@ window.cerrarModalArticulos = cerrarModalArticulos;
 window.agregarArticuloModal = agregarArticuloModal;
 window.eliminarArticuloModal = eliminarArticuloModal;
 window.guardarArticulosOrden = guardarArticulosOrden;
+
+// Exponer funciones del checklist
+window.cambiarSeccionInspeccion = cambiarSeccionInspeccion;
+window.obtenerSeleccionesChecklist = obtenerSeleccionesChecklist;
+window.cargarChecklistEnFormulario = cargarChecklistEnFormulario;
+
+// === GESTIÓN DE TIENDAS ===
+
+function cargarTiendas() {
+    return Storage.get('tiendas');
+}
+
+function mostrarFormTienda() {
+    document.getElementById('formTienda').style.display = 'block';
+    document.getElementById('tiendaForm').reset();
+    document.getElementById('tiendaForm').dataset.id = '';
+}
+
+function cancelarFormTienda() {
+    document.getElementById('formTienda').style.display = 'none';
+    document.getElementById('tiendaForm').reset();
+    document.getElementById('tiendaForm').dataset.id = '';
+}
+
+function guardarTienda(event) {
+    event.preventDefault();
+    
+    let tiendas = Storage.get('tiendas');
+    
+    const tiendaId = document.getElementById('tiendaForm').dataset.id;
+    const tienda = {
+        id: tiendaId || 'tienda_' + Date.now(),
+        nombre: document.getElementById('tiendaNombre').value,
+        contacto: document.getElementById('tiendaContacto').value,
+        telefono: document.getElementById('tiendaTelefono').value,
+        email: document.getElementById('tiendaEmail').value,
+        direccion: document.getElementById('tiendaDireccion').value,
+        fechaCreacion: tiendaId ? tiendas.find(t => t.id === tiendaId).fechaCreacion : new Date().toISOString()
+    };
+    
+    if (tiendaId) {
+        const index = tiendas.findIndex(t => t.id === tiendaId);
+        if (index !== -1) {
+            tiendas[index] = tienda;
+        }
+    } else {
+        tiendas.push(tienda);
+    }
+    
+    Storage.saveAndSync('tiendas', tiendas);
+    cancelarFormTienda();
+    mostrarTiendas();
+}
+
+async function editarTienda(tiendaId) {
+    const tiendas = Storage.get('tiendas');
+    const tienda = tiendas.find(t => t.id === tiendaId);
+    
+    if (tienda) {
+        document.getElementById('tiendaNombre').value = tienda.nombre;
+        document.getElementById('tiendaContacto').value = tienda.contacto || '';
+        document.getElementById('tiendaTelefono').value = tienda.telefono || '';
+        document.getElementById('tiendaEmail').value = tienda.email || '';
+        document.getElementById('tiendaDireccion').value = tienda.direccion || '';
+        document.getElementById('tiendaForm').dataset.id = tiendaId;
+        document.getElementById('formTienda').style.display = 'block';
+        document.getElementById('tiendaNombre').focus();
+    }
+}
+
+// Wrapper para editar tienda con manejo de evento
+function handleEditarTienda(tiendaId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }
+    editarTienda(tiendaId);
+    return false;
+}
+
+async function eliminarTienda(tiendaId) {
+    if (confirm('¿Estás seguro que deseas eliminar esta tienda?')) {
+        let tiendas = Storage.get('tiendas');
+        tiendas = tiendas.filter(t => t.id !== tiendaId);
+        await Storage.saveAndSync('tiendas', tiendas);
+        mostrarTiendas();
+    }
+}
+
+// Wrapper para eliminar tienda con manejo de evento
+function handleEliminarTienda(tiendaId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }
+    eliminarTienda(tiendaId);
+    return false;
+}
+
+function calcularDineroTienda(tiendaId) {
+    const ordenes = Storage.get('ordenes');
+    const ordenesTienda = ordenes.filter(o => o.tiendaId === tiendaId);
+    
+    return ordenesTienda.reduce((total, orden) => {
+        const monto = parseFloat(orden.monto) || 0;
+        const pagado = parseFloat(orden.pagado) || 0;
+        return total + (monto - pagado);
+    }, 0);
+}
+
+function obtenerOrdenesTienda(tiendaId) {
+    const ordenes = Storage.get('ordenes');
+    return ordenes.filter(o => o.tiendaId === tiendaId);
+}
+
+function mostrarTiendas() {
+    // Restaurar el grid cuando volvemos al listado
+    const container = document.getElementById('listaTiendas');
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
+    container.style.gap = '20px';
+    
+    const tiendas = Storage.get('tiendas');
+    const busqueda = document.getElementById('buscarTienda').value.toLowerCase();
+    
+    const tiendasFiltradas = tiendas.filter(t => 
+        t.nombre.toLowerCase().includes(busqueda)
+    );
+    
+    if (tiendasFiltradas.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No hay tiendas registradas</div>';
+        return;
+    }
+    
+    container.innerHTML = tiendasFiltradas.map(tienda => {
+        const dineroTienda = calcularDineroTienda(tienda.id);
+        const ordenesCount = obtenerOrdenesTienda(tienda.id).length;
+        const ordenesPendientes = obtenerOrdenesTienda(tienda.id).filter(o => {
+            const pagado = parseFloat(o.pagado) || 0;
+            const monto = parseFloat(o.monto) || 0;
+            return pagado < monto;
+        }).length;
+        
+        console.log('🏪 Renderizando tienda:', tienda.id, tienda.nombre);
+        
+        return `
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer;" data-tienda-id="${tienda.id}">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0; font-size: 18px;">${tienda.nombre}</h3>
+                        <p style="margin: 5px 0; font-size: 12px; opacity: 0.8;">${tienda.contacto || 'Sin contacto'}</p>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                    <p style="margin: 5px 0; font-size: 13px; opacity: 0.9;">
+                        <strong>Dinero Pendiente:</strong>
+                    </p>
+                    <p style="margin: 5px 0; font-size: 20px; font-weight: bold;">$${formatearMonto(dineroTienda)}</p>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+                    <div style="background: rgba(255,255,255,0.1); padding: 8px; border-radius: 5px; text-align: center;">
+                        <p style="margin: 0; opacity: 0.8;">Total Órdenes</p>
+                        <p style="margin: 5px 0; font-size: 18px; font-weight: bold;">${ordenesCount}</p>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 8px; border-radius: 5px; text-align: center;">
+                        <p style="margin: 0; opacity: 0.8;">Pendientes</p>
+                        <p style="margin: 5px 0; font-size: 18px; font-weight: bold;">${ordenesPendientes}</p>
+                    </div>
+                </div>
+                
+                <p style="margin: 10px 0 0 0; font-size: 11px; opacity: 0.7; color: rgba(255,255,255,0.8);">
+                    📞 ${tienda.telefono || 'No registrado'}<br>
+                    📍 ${tienda.direccion || 'No registrada'}
+                </p>
+            </div>
+        `;
+    }).join('');
+    
+    // Event listeners para tarjetas
+    setTimeout(() => {
+        document.querySelectorAll('.stat-card[data-tienda-id]').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const tiendaId = card.getAttribute('data-tienda-id');
+                mostrarModalTienda(tiendaId);
+            });
+        });
+    }, 0);
+}
+
+// Función para mostrar modal con opciones
+function mostrarModalTienda(tiendaId) {
+    const tiendas = Storage.get('tiendas') || [];
+    const tienda = tiendas.find(t => t.id === tiendaId);
+    
+    if (!tienda) return;
+    
+    // Crear modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+    `;
+    
+    dialog.innerHTML = `
+        <h2 style="margin: 0 0 10px 0; font-size: 24px; color: #333;">${tienda.nombre}</h2>
+        <p style="margin: 5px 0; color: #666; font-size: 14px;">
+            <strong>Contacto:</strong> ${tienda.contacto || 'No registrado'}<br>
+            <strong>Teléfono:</strong> ${tienda.telefono || 'No registrado'}<br>
+            <strong>Email:</strong> ${tienda.email || 'No registrado'}<br>
+            <strong>Dirección:</strong> ${tienda.direccion || 'No registrada'}
+        </p>
+        <div style="display: flex; gap: 10px; margin-top: 25px; flex-wrap: wrap;">
+            <button onclick="verOrdenesTienda('${tiendaId}'); document.querySelector('[data-modal-backdrop]').remove();" style="flex: 1; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; min-width: 120px;">👁️ Ver Órdenes</button>
+            <button onclick="generarReporteCuentasPorCobrar('${tiendaId}').catch(e => console.error(e));" style="flex: 1; padding: 12px; background: #ff9800; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; min-width: 120px;">📊 Reporte</button>
+            <button onclick="editarTienda('${tiendaId}'); document.querySelector('[data-modal-backdrop]').remove();" style="flex: 1; padding: 12px; background: #4facfe; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; min-width: 120px;">✏️ Editar</button>
+            <button onclick="if(confirm('¿Estás seguro de que deseas eliminar esta tienda?')) { eliminarTienda('${tiendaId}'); document.querySelector('[data-modal-backdrop]').remove(); }" style="flex: 1; padding: 12px; background: #ff6b6b; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; min-width: 120px;">🗑️ Eliminar</button>
+        </div>
+        <button onclick="document.querySelector('[data-modal-backdrop]').remove();" style="width: 100%; padding: 10px; background: #e0e0e0; border: none; border-radius: 6px; color: #333; font-size: 14px; margin-top: 10px; cursor: pointer; transition: all 0.2s;">Cancelar</button>
+    `;
+    
+    modal.appendChild(dialog);
+    modal.setAttribute('data-modal-backdrop', 'true');
+    
+    // Cerrar modal al hacer click fuera
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    document.body.appendChild(modal);
+}
+
+function filtrarTiendas() {
+    mostrarTiendas();
+}
+
+function verOrdenesTienda(tiendaId) {
+    console.log('🔍 verOrdenesTienda llamada con tiendaId:', tiendaId, 'Tipo:', typeof tiendaId);
+    
+    // Cambiar el grid a layout normal para la vista de tienda
+    const listaTiendas = document.getElementById('listaTiendas');
+    listaTiendas.style.display = 'block';
+    listaTiendas.style.width = '100%';
+    listaTiendas.style.maxWidth = 'none';
+    
+    // Asegurar que tiendaId es string
+    tiendaId = String(tiendaId).trim();
+    
+    const tiendas = Storage.get('tiendas');
+    const ordenes = Storage.get('ordenes');
+    const clientes = Storage.get('clientes');
+    
+    console.log('📍 Tiendas disponibles:', tiendas.map(t => ({id: t.id, nombre: t.nombre})));
+    console.log('🔎 Buscando tienda con ID:', tiendaId);
+    
+    const tienda = tiendas.find(t => String(t.id).trim() === tiendaId);
+    console.log('🏪 Tienda encontrada:', tienda);
+    
+    if (!tienda) {
+        alert('❌ Error: Tienda no encontrada. ID buscado: ' + tiendaId);
+        document.getElementById('listaTiendas').innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #ff0000;">❌ Error: Tienda no encontrada</div>';
+        return;
+    }
+    
+    // Mostrar la sección de tiendas
+    mostrarSeccion('tiendas');
+    
+    const ordenesTienda = ordenes.filter(o => String(o.tiendaId).trim() === tiendaId);
+    console.log('📦 Órdenes de tienda:', ordenesTienda.length);
+    
+    // Definir estados disponibles
+    const estados = ['Recibido', 'En Diagnóstico', 'Esperando Repuestos', 'En Reparación', 'Listo para Entrega', 'Entregado', 'Cancelado'];
+    
+    // Separar órdenes por estado
+    const ordenesPorEstado = {};
+    estados.forEach(estado => {
+        ordenesPorEstado[estado] = ordenesTienda.filter(o => o.estado === estado);
+    });
+    
+    // Calcular dinero pendiente total (órdenes en "Listo para Entrega" sin cobrar)
+    const ordenesPendienteCobro = ordenesTienda.filter(o => o.estado === 'Listo para Entrega' && !o.cobrado);
+    const dineroPendienteTotal = ordenesPendienteCobro.reduce((total, orden) => {
+        const monto = parseFloat(orden.presupuesto) || 0;
+        return total + monto;
+    }, 0);
+    
+    let html = `
+        <div style="background: white; padding: 0; margin: 0; box-sizing: border-box; width: 100%; min-height: 100vh; display: flex; flex-direction: column;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 35px 60px; color: white; display: flex; justify-content: space-between; align-items: flex-start; gap: 50px;">
+                <div style="flex: 1;">
+                    <h2 style="margin: 0 0 20px 0; color: white; font-size: 42px; font-weight: bold;">${tienda.nombre}</h2>
+                    <div style="color: rgba(255,255,255,0.9); font-size: 15px; display: flex; gap: 60px; flex-wrap: wrap;">
+                        <span><strong>👤</strong> ${tienda.contacto || 'No registrado'}</span>
+                        <span><strong>📞</strong> ${tienda.telefono || 'No registrado'}</span>
+                        <span><strong>📍</strong> ${tienda.direccion || 'No registrada'}</span>
+                    </div>
+                </div>
+                <button onclick="mostrarSeccion('tiendas'); mostrarTiendas();" class="btn-secondary" style="padding: 14px 30px; font-size: 16px; height: fit-content; white-space: nowrap;">← Volver</button>
+            </div>
+            <div style="flex: 1; padding: 50px 60px; box-sizing: border-box; overflow-y: auto; width: 100%; max-width: 100%;">
+            
+            <!-- Estadísticas -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; margin-bottom: 50px;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; color: white; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <p style="margin: 0; font-size: 15px; opacity: 0.9; font-weight: 600;">📦 Total Órdenes</p>
+                    <p style="margin: 15px 0 0 0; font-size: 48px; font-weight: bold;">${ordenesTienda.length}</p>
+                </div>
+                <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 30px; border-radius: 12px; color: white; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <p style="margin: 0; font-size: 15px; opacity: 0.9; font-weight: 600;">💰 Dinero Pendiente</p>
+                    <p style="margin: 15px 0 0 0; font-size: 48px; font-weight: bold;">$${formatearMonto(dineroPendienteTotal)}</p>
+                </div>
+                <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 30px; border-radius: 12px; color: white; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <p style="margin: 0; font-size: 15px; opacity: 0.9; font-weight: 600;">✅ Pendiente Cobro</p>
+                    <p style="margin: 15px 0 0 0; font-size: 48px; font-weight: bold;">$${formatearMonto(dineroPendienteTotal)}</p>
+                </div>
+                <div style="background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%); padding: 30px; border-radius: 12px; color: white; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <p style="margin: 0; font-size: 15px; opacity: 0.9; font-weight: 600;">📊 Total Órdenes</p>
+                    <p style="margin: 15px 0 0 0; font-size: 48px; font-weight: bold;">${ordenesTienda.length}</p>
+                </div>
+            </div>
+    `;
+    
+    // Función para generar tabla de órdenes
+    const generarTablaOrdenes = (ordenesGrupo, titulo) => {
+        if (ordenesGrupo.length === 0) {
+            return `<p style="text-align: center; color: #999; padding: 20px; background: #f5f5f5; border-radius: 8px;">Sin órdenes en este estado</p>`;
+        }
+        
+        let tabla = `
+            <h3 style="margin: 30px 0 20px 0; color: #333; padding-bottom: 18px; border-bottom: 4px solid #667eea; font-size: 24px; font-weight: bold;">
+                ${titulo}
+            </h3>
+            <div style="width: 100%; box-sizing: border-box; margin-bottom: 50px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; box-sizing: border-box;">
+                    <thead>
+                        <tr style="background: #f5f5f5; border-bottom: 3px solid #667eea; box-sizing: border-box;">
+                            <th style="padding: 14px; text-align: left; border: 1px solid #e0e0e0; font-size: 13px; font-weight: bold; white-space: nowrap; box-sizing: border-box;">#Orden</th>
+                            <th style="padding: 14px; text-align: left; border: 1px solid #e0e0e0; font-size: 13px; font-weight: bold; white-space: nowrap; box-sizing: border-box;">Cliente</th>
+                            <th style="padding: 14px; text-align: left; border: 1px solid #e0e0e0; font-size: 13px; font-weight: bold; white-space: nowrap; box-sizing: border-box;">Equipo</th>
+                            <th style="padding: 14px; text-align: center; border: 1px solid #e0e0e0; font-size: 13px; font-weight: bold; white-space: nowrap; box-sizing: border-box;">Fecha</th>
+                            <th style="padding: 14px; text-align: right; border: 1px solid #e0e0e0; font-size: 13px; font-weight: bold; white-space: nowrap; box-sizing: border-box;">Monto</th>
+                            <th style="padding: 14px; text-align: center; border: 1px solid #e0e0e0; font-size: 13px; font-weight: bold; white-space: nowrap; box-sizing: border-box;">Estado</th>
+                            <th style="padding: 14px; text-align: center; border: 1px solid #e0e0e0; font-size: 13px; font-weight: bold; white-space: nowrap; box-sizing: border-box;">Cambiar</th>
+                            <th style="padding: 14px; text-align: center; border: 1px solid #e0e0e0; font-size: 13px; font-weight: bold; white-space: nowrap; box-sizing: border-box;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody style="box-sizing: border-box;">
+        `;
+        
+        ordenesGrupo.forEach((orden, index) => {
+            const cliente = clientes.find(c => c.id === orden.clienteId);
+            const tienda = orden.tiendaId ? tiendas.find(t => t.id === orden.tiendaId) : null;
+            const clienteNombre = tienda ? tienda.nombre : (cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente Final');
+            const presupuesto = parseFloat(orden.presupuesto) || 0;
+            const pagado = parseFloat(orden.anticipo) || 0;
+            const pendiente = presupuesto - pagado;
+            
+            console.log(`📊 Orden #${orden.id}: estado=${orden.estado}, cobrado=${orden.cobrado}, mostrarBotón=${orden.estado === 'Listo para Entrega' && (orden.cobrado === false || orden.cobrado === undefined)}`);
+            const colorPendiente = pendiente > 0 ? '#f44336' : '#4caf50';
+            const estadoCobro = orden.cobrado ? '✅ Cobrado' : '⏳ Pendiente';
+            const colorEstadoCobro = orden.cobrado ? '#4caf50' : '#ff9800';
+            
+            tabla += `
+                <tr style="border-bottom: 1px solid #e0e0e0; background: ${index % 2 === 0 ? 'white' : '#fafafa'}; box-sizing: border-box; transition: background 0.2s;">
+                    <td style="padding: 12px 14px; border: 1px solid #e0e0e0; white-space: nowrap; font-size: 13px; box-sizing: border-box;"><strong>#${orden.numero}</strong></td>
+                    <td style="padding: 12px 14px; border: 1px solid #e0e0e0; font-size: 13px; white-space: nowrap; box-sizing: border-box; max-width: 160px; overflow: hidden; text-overflow: ellipsis;">${clienteNombre}</td>
+                    <td style="padding: 12px 14px; border: 1px solid #e0e0e0; font-size: 13px; white-space: nowrap; box-sizing: border-box; max-width: 140px; overflow: hidden; text-overflow: ellipsis;">${orden.marca} ${orden.modelo}</td>
+                    <td style="padding: 12px 14px; border: 1px solid #e0e0e0; font-size: 13px; white-space: nowrap; text-align: center; box-sizing: border-box;">${new Date(orden.fechaCreacion || new Date()).toLocaleDateString('es-ES', {month: 'short', day: 'numeric'})}</td>
+                    <td style="padding: 12px 14px; text-align: right; border: 1px solid #e0e0e0; font-weight: bold; font-size: 13px; white-space: nowrap; box-sizing: border-box;">$${formatearMonto(presupuesto)}</td>
+                    <td style="padding: 12px 14px; text-align: center; border: 1px solid #e0e0e0; font-size: 12px; white-space: nowrap; box-sizing: border-box;">
+                        <span style="background: ${orden.estado === 'Entregado' ? '#4caf50' : orden.estado === 'Cancelado' ? '#f44336' : '#2196F3'}; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;">${orden.estado.substring(0, 6)}</span>
+                    </td>
+                    <td style="padding: 10px; text-align: center; border: 1px solid #e0e0e0; box-sizing: border-box;">
+                        <select onchange="cambiarEstadoOrdenTienda(${orden.id}, this.value); verOrdenesTienda('${tiendaId}');" style="padding: 6px 5px; font-size: 12px; border-radius: 3px; border: 1px solid #ccc; width: 100%; max-width: 105px;">
+                            <option value="">--</option>
+                            <option value="Recibido">Recib.</option>
+                            <option value="En Diagnóstico">Diagn.</option>
+                            <option value="Esperando Repuestos">Repuestos</option>
+                            <option value="En Reparación">Repara.</option>
+                            <option value="Listo para Entrega">Listo</option>
+                            <option value="Entregado">Entreg.</option>
+                            <option value="Cancelado">Canc.</option>
+                        </select>
+                    </td>
+                    <td style="padding: 10px; text-align: center; border: 1px solid #e0e0e0; display: flex; gap: 3px; justify-content: center; align-items: center; flex-wrap: nowrap; box-sizing: border-box;">
+                        <button onclick="editarOrden(${orden.id}); mostrarSeccion('ordenes');" title="Ver orden" style="padding: 6px 8px; font-size: 14px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; transition: background 0.2s;">✏️</button>
+                        ${orden.estado === 'Listo para Entrega' ? `<button onclick="try { marcarComoCobrado(${orden.id}); } catch(e) { console.error(e); } verOrdenesTienda('${tiendaId}');" title="Cobrar" style="padding: 6px 8px; font-size: 14px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; transition: background 0.2s;">💰</button>` : ''}
+                        ${orden.estado === 'Entregado' ? `<button onclick="imprimirFactura(${orden.id});" title="Imprimir factura" style="padding: 6px 8px; font-size: 14px; background: #ff9800; color: white; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; transition: background 0.2s;">🖨️</button>` : ''}
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tabla += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        return tabla;
+    };
+    
+    // Agregar tablas de órdenes por estado
+    let tablas = '';
+    estados.forEach(estado => {
+        const ordenesEstado = ordenesPorEstado[estado];
+        if (ordenesEstado && ordenesEstado.length > 0) {
+            tablas += generarTablaOrdenes(ordenesEstado, `${estado} (${ordenesEstado.length})`);
+        }
+    });
+    html += tablas || '<div style="text-align: center; padding: 40px; color: #999; background: #f5f5f5; border-radius: 8px;">No hay órdenes registradas para esta tienda</div>';
+    
+    html += `<div style="margin-top: 30px; text-align: center; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+        <button onclick="generarReporteCuentasPorCobrar('${tiendaId}').catch(e => console.error(e));" class="btn-primary" style="padding: 12px 24px; background: #ff9800;">📊 Imprimir Reporte de Cuentas</button>
+        <button onclick="mostrarSeccion('tiendas'); mostrarTiendas();" class="btn-secondary" style="padding: 12px 24px;">← Volver a Tiendas</button>
+    </div></div>`;
+    
+    document.getElementById('listaTiendas').innerHTML = html;
+}
+
+// === SINCRONIZACIÓN EN TIEMPO REAL CON FIREBASE ===
+function inicializarSincronizacionTiendas() {
+    try {
+        const usuario = localStorage.getItem('usuarioActual');
+        if (!usuario) return;
+        
+        // Escuchar cambios en la colección de tiendas
+        db.collection('usuarios-data').doc(usuario).collection('tiendas')
+            .onSnapshot((snapshot) => {
+                const tiendas = [];
+                snapshot.forEach(doc => {
+                    tiendas.push(doc.data());
+                });
+                
+                // Si hay cambios, actualizar localStorage
+                if (tiendas.length > 0) {
+                    const tiendas_actual = Storage.get('tiendas') || [];
+                    const tiendas_nuevas = JSON.stringify(tiendas);
+                    const tiendas_actual_str = JSON.stringify(tiendas_actual);
+                    
+                    // Solo actualizar si hay cambios
+                    if (tiendas_nuevas !== tiendas_actual_str) {
+                        localStorage.setItem('tiendas', tiendas_nuevas);
+                        console.log('🔄 Tiendas sincronizadas desde Firebase');
+                        
+                        // Si estamos viendo tiendas, actualizar la vista
+                        if (document.getElementById('tiendas') && document.getElementById('tiendas').style.display !== 'none') {
+                            mostrarTiendas();
+                        }
+                    }
+                }
+            }, (error) => {
+                console.error('❌ Error al escuchar tiendas:', error);
+            });
+    } catch (error) {
+        console.error('❌ Error inicializando sincronización:', error);
+    }
+}
+
+// Inicializar tiendas cuando se carga la sección
+window.addEventListener('load', function() {
+    // Inicializar sincronización de tiendas en tiempo real con Firebase
+    inicializarSincronizacionTiendas();
+    
+    // Esto se ejecutará cuando el DOM esté listo
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.target.id === 'tiendas' && mutation.target.classList.contains('section')) {
+                if (mutation.target.style.display !== 'none') {
+                    mostrarTiendas();
+                }
+            }
+        });
+    });
+});
+
+// Cambiar estado de orden desde vista de tienda
+function cambiarEstadoOrdenTienda(ordenId, nuevoEstado) {
+    if (!nuevoEstado) return;
+    
+    console.log('🔄 Cambiando orden:', ordenId, 'a estado:', nuevoEstado);
+    
+    const ordenes = Storage.get('ordenes');
+    const orden = ordenes.find(o => o.id === ordenId);
+    
+    if (!orden) {
+        alert('❌ Orden no encontrada');
+        return;
+    }
+    
+    const estadoAnterior = orden.estado;
+    orden.estado = nuevoEstado;
+    
+    // Cuando cambia a "Listo para Entrega", asegurar que cobrado sea false para mostrar botón
+    if (nuevoEstado === 'Listo para Entrega') {
+        orden.cobrado = false;
+    }
+    
+    // Inicializar el campo cobrado si no existe
+    if (orden.cobrado === undefined) {
+        orden.cobrado = false;
+    }
+    
+    console.log('✅ Estado:', orden.estado, '| Cobrado:', orden.cobrado);
+    
+    // Si cambia a "Entregado", realizar los mismos pasos que en la vista de órdenes
+    if (nuevoEstado === 'Entregado') {
+        orden.fechaEntrega = new Date().toISOString();
+        
+        // Si hay saldo pendiente, solicitar pago final
+        const saldoPendiente = (orden.presupuesto || 0) - (orden.anticipo || 0);
+        
+        if (saldoPendiente > 0) {
+            const metodoPago = prompt(`Orden será entregada.\n\nSaldo Pendiente: $${formatearMonto(saldoPendiente)}\n\nSelecciona método de pago:\n1. Efectivo\n2. Tarjeta Débito\n3. Tarjeta Crédito\n4. Transferencia`);
+            const metodos = ['Efectivo', 'Tarjeta Débito', 'Tarjeta Crédito', 'Transferencia'];
+            const index = parseInt(metodoPago) - 1;
+            
+            if (index >= 0 && index < metodos.length) {
+                const metodoSeleccionado = { 
+                    nombre: metodos[index], 
+                    comision: [0, 0.01, 0.02, 0.01][index]
+                };
+                
+                const pago = saldoPendiente;
+                const comision = pago * metodoSeleccionado.comision;
+                const montoNeto = pago - comision;
+                
+                if (!orden.historialPagos) orden.historialPagos = [];
+                orden.historialPagos.push({
+                    monto: pago,
+                    montoNeto: montoNeto,
+                    comision: comision,
+                    metodoPago: metodoSeleccionado.nombre,
+                    fecha: new Date().toISOString(),
+                    tipo: 'Pago final al entrega'
+                });
+                
+                Storage.saveAndSync('ordenes', ordenes);
+                
+                let mensajePago = `✅ Orden entregada!\nMétodo: ${metodoSeleccionado.nombre}\nMonto: $${formatearMonto(pago)}`;
+                if (comision > 0) {
+                    mensajePago += `\nComisión: $${formatearMonto(comision)}\nMonto neto: $${formatearMonto(montoNeto)}`;
+                }
+                alert(mensajePago);
+                return;
+            }
+        }
+    }
+    
+    Storage.saveAndSync('ordenes', ordenes);
+    alert(`✅ Estado actualizado: ${estadoAnterior} → ${nuevoEstado}`);
+}
+
+// Marcar orden como cobrada con registro de pago
+function marcarComoCobrado(ordenId) {
+    console.log('💰 Iniciando función marcarComoCobrado con ordenId:', ordenId);
+    
+    const ordenes = Storage.get('ordenes');
+    const orden = ordenes.find(o => o.id === ordenId);
+    
+    if (!orden) {
+        alert('❌ Orden no encontrada');
+        return;
+    }
+    
+    if (orden.estado !== 'Listo para Entrega') {
+        alert('❌ La orden debe estar en estado "Listo para Entrega" para cobrar');
+        return;
+    }
+    
+    const saldo = (orden.presupuesto || 0) - (orden.anticipo || 0);
+    
+    if (saldo <= 0) {
+        alert('✅ Esta orden ya está completamente pagada');
+        orden.cobrado = true;
+        Storage.saveAndSync('ordenes', ordenes);
+        return;
+    }
+    
+    // Solicitar método de pago
+    const metodoPago = prompt(`💰 COBRAR ORDEN\n\nMonto a Cobrar: $${formatearMonto(saldo)}\n\nSelecciona el método de pago:\n1. Efectivo\n2. Transferencia\n3. Tarjeta\n\nIngresa el número (1, 2 o 3):`);
+    
+    const metodos = {
+        '1': { nombre: 'Efectivo', comision: 0 },
+        '2': { nombre: 'Transferencia', comision: 0 },
+        '3': { nombre: 'Tarjeta', comision: 0 }
+    };
+    
+    if (!metodos[metodoPago]) {
+        alert('❌ Método de pago no válido');
+        return;
+    }
+    
+    const metodoSeleccionado = metodos[metodoPago];
+    const comision = saldo * metodoSeleccionado.comision;
+    const montoNeto = saldo - comision;
+    
+    orden.anticipo = (orden.anticipo || 0) + saldo;
+    orden.cobrado = true;
+    
+    // Registrar el pago en el historial
+    if (!orden.historialPagos) {
+        orden.historialPagos = [];
+    }
+    orden.historialPagos.push({
+        monto: saldo,
+        montoNeto: montoNeto,
+        comision: comision,
+        metodoPago: metodoSeleccionado.nombre,
+        fecha: new Date().toISOString(),
+        tipo: 'Pago final desde tienda'
+    });
+    
+    Storage.saveAndSync('ordenes', ordenes);
+    
+    let mensajePago = `✅ PAGO REGISTRADO EXITOSAMENTE!\n\nMétodo: ${metodoSeleccionado.nombre}\nMonto: $${formatearMonto(saldo)}`;
+    if (comision > 0) {
+        mensajePago += `\nComisión: $${formatearMonto(comision)}\nMonto neto: $${formatearMonto(montoNeto)}`;
+    }
+    mensajePago += `\n\n✅ Orden marcada como cobrada`;
+    
+    alert(mensajePago);
+}
+
+// Imprimir factura de orden
+function imprimirFactura(ordenId) {
+    const ordenes = Storage.get('ordenes');
+    const clientes = Storage.get('clientes');
+    const tiendas = Storage.get('tiendas');
+    
+    const orden = ordenes.find(o => o.id === ordenId);
+    if (!orden) {
+        alert('❌ Orden no encontrada');
+        return;
+    }
+    
+    const cliente = clientes.find(c => c.id === orden.clienteId);
+    const tienda = orden.tiendaId ? tiendas.find(t => t.id === orden.tiendaId) : null;
+    const nombreCliente = tienda ? tienda.nombre : (cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente Final');
+    
+    const presupuesto = parseFloat(orden.presupuesto) || 0;
+    const anticipo = parseFloat(orden.anticipo) || 0;
+    const saldo = presupuesto - anticipo;
+    
+    const fecha = new Date(orden.fechaCreacion).toLocaleDateString('es-ES');
+    
+    const contenido = `
+        <html>
+        <head>
+            <title>Factura Orden #${orden.numero}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .titulo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+                .linea { border-bottom: 2px solid #333; margin: 20px 0; }
+                .detalles { margin: 20px 0; }
+                .detalles p { margin: 5px 0; }
+                .tabla { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                .tabla th { background: #f0f0f0; padding: 10px; text-align: left; border: 1px solid #ddd; }
+                .tabla td { padding: 10px; border: 1px solid #ddd; }
+                .total { font-size: 18px; font-weight: bold; margin-top: 20px; }
+                .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="titulo">FACTURA</div>
+                <div>Orden #${orden.numero}</div>
+            </div>
+            
+            <div class="linea"></div>
+            
+            <div class="detalles">
+                <p><strong>Cliente:</strong> ${nombreCliente}</p>
+                <p><strong>Equipo:</strong> ${orden.marca} ${orden.modelo}</p>
+                <p><strong>Fecha:</strong> ${fecha}</p>
+                <p><strong>Estado:</strong> ${orden.estado}</p>
+            </div>
+            
+            <div class="linea"></div>
+            
+            <table class="tabla">
+                <tr>
+                    <th>Concepto</th>
+                    <th style="text-align: right;">Monto</th>
+                </tr>
+                <tr>
+                    <td>Presupuesto Total</td>
+                    <td style="text-align: right;">$${formatearMonto(presupuesto)}</td>
+                </tr>
+                <tr>
+                    <td>Anticipo Pagado</td>
+                    <td style="text-align: right;">$${formatearMonto(anticipo)}</td>
+                </tr>
+                <tr style="background: #f0f0f0; font-weight: bold;">
+                    <td>Saldo</td>
+                    <td style="text-align: right;">$${formatearMonto(saldo)}</td>
+                </tr>
+            </table>
+            
+            <div class="total">
+                <p>Estado del Pago: ${orden.cobrado ? '✅ PAGADA' : '⏳ PENDIENTE'}</p>
+            </div>
+            
+            <div class="footer">
+                <p>Generado el ${new Date().toLocaleString('es-ES')}</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    const ventana = window.open('', 'factura', 'width=800,height=600');
+    ventana.document.write(contenido);
+    ventana.document.close();
+    setTimeout(() => ventana.print(), 250);
+}
+
+// === REPORTES DE CUENTAS POR COBRAR POR TIENDA ===
+// Función para obtener órdenes pendientes de pago de una tienda
+async function obtenerOrdenesPendientesTienda(tiendaId) {
+    // Sincronizar con Firebase primero para garantizar datos actuales
+    const usuario = localStorage.getItem('usuario');
+    if (usuario) {
+        try {
+            const ordenes = await Storage.loadFromFirebase(usuario, 'ordenes');
+            Storage.set('ordenes', ordenes);
+            console.log('✅ Órdenes sincronizadas desde Firebase');
+        } catch (error) {
+            console.warn('⚠️ No se pudo sincronizar órdenes, usando caché local:', error);
+        }
+    }
+    
+    const ordenes = Storage.get('ordenes') || [];
+    return ordenes.filter(o => {
+        return String(o.tiendaId).trim() === String(tiendaId).trim() && 
+               (o.estado === 'Listo para Entrega' || o.estado === 'Entregado') &&
+               ((o.cobrado === false || o.cobrado === undefined) || (parseFloat(o.presupuesto) || 0) > (parseFloat(o.anticipo) || 0));
+    });
+}
+
+// Función para generar PDF del reporte de cuentas por cobrar
+async function generarReporteCuentasPorCobrar(tiendaId) {
+    // Mostrar indicador de sincronización
+    console.log('🔄 Sincronizando datos con Firebase...');
+    mostrarNotificacion('🔄 Sincronizando datos...', 'info');
+    
+    // Sincronizar tiendas, órdenes y clientes desde Firebase
+    const usuario = localStorage.getItem('usuario');
+    if (usuario) {
+        try {
+            const [tiendas, ordenes, clientes] = await Promise.all([
+                Storage.loadFromFirebase(usuario, 'tiendas'),
+                Storage.loadFromFirebase(usuario, 'ordenes'),
+                Storage.loadFromFirebase(usuario, 'clientes')
+            ]);
+            
+            // Actualizar localStorage con datos actuales
+            Storage.set('tiendas', tiendas);
+            Storage.set('ordenes', ordenes);
+            Storage.set('clientes', clientes);
+            
+            console.log('✅ Datos sincronizados desde Firebase');
+        } catch (error) {
+            console.warn('⚠️ Algunos datos no se pudieron sincronizar, usando caché local:', error);
+        }
+    }
+    
+    const tiendas = Storage.get('tiendas') || [];
+    const tienda = tiendas.find(t => String(t.id).trim() === String(tiendaId).trim());
+    
+    if (!tienda) {
+        alert('❌ Tienda no encontrada');
+        return;
+    }
+    
+    const ordenesPendientes = await obtenerOrdenesPendientesTienda(tiendaId);
+    const clientes = Storage.get('clientes') || [];
+    
+    // Calcular totales
+    let totalPresupuesto = 0;
+    let totalAnticipo = 0;
+    let totalPendiente = 0;
+    
+    const detallesOrdenes = ordenesPendientes.map(orden => {
+        const presupuesto = parseFloat(orden.presupuesto) || 0;
+        const anticipo = parseFloat(orden.anticipo) || 0;
+        const pendiente = presupuesto - anticipo;
+        const cliente = clientes.find(c => c.id === orden.clienteId);
+        const nombreCliente = cliente ? `${cliente.nombre} ${cliente.apellido}` : tienda.nombre;
+        
+        totalPresupuesto += presupuesto;
+        totalAnticipo += anticipo;
+        totalPendiente += pendiente;
+        
+        return {
+            numero: orden.numero,
+            cliente: nombreCliente,
+            equipo: `${orden.marca} ${orden.modelo}`,
+            imei: orden.numero || '-',
+            fechaIngreso: new Date(orden.fechaCreacion || new Date()).toLocaleDateString('es-ES'),
+            estado: orden.estado,
+            presupuesto: presupuesto,
+            anticipo: anticipo,
+            pendiente: pendiente
+        };
+    });
+    
+    // Crear documento HTML para imprimir
+    const html = `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reporte de Cuentas por Cobrar - ${tienda.nombre}</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                html, body {
+                    width: 100%;
+                    margin: 0;
+                    padding: 0;
+                }
+                
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                    background: white;
+                    color: #333;
+                    line-height: 1.4;
+                    font-size: 14px;
+                }
+                
+                .container {
+                    width: 100%;
+                    max-width: 210mm;
+                    margin: 0 auto;
+                    background: white;
+                    page-break-after: always;
+                }
+                
+                .header {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 25px;
+                    margin-bottom: 0;
+                }
+                
+                .header h1 {
+                    font-size: 22px;
+                    margin-bottom: 8px;
+                    font-weight: 700;
+                }
+                
+                .header-subtitle {
+                    font-size: 14px;
+                    opacity: 0.95;
+                    margin-bottom: 12px;
+                }
+                
+                .header-info {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 15px;
+                    font-size: 12px;
+                    margin-top: 12px;
+                }
+                
+                .header-info div {
+                    opacity: 0.95;
+                    break-inside: avoid;
+                }
+                
+                .header-info strong {
+                    display: block;
+                    font-weight: 700;
+                    opacity: 1;
+                    margin-bottom: 2px;
+                }
+                
+                .content {
+                    padding: 20px 25px;
+                    background: white;
+                }
+                
+                .stats-section {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                    margin-bottom: 20px;
+                    page-break-inside: avoid;
+                }
+                
+                .stat-box {
+                    background: #f0f4f8;
+                    padding: 15px;
+                    border-radius: 6px;
+                    border-left: 4px solid #667eea;
+                    page-break-inside: avoid;
+                }
+                
+                .stat-box.warning {
+                    border-left-color: #f59e0b;
+                    background: #fffbf0;
+                }
+                
+                .stat-box.success {
+                    border-left-color: #10b981;
+                    background: #f0fdf4;
+                }
+                
+                .stat-label {
+                    font-size: 11px;
+                    color: #666;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    margin-bottom: 6px;
+                    letter-spacing: 0.5px;
+                }
+                
+                .stat-value {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #333;
+                }
+                
+                .table-wrapper {
+                    overflow: visible;
+                    margin-bottom: 15px;
+                }
+                
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 12px;
+                    page-break-inside: avoid;
+                }
+                
+                table thead {
+                    background: #f5f5f5;
+                    border-bottom: 2px solid #667eea;
+                }
+                
+                table th {
+                    padding: 10px 8px;
+                    text-align: left;
+                    font-weight: 700;
+                    color: #333;
+                    font-size: 11px;
+                    border-right: 1px solid #e0e0e0;
+                }
+                
+                table th:last-child {
+                    border-right: none;
+                }
+                
+                table td {
+                    padding: 8px;
+                    border-bottom: 1px solid #e0e0e0;
+                    font-size: 12px;
+                }
+                
+                table tbody tr:nth-child(even) {
+                    background: #fafafa;
+                }
+                
+                table tbody tr:last-child td {
+                    border-bottom: none;
+                }
+                
+                .text-right {
+                    text-align: right;
+                }
+                
+                .font-bold {
+                    font-weight: 700;
+                }
+                
+                .total-row {
+                    background: #667eea !important;
+                    color: white;
+                    font-weight: 700;
+                    page-break-inside: avoid;
+                }
+                
+                .total-row td {
+                    color: white;
+                    border-bottom: none;
+                    padding: 10px 8px;
+                    font-weight: 700;
+                }
+                
+                .footer {
+                    background: #f5f5f5;
+                    padding: 15px 25px;
+                    text-align: center;
+                    font-size: 11px;
+                    color: #999;
+                    border-top: 1px solid #e0e0e0;
+                    page-break-inside: avoid;
+                }
+                
+                .empty-state {
+                    text-align: center;
+                    padding: 30px;
+                    color: #999;
+                    background: #f9f9f9;
+                    border-radius: 6px;
+                    margin-top: 15px;
+                    page-break-inside: avoid;
+                }
+                
+                .estado-listo {
+                    background: #e3f2fd;
+                    color: #1565c0;
+                    padding: 2px 5px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    display: inline-block;
+                }
+                
+                .estado-entregado {
+                    background: #e8f5e9;
+                    color: #2e7d32;
+                    padding: 2px 5px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    display: inline-block;
+                }
+                
+                @media print {
+                    body {
+                        margin: 0;
+                        padding: 0;
+                    }
+                    
+                    .container {
+                        box-shadow: none;
+                        page-break-after: always;
+                    }
+                    
+                    table {
+                        page-break-inside: auto;
+                    }
+                    
+                    table tr {
+                        page-break-inside: avoid;
+                        page-break-after: auto;
+                    }
+                    
+                    .stat-box {
+                        page-break-inside: avoid;
+                    }
+                }
+                
+                @page {
+                    size: A4;
+                    margin: 0.5cm;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>📊 REPORTE DE CUENTAS POR COBRAR</h1>
+                    <div class="header-subtitle">Órdenes pendientes de pago</div>
+                    <div class="header-info">
+                        <div>
+                            <strong>🏪 Tienda:</strong>
+                            ${tienda.nombre}
+                        </div>
+                        <div>
+                            <strong>📞 Contacto:</strong>
+                            ${tienda.telefono || 'No registrado'}
+                        </div>
+                        <div>
+                            <strong>📍 Dirección:</strong>
+                            ${tienda.direccion || 'No registrada'}
+                        </div>
+                        <div>
+                            <strong>✉️ Email:</strong>
+                            ${tienda.email || 'No registrado'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="content">
+                    <div class="stats-section">
+                        <div class="stat-box">
+                            <div class="stat-label">📦 Total Órdenes Pendientes</div>
+                            <div class="stat-value">${ordenesPendientes.length}</div>
+                        </div>
+                        <div class="stat-box warning">
+                            <div class="stat-label">💰 Monto Total a Cobrar</div>
+                            <div class="stat-value">$${formatearMonto(totalPendiente)}</div>
+                        </div>
+                    </div>
+                    
+                    ${ordenesPendientes.length > 0 ? `
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#Orden</th>
+                                        <th>Cliente</th>
+                                        <th>Equipo</th>
+                                        <th>IMEI</th>
+                                        <th>Fecha Ingreso</th>
+                                        <th>Estado</th>
+                                        <th class="text-right">Presupuesto</th>
+                                        <th class="text-right">Anticipo</th>
+                                        <th class="text-right">Pendiente</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${detallesOrdenes.map((orden, index) => `
+                                        <tr>
+                                            <td class="font-bold">#${orden.numero}</td>
+                                            <td>${orden.cliente}</td>
+                                            <td>${orden.equipo}</td>
+                                            <td>${orden.imei}</td>
+                                            <td>${orden.fechaIngreso}</td>
+                                            <td>
+                                                ${orden.estado === 'Listo para Entrega' ? 
+                                                    '<span class="estado-listo">Listo</span>' : 
+                                                    '<span class="estado-entregado">Entregado</span>'
+                                                }
+                                            </td>
+                                            <td class="text-right">$${formatearMonto(orden.presupuesto)}</td>
+                                            <td class="text-right">$${formatearMonto(orden.anticipo)}</td>
+                                            <td class="text-right font-bold" style="color: #f59e0b;">$${formatearMonto(orden.pendiente)}</td>
+                                        </tr>
+                                    `).join('')}
+                                    <tr class="total-row">
+                                        <td colspan="6" style="text-align: right; padding-right: clamp(0.5rem, 1.5vw, 0.875rem);">TOTAL:</td>
+                                        <td class="text-right">$${formatearMonto(totalPresupuesto)}</td>
+                                        <td class="text-right">$${formatearMonto(totalAnticipo)}</td>
+                                        <td class="text-right">$${formatearMonto(totalPendiente)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                                </tr>
+                            </tbody>
+                        </table>
+                    ` : `
+                        <div class="empty-state">
+                            <p>✅ ¡Excelente! No hay órdenes pendientes de pago para esta tienda.</p>
+                        </div>
+                    `}
+                </div>
+                
+                <div class="footer">
+                    <p>Reporte generado el ${new Date().toLocaleString('es-ES')}</p>
+                    <p>© 2025 Sistema de Taller - Tu Taller</p>
+                    <div class="print-info">
+                        <p>Imprima este documento y entréguelo a la tienda para su registro.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                // Auto-print después de cargar
+                window.addEventListener('load', function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 500);
+                });
+            </script>
+        </body>
+        </html>
+    `;
+    
+    // Crear modal con opciones de imprimir y descargar
+    mostrarModalAccionesReporte(html, tienda.nombre);
+}
+
+// Función para mostrar modal con opciones de imprimir o descargar
+function mostrarModalAccionesReporte(html, nombreTienda) {
+    // Crear modal
+    const modal = document.createElement('div');
+    modal.id = 'modalAccionesReporte';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+        ">
+            <h2 style="
+                margin: 0 0 20px 0;
+                color: #333;
+                font-size: 24px;
+                font-weight: bold;
+            ">📊 Reporte Listo</h2>
+            
+            <p style="
+                margin: 0 0 30px 0;
+                color: #666;
+                font-size: 16px;
+                line-height: 1.5;
+            ">
+                Reporte de Cuentas por Cobrar<br>
+                <strong>${nombreTienda}</strong>
+            </p>
+            
+            <div style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+            ">
+                <button onclick="imprimirReporte('${nombreTienda}')" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: transform 0.2s;
+                ">
+                    🖨️ Imprimir
+                </button>
+                <button onclick="descargarReportePDF('${nombreTienda}')" style="
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    color: white;
+                    border: none;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: transform 0.2s;
+                ">
+                    📥 Descargar
+                </button>
+            </div>
+            
+            <button onclick="cerrarModalAccionesReporte()" style="
+                margin-top: 15px;
+                background: #e0e0e0;
+                color: #333;
+                border: none;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: bold;
+                cursor: pointer;
+                width: 100%;
+            ">
+                ✕ Cerrar
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Almacenar HTML del reporte en variable global para usarlo después
+    window.htmlReporteActual = html;
+}
+
+// Función para cerrar modal
+function cerrarModalAccionesReporte() {
+    const modal = document.getElementById('modalAccionesReporte');
+    if (modal) {
+        modal.remove();
+    }
+    window.htmlReporteActual = null;
+}
+
+// Función para imprimir el reporte
+function imprimirReporte(nombreTienda) {
+    const html = window.htmlReporteActual;
+    if (!html) {
+        alert('Error: No hay reporte para imprimir');
+        return;
+    }
+    
+    // Cerrar modal
+    cerrarModalAccionesReporte();
+    
+    mostrarNotificacion('🖨️ Abriendo diálogo de impresión...', 'info');
+    
+    try {
+        // Crear blob del HTML
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        
+        // Abrir en nueva ventana
+        const ventana = window.open(url, 'reporteCuentasPorCobrar', 'width=1000,height=800');
+        
+        if (!ventana) {
+            mostrarNotificacion('❌ No se pudo abrir la ventana. Verifica bloqueador de pop-ups.', 'error');
+            return;
+        }
+        
+        // Esperar a que cargue y luego imprimir
+        ventana.addEventListener('load', function() {
+            setTimeout(function() {
+                ventana.focus();
+                ventana.print();
+                mostrarNotificacion('✅ Diálogo de impresión abierto', 'success');
+            }, 800);
+        }, false);
+        
+    } catch (error) {
+        console.error('Error en imprimirReporte:', error);
+        mostrarNotificacion('❌ Error al abrir impresión', 'error');
+    }
+}
+
+// Función para descargar el reporte como PDF
+function descargarReportePDF(nombreTienda) {
+    const htmlContent = window.htmlReporteActual;
+    if (!htmlContent) {
+        alert('Error: No hay reporte para descargar');
+        return;
+    }
+    
+    cerrarModalAccionesReporte();
+    
+    mostrarNotificacion('💾 Descargando PDF...', 'info');
+    
+    try {
+        // Crear blob del HTML
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        
+        // Crear elemento link temporal
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Generar nombre del archivo
+        const fecha = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+        const filename = `Reporte-Cuentas-${nombreTienda}-${fecha}.html`;
+        link.download = filename;
+        
+        // Agregar al documento y hacer click
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        
+        // Limpiar
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, 100);
+        
+        mostrarNotificacion(`✅ Descargado: ${filename}. Abre en navegador y usa Ctrl+P para guardar como PDF.`, 'success');
+        
+    } catch (error) {
+        console.error('Error en descargarReportePDF:', error);
+        mostrarNotificacion('❌ Error al descargar', 'error');
+    }
+}
+
+// Exponer funciones de tiendas
+window.mostrarFormTienda = mostrarFormTienda;
+window.cancelarFormTienda = cancelarFormTienda;
+window.guardarTienda = guardarTienda;
+window.editarTienda = editarTienda;
+window.handleEditarTienda = handleEditarTienda;
+window.eliminarTienda = eliminarTienda;
+window.handleEliminarTienda = handleEliminarTienda;
+window.mostrarTiendas = mostrarTiendas;
+window.filtrarTiendas = filtrarTiendas;
+window.imprimirFactura = imprimirFactura;
+window.verOrdenesTienda = verOrdenesTienda;
+window.calcularDineroTienda = calcularDineroTienda;
+window.validarClienteRequerido = validarClienteRequerido;
+window.marcarComoCobrado = marcarComoCobrado;
+window.cambiarEstadoOrdenTienda = cambiarEstadoOrdenTienda;
+window.generarReporteCuentasPorCobrar = generarReporteCuentasPorCobrar;
+window.obtenerOrdenesPendientesTienda = obtenerOrdenesPendientesTienda;
+window.mostrarModalAccionesReporte = mostrarModalAccionesReporte;
+window.cerrarModalAccionesReporte = cerrarModalAccionesReporte;
+window.imprimirReporte = imprimirReporte;
+window.descargarReportePDF = descargarReportePDF;

@@ -2463,8 +2463,8 @@
                     licenciasMap[doc.data().licenseKey] = doc.data();
                 });
 
-                // Crear tabla de usuarios
-                let html = '<table><thead><tr><th>Usuario</th><th>Email</th><th>Licencia/Tipo</th><th>Origen</th><th>Fecha</th><th>Nueva Contraseña</th><th>Acciones</th></tr></thead><tbody>';
+                // Crear tabla de usuarios con mejor visualización
+                let html = '<table><thead><tr><th>Usuario</th><th>Email</th><th>Contraseña</th><th>Licencia/Tipo</th><th>Origen</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>';
 
                 todosUsuarios.forEach((usuario, index) => {
                     const licencia = licenciasMap[usuario.licenseKey];
@@ -2481,6 +2481,7 @@
                     
                     const fechaCreacion = usuario.fechaCreacion || usuario.ultimoAcceso || 'No disponible';
                     const origen = usuario.origen || 'Desconocido';
+                    const password = usuario.password || 'N/A';
                     
                     // Colores por origen
                     let origenStyle = '';
@@ -2500,23 +2501,18 @@
                     html += `
                         <tr>
                             <td data-label="Usuario">${userIcon}<strong>${usuario.usuario}</strong></td>
-                            <td data-label="Email">${usuario.email || '-'}</td>
-                            <td data-label="Licencia">${tipoUsuario} ${clienteName}</td>
+                            <td data-label="Email"><small style="font-family: monospace;">${usuario.email || '-'}</small></td>
+                            <td data-label="Contraseña"><small style="font-family: monospace; ${usuario.origen === 'Google' ? 'color: #999;' : ''}">${usuario.origen === 'Google' ? '🔒 Google Auth' : password}</small></td>
+                            <td data-label="Licencia"><small>${tipoUsuario} ${clienteName}</small></td>
                             <td data-label="Origen"><span style="padding: 2px 6px; border-radius: 3px; font-size: 10px; background: ${origenStyle}">${origen}</span></td>
-                            <td data-label="Fecha" style="font-size: 11px;">${fechaCreacion}</td>
-                            <td data-label="Nueva Contraseña">
-                                ${usuario.origen === 'Google' ? 
-                                    '<span style="color: #999; font-size: 11px;">🔒 Google Auth</span>' :
-                                    `<input type="text" id="newPass_${index}" placeholder="Nueva contraseña" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">`
-                                }
-                            </td>
+                            <td data-label="Fecha" style="font-size: 11px;"><small>${new Date(fechaCreacion).toLocaleDateString()}</small></td>
                             <td data-label="Acciones">
-                                <div class="license-actions" style="gap: 8px;">
+                                <div class="license-actions" style="gap: 6px; flex-direction: column; align-items: flex-start;">
                                     ${usuario.origen === 'Google' ? 
-                                        `<button class="btn-secondary" style="padding: 6px 10px; font-size: 11px;" disabled>🔒 Google</button>` :
-                                        `<button class="btn-editar" onclick="resetearContrasena(${index}, '${usuario.usuario}')" style="padding: 6px 10px; font-size: 11px;">Resetear</button>`
+                                        `<button class="btn-secondary" style="padding: 4px 8px; font-size: 10px; width: 100%; cursor: not-allowed;" disabled>🔒 Google</button>` :
+                                        `<button class="btn-editar" onclick="resetearContrasena('${usuario.usuario}', '${usuario.id}')" style="padding: 4px 8px; font-size: 10px; width: 100%; background: #3b82f6; color: white; border: none; border-radius: 4px;">🔄 Resetear</button>`
                                     }
-                                    <button class="btn-eliminar" onclick="eliminarUsuario(${index}, '${usuario.usuario}', '${origen}')" style="padding: 6px 10px; font-size: 11px;">Eliminar</button>
+                                    <button class="btn-eliminar" onclick="eliminarUsuario('${usuario.usuario}', '${usuario.id}', '${origen}')" style="padding: 4px 8px; font-size: 10px; width: 100%; background: #ef4444; color: white; border: none; border-radius: 4px;">🗑️ Eliminar</button>
                                 </div>
                             </td>
                         </tr>
@@ -2526,13 +2522,12 @@
                 html += '</tbody></table>';
                 
                 // Mostrar estadísticas
-                const usuariosLocales = todosUsuarios.length - usuariosFirebase.length - usuariosGoogle.length;
                 const statsHtml = `
-                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 12px;">
-                        📊 <strong>Total de usuarios:</strong> ${todosUsuarios.length} 
-                        | 🔥 Firebase: ${usuariosFirebase.length} 
+                    <div style="margin-top: 15px; padding: 12px; background: #f0fdf4; border-left: 4px solid #10b981; border-radius: 6px; font-size: 13px;">
+                        📊 <strong>Resumen de usuarios:</strong> <br>
+                        • Total: ${todosUsuarios.length} usuarios
+                        | 🔥 Firebase: ${usuariosFirebase.length}
                         | 🔍 Google: ${usuariosGoogle.length}
-                        | 💾 Local: ${usuariosLocales}
                     </div>
                 `;
                 
@@ -2636,82 +2631,61 @@
             }
         }
 
-        async function resetearContrasena(index, nombreUsuario) {
-            const nuevaPass = document.getElementById(`newPass_${index}`).value;
+        async function resetearContrasena(nombreUsuario, usuarioId) {
+            const nuevaPass = prompt(`Ingresa la nueva contraseña para ${nombreUsuario}:`);
             
-            if (!nuevaPass || nuevaPass.trim().length < 4) {
-                alert('❌ Ingresa una contraseña de al menos 4 caracteres');
+            if (!nuevaPass) {
+                return; // Usuario canceló
+            }
+            
+            if (nuevaPass.trim().length < 4) {
+                alert('❌ La contraseña debe tener al menos 4 caracteres');
                 return;
             }
 
-            if (!confirm(`¿Estás seguro de resetear la contraseña de ${nombreUsuario} a "${nuevaPass}"?`)) {
+            if (!confirm(`¿Estás seguro de cambiar la contraseña de ${nombreUsuario} a "${nuevaPass}"?`)) {
                 return;
             }
 
             try {
-                // Buscar el usuario en Firebase
-                const snapshot = await db.collection('usuarios')
-                    .where('usuario', '==', nombreUsuario)
-                    .get();
-
-                if (snapshot.empty) {
-                    alert('❌ Usuario no encontrado en Firebase');
-                    return;
-                }
-                
                 // Actualizar la contraseña en Firebase
-                const doc = snapshot.docs[0];
-                await doc.ref.update({
+                await db.collection('usuarios').doc(usuarioId).update({
                     password: nuevaPass,
                     fechaReseteo: new Date().toISOString(),
                     resetadoPor: 'admin'
                 });
 
-                alert(`✅ Contraseña actualizada correctamente\n\nUsuario: ${nombreUsuario}\nNueva contraseña: ${nuevaPass}`);
-                document.getElementById(`newPass_${index}`).value = '';
+                mostrarNotificacion(`✅ Contraseña actualizada: ${nombreUsuario}`, 'success');
                 await cargarUsuarios();
             } catch (error) {
                 console.error('Error al resetear contraseña:', error);
-                alert('❌ Error al actualizar la contraseña');
+                mostrarNotificacion(`❌ Error al actualizar contraseña: ${error.message}`, 'error');
             }
         }
 
-        async function eliminarUsuario(index, nombreUsuario) {
-            if (!confirm(`¿Estás seguro de eliminar al usuario ${nombreUsuario}?\n\nEsta acción no se puede deshacer.`)) {
+        async function eliminarUsuario(nombreUsuario, usuarioId, origen) {
+            if (!confirm(`¿Estás seguro de eliminar al usuario:\n\n"${nombreUsuario}"\n\nEsta acción no se puede deshacer.`)) {
                 return;
             }
 
             try {
-                console.log('🗑️ Iniciando eliminación de usuario:', nombreUsuario);
+                console.log('🗑️ Iniciando eliminación de usuario:', nombreUsuario, usuarioId);
                 
-                // Buscar y eliminar de Firebase
-                const snapshot = await db.collection('usuarios')
-                    .where('usuario', '==', nombreUsuario)
-                    .get();
-
-                if (snapshot.empty) {
-                    alert('❌ Usuario no encontrado en Firebase');
-                    return;
+                if (origen === 'Google') {
+                    // Eliminar usuario de Google de la colección usuarios-google
+                    await db.collection('usuarios-google').doc(usuarioId).delete();
+                    console.log('💥 Usuario de Google eliminado:', usuarioId);
+                } else {
+                    // Eliminar usuario normal de la colección usuarios
+                    await db.collection('usuarios').doc(usuarioId).delete();
+                    console.log('💥 Usuario eliminado de Firebase:', usuarioId);
                 }
-
-                // Eliminar todos los documentos que coincidan
-                snapshot.forEach(doc => {
-                    doc.ref.delete();
-                    console.log('💥 Usuario eliminado de Firebase:', doc.id);
-                });
                 
-                // IMPORTANTE: También eliminar del localStorage para evitar que vuelva a aparecer
-                console.log('🧹 Limpiando usuario del localStorage...');
-                const usuariosLocal = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-                const usuariosFiltrados = usuariosLocal.filter(u => u.usuario !== nombreUsuario);
-                localStorage.setItem('usuariosRegistrados', JSON.stringify(usuariosFiltrados));
-                console.log(`✅ Usuarios en localStorage: ${usuariosLocal.length} → ${usuariosFiltrados.length}`);
-
-                alert('✅ Usuario eliminado correctamente');
+                mostrarNotificacion(`✅ Usuario "${nombreUsuario}" eliminado correctamente`, 'success');
                 await cargarUsuarios();
             } catch (error) {
                 console.error('Error al eliminar usuario:', error);
-                alert('❌ Error al eliminar el usuario');
+                mostrarNotificacion(`❌ Error al eliminar usuario: ${error.message}`, 'error');
             }
         }
 

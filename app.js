@@ -545,6 +545,33 @@ async function cargarDatosUsuario(usuario) {
         
         console.log(`💾 Datos guardados en localStorage para sesión actual`);
         
+        // Buscar y cargar la licencia asociada al usuario
+        try {
+            console.log('🔍 Buscando licencia asociada al usuario:', usuario);
+            const licenciasSnapshot = await db.collection('licencias')
+                .where('usuarioAsociado', '==', usuario)
+                .limit(1)
+                .get();
+            
+            if (!licenciasSnapshot.empty) {
+                const licencia = licenciasSnapshot.docs[0].data();
+                localStorage.setItem('licenciaActiva', JSON.stringify(licencia));
+                console.log('✅ Licencia cargada desde Firebase:', licencia.licenseKey);
+            } else {
+                console.log('⚠️ No se encontró licencia asociada al usuario en Firebase');
+                // Verificar si hay licencia en localStorage local
+                const licenciaLocal = localStorage.getItem('licenciaActiva');
+                if (licenciaLocal) {
+                    console.log('✅ Usando licencia local existente');
+                } else {
+                    console.log('ℹ️ Sin licencia activa');
+                }
+            }
+        } catch (licenciaError) {
+            console.warn('⚠️ Error al cargar licencia:', licenciaError.message);
+            // Continuar sin error - la licencia puede no estar configurada
+        }
+        
         // Mostrar notificación al usuario
         const totalRegistros = clientes.length + ordenes.length + repuestos.length;
         if (totalRegistros > 0) {
@@ -866,11 +893,6 @@ function mostrarInfoLicencia() {
     const avisoRenovacion = document.getElementById('avisoRenovacionLicencia');
     const licenciaActiva = localStorage.getItem('licenciaActiva');
 
-    console.log('📋 mostrarInfoLicencia() llamado');
-    console.log('contenedor:', contenedor ? '✅ encontrado' : '❌ no encontrado');
-    console.log('avisoRenovacion:', avisoRenovacion ? '✅ encontrado' : '❌ no encontrado');
-    console.log('licenciaActiva:', licenciaActiva ? '✅ encontrada' : '❌ no encontrada');
-
     if (!contenedor || !avisoRenovacion) {
         console.warn('⚠️ Contenedores de licencia no encontrados en el DOM');
         return;
@@ -880,14 +902,13 @@ function mostrarInfoLicencia() {
     avisoRenovacion.textContent = '';
 
     if (!licenciaActiva) {
-        console.log('⚠️ No hay licencia activa en localStorage');
+        console.log('ℹ️ No hay licencia activa en localStorage');
         contenedor.style.display = 'none';
         contenedor.innerHTML = '';
         return;
     }
 
     console.log('✅ Licencia encontrada en localStorage');
-    console.log('Contenido:', licenciaActiva.substring(0, 100) + '...');
 
     let licencia;
     try {
@@ -954,7 +975,6 @@ function mostrarInfoLicencia() {
             </div>
         </div>
     `;
-    console.log('✅ Contenedor de licencia renderizado');
     contenedor.style.display = 'block';
 
     if (diasRestantes !== null && diasRestantes >= 0 && diasRestantes <= 3) {

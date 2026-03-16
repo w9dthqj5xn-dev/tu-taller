@@ -78,6 +78,16 @@ service cloud.firestore {
         allow read, write, delete: if true;
       }
     }
+    
+    // ============================================
+    // CONFIGURACIONES - Personalización del taller
+    // ============================================
+    // Almacena: Logo, dirección, políticas personalizadas
+    // Estructura: configuraciones/{userId}
+    //
+    match /configuraciones/{userId} {
+      allow read, write, delete: if true;
+    }
   }
 }
 

@@ -254,9 +254,6 @@ async function signInWithGoogle() {
         // Mostrar mensaje de bienvenida
         mostrarMensaje(`¡Bienvenido/a ${user.displayName}! 🎉`, 'success');
         
-        // Mostrar información de la licencia al iniciar sesión
-        setTimeout(() => mostrarInfoLicencia(), 1500);
-
         // Cambiar a la aplicación principal
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
@@ -490,9 +487,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             if (!verificarLicenciaActiva()) {
                 return;
             }
-            
-            // Mostrar información de la licencia al iniciar sesión
-            setTimeout(() => mostrarInfoLicencia(), 1000);
             
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
@@ -868,34 +862,105 @@ window.activarLicencia = activarLicencia;
 window.registrarUsuario = registrarUsuario;
 
 function mostrarInfoLicencia() {
+    const contenedor = document.getElementById('infoLicenciaConfiguracion');
+    const avisoRenovacion = document.getElementById('avisoRenovacionLicencia');
     const licenciaActiva = localStorage.getItem('licenciaActiva');
-    if (!licenciaActiva) return;
-    
-    const licencia = JSON.parse(licenciaActiva);
-    
-    let texto = '';
-    let tipo = 'success';
-    
-    // Verificar si es licencia vitalicia
-    if (licencia.licenseType === 'vitalicia') {
-        texto = `♾️ Licencia Vitalicia - Sin expiración`;
-    } else {
-        texto = `🔐 Licencia: ${licencia.licenseType}`;
-        if (licencia.fechaExpiracion) {
-            const diasRestantes = Math.ceil((new Date(licencia.fechaExpiracion) - new Date()) / (1000 * 60 * 60 * 24));
-            texto += ` (${diasRestantes} días restantes)`;
-            
-            // Cambiar color según días restantes
+
+    if (!contenedor || !avisoRenovacion) {
+        return;
+    }
+
+    avisoRenovacion.style.display = 'none';
+    avisoRenovacion.textContent = '';
+
+    if (!licenciaActiva) {
+        contenedor.style.display = 'none';
+        contenedor.innerHTML = '';
+        return;
+    }
+
+    let licencia;
+    try {
+        licencia = JSON.parse(licenciaActiva);
+    } catch (error) {
+        console.error('❌ No se pudo leer la licencia activa:', error);
+        contenedor.style.display = 'none';
+        contenedor.innerHTML = '';
+        return;
+    }
+
+    const tipoLicencia = licencia.licenseType || 'No definida';
+    const tipoLicenciaTexto = tipoLicencia.charAt(0).toUpperCase() + tipoLicencia.slice(1);
+    const esVitalicia = tipoLicencia === 'vitalicia' || !licencia.fechaExpiracion;
+    let estadoTexto = esVitalicia ? 'Activa' : 'Vigente';
+    let tiempoRestanteTexto = 'Sin expiración';
+    let fechaExpiracionTexto = '♾️ Sin expiración';
+    let colorEstado = '#16a34a';
+    let diasRestantes = null;
+
+    if (!esVitalicia && licencia.fechaExpiracion) {
+        const ahora = new Date();
+        const expiracion = new Date(licencia.fechaExpiracion);
+        diasRestantes = Math.ceil((expiracion - ahora) / (1000 * 60 * 60 * 24));
+        fechaExpiracionTexto = expiracion.toLocaleDateString(navigator.language || 'es', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        if (diasRestantes < 0) {
+            estadoTexto = 'Expirada';
+            tiempoRestanteTexto = 'Expirada';
+            colorEstado = '#dc2626';
+        } else if (diasRestantes === 0) {
+            estadoTexto = 'Vence hoy';
+            tiempoRestanteTexto = 'Vence hoy';
+            colorEstado = '#ea580c';
+        } else if (diasRestantes === 1) {
+            estadoTexto = 'Por vencer';
+            tiempoRestanteTexto = '1 día restante';
+            colorEstado = '#ea580c';
+        } else {
+            tiempoRestanteTexto = `${diasRestantes} días restantes`;
             if (diasRestantes <= 3) {
-                tipo = 'error';
-            } else if (diasRestantes <= 7) {
-                tipo = 'info';
+                estadoTexto = 'Por vencer';
+                colorEstado = '#ea580c';
             }
         }
     }
-    
-    // Mostrar como mensaje temporal en lugar de indicador permanente
-    mostrarMensaje(texto, tipo);
+
+    contenedor.innerHTML = `
+        <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;">
+            <div>
+                <div style="font-size: 16px; font-weight: 700; color: #1e3a8a; margin-bottom: 6px;">🔐 Estado de tu licencia</div>
+                <div style="color: #334155; font-size: 14px; line-height: 1.6;">
+                    <div><strong>Tipo:</strong> ${tipoLicenciaTexto}</div>
+                    <div><strong>Expira:</strong> ${fechaExpiracionTexto}</div>
+                    <div><strong>Tiempo restante:</strong> ${tiempoRestanteTexto}</div>
+                </div>
+            </div>
+            <div style="padding: 10px 14px; border-radius: 999px; background: ${colorEstado}; color: white; font-weight: 700; font-size: 13px; min-width: 120px; text-align: center;">
+                ${estadoTexto}
+            </div>
+        </div>
+    `;
+    contenedor.style.display = 'block';
+
+    if (diasRestantes !== null && diasRestantes >= 0 && diasRestantes <= 3) {
+        avisoRenovacion.textContent = diasRestantes === 0
+            ? '⚠️ Tu licencia vence hoy. Te recomendamos renovarla cuanto antes.'
+            : `⚠️ Tu licencia vence en ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}. Te recomendamos renovarla a tiempo.`;
+        avisoRenovacion.style.display = 'block';
+
+        if (window.avisoRenovacionTimeout) {
+            clearTimeout(window.avisoRenovacionTimeout);
+        }
+
+        window.avisoRenovacionTimeout = setTimeout(() => {
+            avisoRenovacion.style.display = 'none';
+            avisoRenovacion.textContent = '';
+        }, 8000);
+    }
 }
 
 function cerrarSesion() {
@@ -4259,6 +4324,7 @@ function previsualizarLogo(event) {
 async function cargarConfiguracion() {
     try {
         console.log('🔧 Iniciando carga de configuración...');
+        mostrarInfoLicencia();
         
         const usuarioActual = obtenerUsuarioActual();
         if (!usuarioActual) {
@@ -4303,6 +4369,7 @@ async function cargarConfiguracion() {
                     }
                     
                     console.log('✅ Configuración cargada desde Firebase');
+                    mostrarInfoLicencia();
                     mostrarNotificacion('Configuración cargada correctamente', 'success');
                     return;
                 }
@@ -4337,8 +4404,10 @@ async function cargarConfiguracion() {
             }
             
             console.log('✅ Configuración cargada desde localStorage');
+            mostrarInfoLicencia();
         } else {
             console.log('ℹ️ No hay configuración guardada, formulario vacío');
+            mostrarInfoLicencia();
         }
     } catch (error) {
         console.error('❌ Error al cargar configuración:', error);

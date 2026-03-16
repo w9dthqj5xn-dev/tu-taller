@@ -2061,6 +2061,10 @@
                     <span>${licencia.maxDevices}</span>
                 </div>
                 <div class="license-row">
+                    <strong>Usuario Asociado:</strong>
+                    <span>${licencia.usuarioAsociado ? `👤 ${licencia.usuarioAsociado}` : '❌ Sin asociar'}</span>
+                </div>
+                <div class="license-row">
                     <strong>Fecha Creación:</strong>
                     <span>${new Date(licencia.fechaCreacion).toLocaleDateString()}</span>
                 </div>

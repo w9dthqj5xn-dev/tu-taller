@@ -1,6 +1,6 @@
 // Funciones de Firebase para gestión de licencias
 
-// Editar número de dispositivos
+// Editar número de dispositivos y asociar usuario
 async function editarLicenciaFirebase(licenseKey) {
     try {
         const snapshot = await db.collection('licencias')
@@ -15,28 +15,81 @@ async function editarLicenciaFirebase(licenseKey) {
         const doc = snapshot.docs[0];
         const licencia = doc.data();
         
-        const nuevoMaxDispositivos = prompt(
+        // Mostrar opciones para editar
+        const opcion = prompt(
             `Editar licencia de: ${licencia.clientName}\n\n` +
-            `Dispositivos actuales: ${licencia.maxDevices}\n\n` +
-            `Ingrese el nuevo número máximo de dispositivos (1-99):`,
-            licencia.maxDevices
+            `Opciones:\n` +
+            `1 - Editar dispositivos máximos (actual: ${licencia.maxDevices})\n` +
+            `2 - Asociar usuario (actual: ${licencia.usuarioAsociado || 'Sin asociar'})\n` +
+            `3 - Ambas opciones\n\n` +
+            `Ingresa 1, 2 o 3:`,
+            '1'
         );
         
-        if (!nuevoMaxDispositivos) return false;
+        if (!opcion) return false;
         
-        const numeroDispositivos = parseInt(nuevoMaxDispositivos);
+        let actualizaciones = {
+            fechaModificacion: new Date().toISOString()
+        };
         
-        if (isNaN(numeroDispositivos) || numeroDispositivos < 1 || numeroDispositivos > 99) {
-            alert('❌ Por favor ingrese un número válido entre 1 y 99');
+        // Opción 1 o 3: Editar dispositivos
+        if (opcion === '1' || opcion === '3') {
+            const nuevoMaxDispositivos = prompt(
+                `Dispositivos actuales: ${licencia.maxDevices}\n\n` +
+                `Ingrese el nuevo número máximo de dispositivos (1-99):`,
+                licencia.maxDevices
+            );
+            
+            if (!nuevoMaxDispositivos) return false;
+            
+            const numeroDispositivos = parseInt(nuevoMaxDispositivos);
+            
+            if (isNaN(numeroDispositivos) || numeroDispositivos < 1 || numeroDispositivos > 99) {
+                alert('❌ Por favor ingrese un número válido entre 1 y 99');
+                return false;
+            }
+            
+            actualizaciones.maxDevices = numeroDispositivos;
+        }
+        
+        // Opción 2 o 3: Asociar usuario
+        if (opcion === '2' || opcion === '3') {
+            const nuevoUsuario = prompt(
+                `Usuario actual asociado: ${licencia.usuarioAsociado || 'Sin asociar'}\n\n` +
+                `Ingrese el username del usuario a asociar\n` +
+                `(Ej: carlos.tec, o deja vacío para desasociar):`,
+                licencia.usuarioAsociado || ''
+            );
+            
+            if (nuevoUsuario !== null) {
+                if (nuevoUsuario.trim() === '') {
+                    actualizaciones.usuarioAsociado = null;
+                } else {
+                    actualizaciones.usuarioAsociado = nuevoUsuario.trim();
+                }
+            } else {
+                return false;
+            }
+        }
+        
+        // Validar que al menos se haya especificado una opción válida
+        if (Object.keys(actualizaciones).length === 1) {
+            alert('❌ Debes seleccionar una opción válida (1, 2 o 3)');
             return false;
         }
         
-        await doc.ref.update({
-            maxDevices: numeroDispositivos,
-            fechaModificacion: new Date().toISOString()
-        });
+        // Actualizar en Firebase
+        await doc.ref.update(actualizaciones);
         
-        alert(`✅ Licencia actualizada correctamente\n\nNuevo máximo de dispositivos: ${numeroDispositivos}`);
+        let mensaje = `✅ Licencia actualizada correctamente`;
+        if (actualizaciones.maxDevices) {
+            mensaje += `\n\nDispositivos: ${actualizaciones.maxDevices}`;
+        }
+        if ('usuarioAsociado' in actualizaciones) {
+            mensaje += `\n\nUsuario: ${actualizaciones.usuarioAsociado || 'Sin asociar'}`;
+        }
+        
+        alert(mensaje);
         return true;
         
     } catch (error) {

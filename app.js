@@ -880,10 +880,14 @@ function mostrarInfoLicencia() {
     avisoRenovacion.textContent = '';
 
     if (!licenciaActiva) {
+        console.log('⚠️ No hay licencia activa en localStorage');
         contenedor.style.display = 'none';
         contenedor.innerHTML = '';
         return;
     }
+
+    console.log('✅ Licencia encontrada en localStorage');
+    console.log('Contenido:', licenciaActiva.substring(0, 100) + '...');
 
     let licencia;
     try {
@@ -950,6 +954,7 @@ function mostrarInfoLicencia() {
             </div>
         </div>
     `;
+    console.log('✅ Contenedor de licencia renderizado');
     contenedor.style.display = 'block';
 
     if (diasRestantes !== null && diasRestantes >= 0 && diasRestantes <= 3) {
@@ -1529,7 +1534,10 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
         if (section === 'pagos') cargarPagos();
         if (section === 'inventario') filtrarInventario();
         if (section === 'reportes') generarReportes();
-        if (section === 'configuracion') cargarConfiguracion();
+        if (section === 'configuracion') {
+            cargarConfiguracion();
+            setTimeout(() => mostrarInfoLicencia(), 100);
+        }
     });
 });
 

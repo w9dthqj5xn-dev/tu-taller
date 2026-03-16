@@ -866,7 +866,13 @@ function mostrarInfoLicencia() {
     const avisoRenovacion = document.getElementById('avisoRenovacionLicencia');
     const licenciaActiva = localStorage.getItem('licenciaActiva');
 
+    console.log('📋 mostrarInfoLicencia() llamado');
+    console.log('contenedor:', contenedor ? '✅ encontrado' : '❌ no encontrado');
+    console.log('avisoRenovacion:', avisoRenovacion ? '✅ encontrado' : '❌ no encontrado');
+    console.log('licenciaActiva:', licenciaActiva ? '✅ encontrada' : '❌ no encontrada');
+
     if (!contenedor || !avisoRenovacion) {
+        console.warn('⚠️ Contenedores de licencia no encontrados en el DOM');
         return;
     }
 

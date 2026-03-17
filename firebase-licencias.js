@@ -174,6 +174,73 @@ async function renovarLicenciaFirebase(licenseKey) {
     }
 }
 
+// Cambiar tipo de suscripción
+async function cambiarTipoSuscripcionFirebase(licenseKey) {
+    try {
+        const snapshot = await db.collection('licencias')
+            .where('licenseKey', '==', licenseKey)
+            .get();
+        
+        if (snapshot.empty) {
+            alert('❌ Licencia no encontrada');
+            return false;
+        }
+        
+        const doc = snapshot.docs[0];
+        const licencia = doc.data();
+        
+        const tipoTexto = {
+            prueba: '🧪 Prueba (3 días)',
+            mensual: '📅 Mensual (30 días)',
+            trimestral: '📅 Trimestral (90 días)',
+            semestral: '📅 Semestral (180 días)',
+            anual: '📅 Anual (365 días)',
+            vitalicia: '♾️ Vitalicia (Sin expiración)'
+        };
+        
+        const opciones = [
+            { valor: 'prueba', dias: 3 },
+            { valor: 'mensual', dias: 30 },
+            { valor: 'trimestral', dias: 90 },
+            { valor: 'semestral', dias: 180 },
+            { valor: 'anual', dias: 365 },
+            { valor: 'vitalicia', dias: 0 }
+        ];
+        
+        let mensaje = `Cambiar tipo de suscripción de: ${licencia.clientName}\n\nTipo actual: ${tipoTexto[licencia.licenseType] || licencia.licenseType}\n\nSeleccione el nuevo tipo:\n\n`;
+        opciones.forEach((op, i) => {
+            mensaje += `${i + 1}. ${tipoTexto[op.valor]}\n`;
+        });
+        
+        const seleccion = prompt(mensaje + '\nIngrese el número (1-6):');
+        
+        if (!seleccion || seleccion < 1 || seleccion > 6) return false;
+        
+        const opcionSeleccionada = opciones[parseInt(seleccion) - 1];
+        const ahora = new Date();
+        
+        let nuevaFechaExpiracion = null;
+        if (opcionSeleccionada.dias > 0) {
+            nuevaFechaExpiracion = new Date(ahora);
+            nuevaFechaExpiracion.setDate(nuevaFechaExpiracion.getDate() + opcionSeleccionada.dias);
+        }
+        
+        await doc.ref.update({
+            licenseType: opcionSeleccionada.valor,
+            fechaExpiracion: nuevaFechaExpiracion ? nuevaFechaExpiracion.toISOString() : null,
+            fechaModificacion: ahora.toISOString()
+        });
+        
+        alert(`✅ Tipo de suscripción actualizado exitosamente\n\nNuevo tipo: ${tipoTexto[opcionSeleccionada.valor]}${nuevaFechaExpiracion ? '\nExpira: ' + nuevaFechaExpiracion.toLocaleDateString() : ''}`);
+        return true;
+        
+    } catch (error) {
+        console.error('Error al cambiar tipo de suscripción:', error);
+        alert('❌ Error al cambiar tipo de suscripción');
+        return false;
+    }
+}
+
 // Suspender/Activar licencia
 async function toggleSuspenderLicenciaFirebase(licenseKey) {
     try {

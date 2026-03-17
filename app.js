@@ -1,9 +1,9 @@
 // === SISTEMA DE AUTENTICACIÓN ===
-function verificarSesion() {
+async function verificarSesion() {
     const sesion = localStorage.getItem('sesionActiva');
     if (sesion === 'true') {
         // Verificar licencia si está activada
-        if (!verificarLicenciaActiva()) {
+        if (!(await verificarLicenciaActiva())) {
             return;
         }
         document.getElementById('loginScreen').style.display = 'none';
@@ -14,11 +14,34 @@ function verificarSesion() {
     }
 }
 
-function verificarLicenciaActiva() {
+async function verificarLicenciaActiva() {
     const licenciaActiva = localStorage.getItem('licenciaActiva');
     if (!licenciaActiva) return true; // Si no hay licencia configurada, permitir acceso normal
     
     const licencia = JSON.parse(licenciaActiva);
+    
+    // IMPORTANTE: Sincronizar con Firebase para validar cambios recientes
+    try {
+        if (licencia.licenseKey) {
+            const snapshot = await db.collection('licencias')
+                .where('licenseKey', '==', licencia.licenseKey)
+                .limit(1)
+                .get();
+            
+            if (!snapshot.empty) {
+                const licenciaActualizada = snapshot.docs[0].data();
+                // Actualizar el localStorage con los datos más recientes
+                localStorage.setItem('licenciaActiva', JSON.stringify(licenciaActualizada));
+                console.log('🔄 Licencia sincronizada desde Firebase');
+                
+                // Usar la versión actualizada para las validaciones
+                Object.assign(licencia, licenciaActualizada);
+            }
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudo sincronizar licencia con Firebase:', error.message);
+        // Continuar con la versión local si Firebase no está disponible
+    }
     
     // Verificar si la licencia está suspendida
     if (licencia.suspendida === true) {
@@ -320,8 +343,8 @@ async function signInWithGoogle() {
 // Exportar signInWithGoogle inmediatamente
 window.signInWithGoogle = signInWithGoogle;
 
-document.addEventListener('DOMContentLoaded', () => {
-    verificarSesion();
+document.addEventListener('DOMContentLoaded', async () => {
+    await verificarSesion();
     
     // Agregar estilos para el loading spinner
     const style = document.createElement('style');
@@ -464,6 +487,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             // IMPORTANTE: Limpiar datos de cualquier usuario anterior
             console.log('🧹 Limpiando datos de sesión anterior...');
             Storage.clear();
+            localStorage.removeItem('licenciaActiva');
+            localStorage.removeItem('licenciaTemporal');
             
             localStorage.setItem('sesionActiva', 'true');
             localStorage.setItem('usuario', username);
@@ -483,8 +508,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             
             console.log('🚀 Mostrando aplicación principal');
             
-            // Verificar licencia
-            if (!verificarLicenciaActiva()) {
+            // Verificar licencia (ahora es async)
+            if (!(await verificarLicenciaActiva())) {
                 return;
             }
             
@@ -548,27 +573,41 @@ async function cargarDatosUsuario(usuario) {
         // Buscar y cargar la licencia asociada al usuario
         try {
             console.log('🔍 Buscando licencia asociada al usuario:', usuario);
-            const licenciasSnapshot = await db.collection('licencias')
+            let licenciasSnapshot = await db.collection('licencias')
                 .where('usuarioAsociado', '==', usuario)
                 .limit(1)
                 .get();
+
+            // Fallback: si no está asociada por usuarioAsociado, intentar por licenseKey del usuario
+            if (licenciasSnapshot.empty) {
+                const usuarioSnapshot = await db.collection('usuarios')
+                    .where('usuario', '==', usuario)
+                    .limit(1)
+                    .get();
+
+                if (!usuarioSnapshot.empty) {
+                    const userData = usuarioSnapshot.docs[0].data();
+                    if (userData.licenseKey) {
+                        licenciasSnapshot = await db.collection('licencias')
+                            .where('licenseKey', '==', userData.licenseKey)
+                            .limit(1)
+                            .get();
+                    }
+                }
+            }
             
             if (!licenciasSnapshot.empty) {
                 const licencia = licenciasSnapshot.docs[0].data();
                 localStorage.setItem('licenciaActiva', JSON.stringify(licencia));
                 console.log('✅ Licencia cargada desde Firebase:', licencia.licenseKey);
             } else {
-                console.log('⚠️ No se encontró licencia asociada al usuario en Firebase');
-                // Verificar si hay licencia en localStorage local
-                const licenciaLocal = localStorage.getItem('licenciaActiva');
-                if (licenciaLocal) {
-                    console.log('✅ Usando licencia local existente');
-                } else {
-                    console.log('ℹ️ Sin licencia activa');
-                }
+                console.log('⚠️ No se encontró licencia asignada en Firebase para este usuario');
+                // Muy importante: limpiar licencia previa para no heredar licencia de otro usuario
+                localStorage.removeItem('licenciaActiva');
             }
         } catch (licenciaError) {
             console.warn('⚠️ Error al cargar licencia:', licenciaError.message);
+            localStorage.removeItem('licenciaActiva');
             // Continuar sin error - la licencia puede no estar configurada
         }
         
@@ -920,12 +959,19 @@ function mostrarInfoLicencia() {
         return;
     }
 
+    // Validar que el tipo de suscripción sea válido
+    // Si la licencia tiene fechaExpiracion null pero licenseType no es 'vitalicia', corregir
+    if (!licencia.fechaExpiracion && licencia.licenseType !== 'vitalicia') {
+        console.warn('⚠️ Inconsistencia detectada: sin fechaExpiracion pero licenseType es', licencia.licenseType);
+        // Esto se corregirá en la próxima sincronización con Firebase
+    }
+
     const tipoLicencia = licencia.licenseType || 'No definida';
     const tipoLicenciaTexto = tipoLicencia.charAt(0).toUpperCase() + tipoLicencia.slice(1);
-    const esVitalicia = tipoLicencia === 'vitalicia' || !licencia.fechaExpiracion;
+    const esVitalicia = tipoLicencia === 'vitalicia';
     let estadoTexto = esVitalicia ? 'Activa' : 'Vigente';
-    let tiempoRestanteTexto = 'Sin expiración';
-    let fechaExpiracionTexto = '♾️ Sin expiración';
+    let tiempoRestanteTexto = esVitalicia ? 'Sin expiración' : 'No definida';
+    let fechaExpiracionTexto = esVitalicia ? '♾️ Sin expiración' : 'No definida';
     let colorEstado = '#16a34a';
     let diasRestantes = null;
 
@@ -958,6 +1004,10 @@ function mostrarInfoLicencia() {
                 colorEstado = '#ea580c';
             }
         }
+    } else if (!esVitalicia && !licencia.fechaExpiracion) {
+        estadoTexto = 'Pendiente';
+        tiempoRestanteTexto = 'Asigna o renueva desde el administrador';
+        colorEstado = '#64748b';
     }
 
     contenedor.innerHTML = `
@@ -999,6 +1049,9 @@ function cerrarSesion() {
         // Limpiar TODOS los datos para evitar mezcla entre usuarios
         console.log('🧹 Limpiando datos de sesión...');
         Storage.clear();
+
+        // Guardar tipo de login antes de limpiar
+        const tipoLogin = localStorage.getItem('tipoLogin');
         
         // Remover datos locales
         localStorage.removeItem('sesionActiva');
@@ -1006,9 +1059,10 @@ function cerrarSesion() {
         localStorage.removeItem('usuarioGoogle');
         localStorage.removeItem('tipoLogin');
         localStorage.removeItem('nombreTaller');
+        localStorage.removeItem('licenciaActiva');
+        localStorage.removeItem('licenciaTemporal');
         
         // Cerrar sesión de Google si es necesario
-        const tipoLogin = localStorage.getItem('tipoLogin');
         if (tipoLogin === 'google' && auth.currentUser) {
             auth.signOut().then(() => {
                 console.log('✅ Sesión de Google cerrada');

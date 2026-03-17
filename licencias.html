@@ -2250,6 +2250,7 @@
 
                             <div class="license-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
                                 ${!lic.esUsuarioGoogle ? `<button class="btn-editar" onclick="editarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer;">✏️ Editar</button>` : ''}
+                                ${!lic.esUsuarioGoogle ? `<button class="btn-tipo" onclick="cambiarTipoSuscripcionFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer;">📝 Cambiar Tipo</button>` : ''}
                                 ${!lic.esUsuarioGoogle ? `<button class="btn-renovar" onclick="renovarLicenciaFirebase('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">🔄 Renovar</button>` : ''}
                                 ${suspendida ? 
                                     `<button class="btn-activar" onclick="${lic.esUsuarioGoogle ? 'toggleSuspenderUsuarioGoogle' : 'toggleSuspenderLicenciaFirebase'}('${lic.licenseKey}').then(r => r && cargarLicencias())" style="padding: 6px 12px; font-size: 12px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">▶️ Activar</button>` :

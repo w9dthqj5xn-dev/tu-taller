@@ -6530,7 +6530,10 @@ function analizarMarcas(ordenes) {
     const marcas = {};
     
     ordenes.forEach(orden => {
-        const marca = orden.marca || orden.modeloDispositivo?.split(' ')[0] || 'No especificada';
+        // Normalizar la marca: minúsculas y sin espacios extra
+        const marca = (orden.marca || orden.modeloDispositivo?.split(' ')[0] || 'No especificada')
+            .toLowerCase()
+            .trim();
         marcas[marca] = (marcas[marca] || 0) + 1;
     });
     
@@ -6547,13 +6550,16 @@ function analizarReparaciones(ordenes) {
         // Analizar artículos de la orden
         if (orden.articulos && Array.isArray(orden.articulos)) {
             orden.articulos.forEach(articulo => {
-                const tipo = articulo.descripcion || articulo.nombre || 'Otro';
+                // Normalizar: minúsculas y sin espacios extra
+                const tipo = (articulo.descripcion || articulo.nombre || 'Otro')
+                    .toLowerCase()
+                    .trim();
                 reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
             });
         }
         // Si no hay artículos, usar descripción general
         else if (orden.descripcion) {
-            const tipo = orden.descripcion.substring(0, 50);
+            const tipo = orden.descripcion.substring(0, 50).toLowerCase().trim();
             reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
         }
     });
@@ -6568,7 +6574,12 @@ function generarGraficaMarcas(marcas) {
     const ctx = document.getElementById('chartMarcas');
     if (!ctx) return;
     
-    const labels = Object.keys(marcas).slice(0, 10);
+    // Función para capitalizar primera letra
+    const capitalizar = (str) => {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    };
+    
+    const labels = Object.keys(marcas).slice(0, 10).map(label => capitalizar(label));
     const datos = Object.values(marcas).slice(0, 10);
     const total = datos.reduce((a, b) => a + b, 0);
     const porcentajes = datos.map(d => ((d / total) * 100).toFixed(1));
@@ -6630,8 +6641,14 @@ function generarGraficaReparaciones(reparaciones) {
     const ctx = document.getElementById('chartReparaciones');
     if (!ctx) return;
     
+    // Función para capitalizar primera letra
+    const capitalizar = (str) => {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    };
+    
     const labels = Object.keys(reparaciones).slice(0, 8).map(l => {
-        return l.length > 30 ? l.substring(0, 27) + '...' : l;
+        const capitalizado = capitalizar(l);
+        return capitalizado.length > 30 ? capitalizado.substring(0, 27) + '...' : capitalizado;
     });
     const datos = Object.values(reparaciones).slice(0, 8);
     const total = datos.reduce((a, b) => a + b, 0);
@@ -6705,14 +6722,20 @@ function llenarTablaMarcas(marcas) {
     
     const total = Object.values(marcas).reduce((a, b) => a + b, 0);
     
+    // Función para capitalizar primera letra
+    const capitalizar = (str) => {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    };
+    
     let html = '';
     Object.entries(marcas).forEach(([marca, cantidad], index) => {
         const porcentaje = ((cantidad / total) * 100).toFixed(2);
         const colorFondo = index % 2 === 0 ? '#f8f9fa' : '#fff';
+        const marcaMostrada = capitalizar(marca);
         
         html += `
             <tr style="background: ${colorFondo}; border-bottom: 1px solid #dee2e6;">
-                <td style="padding: 12px; font-weight: 500;">${marca}</td>
+                <td style="padding: 12px; font-weight: 500;">${marcaMostrada}</td>
                 <td style="padding: 12px; text-align: center; font-weight: 600;">${cantidad}</td>
                 <td style="padding: 12px; text-align: center; color: #667eea;">${porcentaje}%</td>
                 <td style="padding: 12px; text-align: center;">
@@ -6733,15 +6756,21 @@ function llenarTablaReparaciones(reparaciones) {
     
     const total = Object.values(reparaciones).reduce((a, b) => a + b, 0);
     
+    // Función para capitalizar primera letra
+    const capitalizar = (str) => {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    };
+    
     let html = '';
     Object.entries(reparaciones).forEach(([tipo, cantidad], index) => {
         const porcentaje = ((cantidad / total) * 100).toFixed(2);
         const colorFondo = index % 2 === 0 ? '#f8f9fa' : '#fff';
-        const tipoCorto = tipo.length > 50 ? tipo.substring(0, 47) + '...' : tipo;
+        const tipoCapitalizado = capitalizar(tipo);
+        const tipoCorto = tipoCapitalizado.length > 50 ? tipoCapitalizado.substring(0, 47) + '...' : tipoCapitalizado;
         
         html += `
             <tr style="background: ${colorFondo}; border-bottom: 1px solid #dee2e6;">
-                <td style="padding: 12px; font-weight: 500;" title="${tipo}">${tipoCorto}</td>
+                <td style="padding: 12px; font-weight: 500;" title="${tipoCapitalizado}">${tipoCorto}</td>
                 <td style="padding: 12px; text-align: center; font-weight: 600;">${cantidad}</td>
                 <td style="padding: 12px; text-align: center; color: #22c55e;">${porcentaje}%</td>
                 <td style="padding: 12px; text-align: center;">

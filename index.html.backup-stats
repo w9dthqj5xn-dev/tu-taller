@@ -11,7 +11,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
     <style>
         * {
@@ -420,9 +419,6 @@
                     <a href="javascript:void(0)"><i class="fas fa-search"></i> <span>Buscar</span></a>
                 </div>
                 <div class="menu-item" onclick="mostrarSeccion('gastos', event)">
-                <div class="menu-item" onclick="mostrarSeccion('estadisticas', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-chart-bar"></i> <span>Estadísticas</span></a>
-                </div>
                     <a href="javascript:void(0)"><i class="fas fa-money-bill-wave"></i> <span>Gastos</span></a>
                 </div>
                 <div class="menu-item" onclick="mostrarSeccion('configuracion', event)">
@@ -1195,100 +1191,6 @@
             </section>
 
             <section id="configuracion" class="section">
-            <section id="estadisticas" class="section">
-                <h2>📊 Estadísticas de Marcas y Reparaciones</h2>
-                <p style="color: #666; margin-bottom: 25px;">Análisis detallado de las marcas más reparadas y tipos de reparaciones más frecuentes en tu taller.</p>
-                
-                <!-- Filtro de período -->
-                <div class="form-container" style="margin-bottom: 30px;">
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: bold;">📅 Período de Análisis</label>
-                            <select id="filtroPerioedoStats" style="width: 100%; padding: 12px; font-size: 14px;" onchange="actualizarEstadisticas()">
-                                <option value="mes">Este Mes</option>
-                                <option value="3meses">Últimos 3 Meses</option>
-                                <option value="6meses">Últimos 6 Meses</option>
-                                <option value="ano">Este Año</option>
-                                <option value="todos">Todos los Tiempos</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: bold;">🔄 Actualizar</label>
-                            <button onclick="actualizarEstadisticas()" class="btn-primary" style="width: 100%; padding: 12px;">🔄 Recargar Datos</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Resumen de Estadísticas -->
-                <div class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;">
-                        <h3 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">Total de Órdenes</h3>
-                        <p class="stat-number" id="totalOrdenesStats" style="margin: 0; font-size: 32px; font-weight: bold;">0</p>
-                    </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;">
-                        <h3 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">Marcas Únicas</h3>
-                        <p class="stat-number" id="marcasUnicasStats" style="margin: 0; font-size: 32px; font-weight: bold;">0</p>
-                    </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;">
-                        <h3 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">Tipos de Reparación</h3>
-                        <p class="stat-number" id="tiposReparacionStats" style="margin: 0; font-size: 32px; font-weight: bold;">0</p>
-                    </div>
-                </div>
-
-                <!-- Gráficas -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; margin-bottom: 30px;">
-                    <!-- Gráfica de Marcas -->
-                    <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">🏷️ Marcas Más Reparadas (%)</h3>
-                        <canvas id="chartMarcas" style="max-height: 300px;"></canvas>
-                    </div>
-
-                    <!-- Gráfica de Reparaciones -->
-                    <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">🔧 Tipos de Reparación (%)</h3>
-                        <canvas id="chartReparaciones" style="max-height: 300px;"></canvas>
-                    </div>
-                </div>
-
-                <!-- Tabla de Detalle -->
-                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
-                    <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">📋 Detalle de Marcas</h3>
-                    <div id="tablaMarcasStats" style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Marca</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Cantidad</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Porcentaje</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Visualización</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaDetalleMarcas">
-                                <tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">Cargando datos...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">🔧 Detalle de Reparaciones</h3>
-                    <div id="tablaReparacionesStats" style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Tipo de Reparación</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Cantidad</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Porcentaje</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Visualización</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaDetalleReparaciones">
-                                <tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">Cargando datos...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
                 <h2>⚙️ Configuración del Taller</h2>
                 <p style="color: #666; margin-bottom: 25px;">Personaliza la información de tu taller que aparecerá en las facturas y recibos.</p>
                 

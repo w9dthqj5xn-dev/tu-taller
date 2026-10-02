@@ -4,276 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Taller de Reparaciones</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css?v=2">
     <link rel="stylesheet" href="responsive.css?v=1">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        /* SIDEBAR STYLES */
-        .main-app {
-            display: flex;
-            height: 100vh;
-            background: #f8fafc;
-        }
-
-        .sidebar {
-            width: 260px;
-            height: 100vh;
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 1000;
-            overflow-y: auto;
-            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar.collapsed {
-            width: 70px;
-        }
-
-        .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            position: relative;
-            min-height: 80px;
-        }
-
-        .sidebar.collapsed .sidebar-header {
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .sidebar-logo {
-            font-size: 32px;
-            min-width: 45px;
-            text-align: center;
-        }
-
-        .sidebar-title {
-            color: white;
-            font-weight: 700;
-            font-size: 16px;
-            white-space: nowrap;
-        }
-
-        .sidebar.collapsed .sidebar-title {
-            display: none;
-        }
-
-        .sidebar-toggle {
-            position: absolute;
-            right: 8px;
-            top: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-size: 18px;
-        }
-
-        .sidebar-toggle:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .sidebar-menu {
-            flex: 1;
-            padding: 20px 0;
-            overflow-y: auto;
-        }
-
-        .menu-item {
-            padding: 0;
-            margin: 8px 10px;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .menu-item a {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            color: rgba(255, 255, 255, 0.7);
-            text-decoration: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            border-left: 4px solid transparent;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .menu-item a:hover {
-            color: white;
-            background: rgba(245, 158, 11, 0.1);
-            border-left-color: #f59e0b;
-        }
-
-        .menu-item.active a {
-            color: #f59e0b;
-            background: rgba(245, 158, 11, 0.15);
-            border-left-color: #f59e0b;
-        }
-
-        .menu-item a span {
-            white-space: nowrap;
-        }
-
-        .sidebar.collapsed .menu-item a span {
-            display: none;
-        }
-
-        .sidebar.collapsed .menu-item a {
-            justify-content: center;
-            padding: 12px;
-        }
-
-        .sidebar-footer {
-            padding: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .user-info {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 12px;
-        }
-
-        .user-info .user-name {
-            color: white;
-            font-weight: 600;
-            margin-top: 4px;
-        }
-
-        .sidebar.collapsed .user-info {
-            display: none;
-        }
-
-        .logout-btn {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-            border: none;
-            padding: 10px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            width: 100%;
-        }
-
-        .logout-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
-        }
-
-        .app-container {
-            margin-left: 260px;
-            width: calc(100% - 260px);
-            height: 100vh;
-            overflow-y: auto;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .app-container.sidebar-collapsed {
-            margin-left: 70px;
-            width: calc(100% - 70px);
-        }
-
-        .menu-toggle-btn {
-            display: none;
-            position: fixed;
-            top: 15px;
-            left: 15px;
-            z-index: 998;
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-            border: none;
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 260px;
-                transform: translateX(-100%);
-                z-index: 999;
-            }
-
-            .sidebar.mobile-active {
-                transform: translateX(0);
-            }
-
-            .app-container {
-                margin-left: 0;
-                width: 100%;
-            }
-
-            .menu-toggle-btn {
-                display: flex;
-            }
-
-            .sidebar-toggle {
-                display: none;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .sidebar {
-                width: 100%;
-            }
-        }
-
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-    </style>
 </head>
 <body>
     <!-- Pantalla de Login -->
@@ -382,72 +117,29 @@
     </div>
 
     <!-- Aplicación Principal -->
-    <div id="mainApp" class="main-app" style="display: none;">
-        
-        <!-- SIDEBAR PROFESIONAL -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo">🔧</div>
-                <div class="sidebar-title">Tu Taller</div>
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Colapsar/Expandir">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-            </div>
-
-            <nav class="sidebar-menu">
-                <div class="menu-item active" onclick="mostrarSeccion('dashboard', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-chart-line"></i> <span>Dashboard</span></a>
-                </div>
-                <div class="menu-item" onclick="mostrarSeccion('clientes', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-users"></i> <span>Clientes</span></a>
-                </div>
-                <div class="menu-item" onclick="mostrarSeccion('ordenes', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-wrench"></i> <span>Órdenes</span></a>
-                </div>
-                <div class="menu-item" onclick="mostrarSeccion('tiendas', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-store"></i> <span>Tiendas</span></a>
-                </div>
-                <div class="menu-item" onclick="mostrarSeccion('pagos', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-credit-card"></i> <span>Pagos</span></a>
-                </div>
-                <div class="menu-item" onclick="mostrarSeccion('inventario', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-boxes"></i> <span>Inventario</span></a>
-                </div>
-                <div class="menu-item" onclick="mostrarSeccion('reportes', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-file-chart-bar"></i> <span>Reportes</span></a>
-                </div>
-                <div class="menu-item" onclick="mostrarSeccion('buscar', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-search"></i> <span>Buscar</span></a>
-                </div>
-                <div class="menu-item" onclick="mostrarSeccion('gastos', event)">
-                <div class="menu-item" onclick="mostrarSeccion('estadisticas', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-chart-bar"></i> <span>Estadísticas</span></a>
-                </div>
-                    <a href="javascript:void(0)"><i class="fas fa-money-bill-wave"></i> <span>Gastos</span></a>
-                </div>
-                <div class="menu-item" onclick="mostrarSeccion('configuracion', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-cog"></i> <span>Configuración</span></a>
-                </div>
-            </nav>
-
-            <div class="sidebar-footer">
-                <div class="user-info">
-                    <div style="font-size: 10px; opacity: 0.7;">Usuario conectado</div>
-                    <div class="user-name" id="sidebarUserName">Admin</div>
-                </div>
-                <button class="logout-btn" onclick="cerrarSesion()">🚪 Cerrar Sesión</button>
-            </div>
-        </aside>
-
-        <!-- BOTÓN HAMBURGER (MÓVIL) -->
-        <button class="menu-toggle-btn" onclick="toggleMobileSidebar()" title="Menú">
-            <i class="fas fa-bars"></i>
-        </button>
-
-        <!-- CONTENEDOR DE APP -->
-        <div class="app-container">
+    <div id="mainApp" class="container" style="display: none;">
         <header>
-            <h1 style="margin: 0; text-align: center; padding: 20px; border-bottom: 1px solid #e2e8f0;">🔧 Taller de Reparaciones</h1>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h1>🔧 Taller de Reparaciones</h1>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="importarDatos()" class="btn-logout" style="background: #10b981;" title="Importar backup de datos">📤 Importar</button>
+                    <button onclick="exportarDatos()" class="btn-logout" style="background: #8b5cf6;" title="Exportar backup de datos">📥 Exportar</button>
+                    <button onclick="mostrarSeccion('configuracion')" class="btn-logout" style="background: #6366f1;" title="Configuración de taller">⚙️ Configuración</button>
+                    <button onclick="cerrarSesion()" class="btn-logout">🚪 Cerrar Sesión</button>
+                </div>
+            </div>
+            <nav>
+                <button class="nav-btn active" data-section="dashboard">Dashboard</button>
+                <button class="nav-btn" data-section="clientes">Clientes</button>
+                <button class="nav-btn" data-section="ordenes">Órdenes</button>
+                <button class="nav-btn" data-section="tiendas">🏪 Tiendas</button>
+                <button class="nav-btn" data-section="pagos">Pagos</button>
+                <button class="nav-btn" data-section="inventario">Inventario</button>
+                <button class="nav-btn" data-section="reportes">Reportes</button>
+                <button class="nav-btn" data-section="buscar">Buscar</button>
+                <button class="nav-btn" data-section="gastos">💸 Gastos</button>
+                <button class="nav-btn" data-section="configuracion">⚙️ Configuración</button>
+            </nav>
         </header>
 
         <main>
@@ -1195,100 +887,6 @@
             </section>
 
             <section id="configuracion" class="section">
-            <section id="estadisticas" class="section">
-                <h2>📊 Estadísticas de Marcas y Reparaciones</h2>
-                <p style="color: #666; margin-bottom: 25px;">Análisis detallado de las marcas más reparadas y tipos de reparaciones más frecuentes en tu taller.</p>
-                
-                <!-- Filtro de período -->
-                <div class="form-container" style="margin-bottom: 30px;">
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: bold;">📅 Período de Análisis</label>
-                            <select id="filtroPerioedoStats" style="width: 100%; padding: 12px; font-size: 14px;" onchange="actualizarEstadisticas()">
-                                <option value="mes">Este Mes</option>
-                                <option value="3meses">Últimos 3 Meses</option>
-                                <option value="6meses">Últimos 6 Meses</option>
-                                <option value="ano">Este Año</option>
-                                <option value="todos">Todos los Tiempos</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-weight: bold;">🔄 Actualizar</label>
-                            <button onclick="actualizarEstadisticas()" class="btn-primary" style="width: 100%; padding: 12px;">🔄 Recargar Datos</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Resumen de Estadísticas -->
-                <div class="stats-grid" style="margin-bottom: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;">
-                        <h3 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">Total de Órdenes</h3>
-                        <p class="stat-number" id="totalOrdenesStats" style="margin: 0; font-size: 32px; font-weight: bold;">0</p>
-                    </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;">
-                        <h3 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">Marcas Únicas</h3>
-                        <p class="stat-number" id="marcasUnicasStats" style="margin: 0; font-size: 32px; font-weight: bold;">0</p>
-                    </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;">
-                        <h3 style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">Tipos de Reparación</h3>
-                        <p class="stat-number" id="tiposReparacionStats" style="margin: 0; font-size: 32px; font-weight: bold;">0</p>
-                    </div>
-                </div>
-
-                <!-- Gráficas -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; margin-bottom: 30px;">
-                    <!-- Gráfica de Marcas -->
-                    <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">🏷️ Marcas Más Reparadas (%)</h3>
-                        <canvas id="chartMarcas" style="max-height: 300px;"></canvas>
-                    </div>
-
-                    <!-- Gráfica de Reparaciones -->
-                    <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">🔧 Tipos de Reparación (%)</h3>
-                        <canvas id="chartReparaciones" style="max-height: 300px;"></canvas>
-                    </div>
-                </div>
-
-                <!-- Tabla de Detalle -->
-                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
-                    <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">📋 Detalle de Marcas</h3>
-                    <div id="tablaMarcasStats" style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Marca</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Cantidad</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Porcentaje</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Visualización</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaDetalleMarcas">
-                                <tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">Cargando datos...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">🔧 Detalle de Reparaciones</h3>
-                    <div id="tablaReparacionesStats" style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Tipo de Reparación</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Cantidad</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Porcentaje</th>
-                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Visualización</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaDetalleReparaciones">
-                                <tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">Cargando datos...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
                 <h2>⚙️ Configuración del Taller</h2>
                 <p style="color: #666; margin-bottom: 25px;">Personaliza la información de tu taller que aparecerá en las facturas y recibos.</p>
                 
@@ -1450,8 +1048,7 @@
                 <button onclick="cerrarModalCategoria()" class="btn-secondary" style="flex: 1; padding: 10px; border: none; border-radius: 8px; background: #f3f4f6; color: #374151; cursor: pointer; font-weight: 600;">✕ Cancelar</button>
             </div>
         </div>
-    
-        </div></div>
+    </div>
 
     <!-- Environment Variables -->
     <script src="env.js?v=14"></script>
@@ -1463,60 +1060,5 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="firebase-config.js?v=14"></script>
     <script src="app.js?v=14"></script>
-
-    <!-- Scripts de Sidebar Colapsable -->
-    <script>
-        // Toggle Sidebar (Desktop)
-        function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const appContainer = document.querySelector('.app-container');
-            
-            sidebar.classList.toggle('collapsed');
-            appContainer.classList.toggle('sidebar-collapsed');
-            
-            // Guardar estado en localStorage
-            const isCollapsed = sidebar.classList.contains('collapsed');
-            localStorage.setItem('sidebarCollapsed', isCollapsed);
-        }
-
-        // Toggle Sidebar Mobile
-        function toggleMobileSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            sidebar.classList.toggle('mobile-active');
-        }
-
-        // Cerrar sidebar en móvil al hacer click en un item
-        document.addEventListener('DOMContentLoaded', function() {
-            // Restaurar estado del sidebar desde localStorage
-            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-            if (isCollapsed) {
-                document.querySelector('.sidebar').classList.add('collapsed');
-                document.querySelector('.app-container').classList.add('sidebar-collapsed');
-            }
-
-            // Cerrar sidebar móvil al hacer click en un menú
-            const menuItems = document.querySelectorAll('.menu-item');
-            menuItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    const sidebar = document.querySelector('.sidebar');
-                    if (window.innerWidth <= 768) {
-                        sidebar.classList.remove('mobile-active');
-                    }
-                });
-            });
-        });
-
-        // Actualizar nombre del usuario en el sidebar (cuando se inicia sesión)
-        function actualizarNombreUsuarioSidebar() {
-            const userNameElement = document.getElementById('sidebarUserName');
-            const usuarioGuardado = localStorage.getItem('usuarioActual') || 'Admin';
-            if (userNameElement) {
-                userNameElement.textContent = usuarioGuardado;
-            }
-        }
-
-        // Llamar cuando se inicia sesión (agregar esto a la función verificarSesion en app.js)
-        // actualizarNombreUsuarioSidebar();
-    </script>
 </body>
 </html>

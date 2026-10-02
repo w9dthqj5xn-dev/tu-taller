@@ -4497,6 +4497,7 @@ window.mostrarSeccion = function(seccionId) {
     if (seccionId === 'inventario') filtrarInventario();
     if (seccionId === 'reportes') generarReportes();
     if (seccionId === 'gastos') cargarGastos();
+    if (seccionId === 'estadisticas') cargarEstadisticas();
 };
 
 // ============================================
@@ -6439,3 +6440,316 @@ window.mostrarModalAccionesReporte = mostrarModalAccionesReporte;
 window.cerrarModalAccionesReporte = cerrarModalAccionesReporte;
 window.imprimirReporte = imprimirReporte;
 window.descargarReportePDF = descargarReportePDF;
+
+// ===== ESTADÍSTICAS DE MARCAS Y REPARACIONES =====
+let chartMarcasInstance = null;
+let chartReparacionesInstance = null;
+
+async function cargarEstadisticas() {
+    console.log('📊 Cargando estadísticas...');
+    
+    try {
+        const periodo = document.getElementById('filtroPerioedoStats').value || 'mes';
+        
+        // Obtener todas las órdenes
+        const snapshot = await db.collection('ordenes').get();
+        const ordenes = [];
+        
+        snapshot.forEach(doc => {
+            ordenes.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Filtrar por período
+        const ordenesFiltradas = filtrarOrdenesPorPeriodo(ordenes, periodo);
+        
+        console.log(`📋 Total de órdenes (${periodo}):`, ordenesFiltradas.length);
+        
+        // Analizar marcas
+        const estadisticasMarcas = analizarMarcas(ordenesFiltradas);
+        
+        // Analizar reparaciones
+        const estadisticasReparaciones = analizarReparaciones(ordenesFiltradas);
+        
+        // Actualizar resumen
+        document.getElementById('totalOrdenesStats').textContent = ordenesFiltradas.length;
+        document.getElementById('marcasUnicasStats').textContent = Object.keys(estadisticasMarcas).length;
+        document.getElementById('tiposReparacionStats').textContent = Object.keys(estadisticasReparaciones).length;
+        
+        // Generar gráficas
+        generarGraficaMarcas(estadisticasMarcas);
+        generarGraficaReparaciones(estadisticasReparaciones);
+        
+        // Llenar tablas
+        llenarTablaMarcas(estadisticasMarcas);
+        llenarTablaReparaciones(estadisticasReparaciones);
+        
+        console.log('✅ Estadísticas cargadas correctamente');
+    } catch (error) {
+        console.error('❌ Error al cargar estadísticas:', error);
+        mostrarNotificacion('Error al cargar estadísticas: ' + error.message, 'error');
+    }
+}
+
+function filtrarOrdenesPorPeriodo(ordenes, periodo) {
+    const ahora = new Date();
+    let fechaInicio = new Date();
+    
+    switch(periodo) {
+        case 'mes':
+            fechaInicio.setMonth(ahora.getMonth());
+            fechaInicio.setDate(1);
+            break;
+        case '3meses':
+            fechaInicio.setMonth(ahora.getMonth() - 3);
+            break;
+        case '6meses':
+            fechaInicio.setMonth(ahora.getMonth() - 6);
+            break;
+        case 'ano':
+            fechaInicio.setFullYear(ahora.getFullYear());
+            fechaInicio.setMonth(0);
+            fechaInicio.setDate(1);
+            break;
+        default:
+            return ordenes;
+    }
+    
+    return ordenes.filter(orden => {
+        const fechaOrden = new Date(orden.fecha || orden.fechaCreacion);
+        return fechaOrden >= fechaInicio;
+    });
+}
+
+function analizarMarcas(ordenes) {
+    const marcas = {};
+    
+    ordenes.forEach(orden => {
+        const marca = orden.marca || orden.modeloDispositivo?.split(' ')[0] || 'No especificada';
+        marcas[marca] = (marcas[marca] || 0) + 1;
+    });
+    
+    // Ordenar descendente
+    return Object.fromEntries(
+        Object.entries(marcas).sort(([,a], [,b]) => b - a)
+    );
+}
+
+function analizarReparaciones(ordenes) {
+    const reparaciones = {};
+    
+    ordenes.forEach(orden => {
+        // Analizar artículos de la orden
+        if (orden.articulos && Array.isArray(orden.articulos)) {
+            orden.articulos.forEach(articulo => {
+                const tipo = articulo.descripcion || articulo.nombre || 'Otro';
+                reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
+            });
+        }
+        // Si no hay artículos, usar descripción general
+        else if (orden.descripcion) {
+            const tipo = orden.descripcion.substring(0, 50);
+            reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
+        }
+    });
+    
+    // Ordenar descendente
+    return Object.fromEntries(
+        Object.entries(reparaciones).sort(([,a], [,b]) => b - a)
+    );
+}
+
+function generarGraficaMarcas(marcas) {
+    const ctx = document.getElementById('chartMarcas');
+    if (!ctx) return;
+    
+    const labels = Object.keys(marcas).slice(0, 10);
+    const datos = Object.values(marcas).slice(0, 10);
+    const total = datos.reduce((a, b) => a + b, 0);
+    const porcentajes = datos.map(d => ((d / total) * 100).toFixed(1));
+    
+    // Destruir gráfica anterior si existe
+    if (chartMarcasInstance) {
+        chartMarcasInstance.destroy();
+    }
+    
+    // Colores profesionales
+    const colores = [
+        'rgb(99, 102, 241)',
+        'rgb(139, 92, 246)',
+        'rgb(236, 72, 153)',
+        'rgb(249, 115, 22)',
+        'rgb(34, 197, 94)',
+        'rgb(59, 130, 246)',
+        'rgb(168, 85, 247)',
+        'rgb(20, 184, 166)',
+        'rgb(239, 68, 68)',
+        'rgb(251, 146, 60)'
+    ];
+    
+    chartMarcasInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: porcentajes,
+                backgroundColor: colores.slice(0, labels.length),
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 12 },
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed + '% (' + datos[context.dataIndex] + ' órdenes)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function generarGraficaReparaciones(reparaciones) {
+    const ctx = document.getElementById('chartReparaciones');
+    if (!ctx) return;
+    
+    const labels = Object.keys(reparaciones).slice(0, 8).map(l => {
+        return l.length > 30 ? l.substring(0, 27) + '...' : l;
+    });
+    const datos = Object.values(reparaciones).slice(0, 8);
+    const total = datos.reduce((a, b) => a + b, 0);
+    const porcentajes = datos.map(d => ((d / total) * 100).toFixed(1));
+    
+    // Destruir gráfica anterior si existe
+    if (chartReparacionesInstance) {
+        chartReparacionesInstance.destroy();
+    }
+    
+    const colores = [
+        'rgb(34, 197, 94)',
+        'rgb(59, 130, 246)',
+        'rgb(239, 68, 68)',
+        'rgb(251, 146, 60)',
+        'rgb(168, 85, 247)',
+        'rgb(20, 184, 166)',
+        'rgb(249, 115, 22)',
+        'rgb(236, 72, 153)'
+    ];
+    
+    chartReparacionesInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Porcentaje (%)',
+                data: porcentajes,
+                backgroundColor: colores,
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.x.toFixed(1) + '% (' + datos[context.dataIndex] + ' reparaciones)';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function llenarTablaMarcas(marcas) {
+    const tbody = document.getElementById('tablaDetalleMarcas');
+    if (!tbody) return;
+    
+    const total = Object.values(marcas).reduce((a, b) => a + b, 0);
+    
+    let html = '';
+    Object.entries(marcas).forEach(([marca, cantidad], index) => {
+        const porcentaje = ((cantidad / total) * 100).toFixed(2);
+        const colorFondo = index % 2 === 0 ? '#f8f9fa' : '#fff';
+        
+        html += `
+            <tr style="background: ${colorFondo}; border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 12px; font-weight: 500;">${marca}</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600;">${cantidad}</td>
+                <td style="padding: 12px; text-align: center; color: #667eea;">${porcentaje}%</td>
+                <td style="padding: 12px; text-align: center;">
+                    <div style="background: #f0f0f0; height: 20px; border-radius: 10px; overflow: hidden; position: relative;">
+                        <div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: ${porcentaje}%;" title="${porcentaje}%"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function llenarTablaReparaciones(reparaciones) {
+    const tbody = document.getElementById('tablaDetalleReparaciones');
+    if (!tbody) return;
+    
+    const total = Object.values(reparaciones).reduce((a, b) => a + b, 0);
+    
+    let html = '';
+    Object.entries(reparaciones).forEach(([tipo, cantidad], index) => {
+        const porcentaje = ((cantidad / total) * 100).toFixed(2);
+        const colorFondo = index % 2 === 0 ? '#f8f9fa' : '#fff';
+        const tipoCorto = tipo.length > 50 ? tipo.substring(0, 47) + '...' : tipo;
+        
+        html += `
+            <tr style="background: ${colorFondo}; border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 12px; font-weight: 500;" title="${tipo}">${tipoCorto}</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600;">${cantidad}</td>
+                <td style="padding: 12px; text-align: center; color: #22c55e;">${porcentaje}%</td>
+                <td style="padding: 12px; text-align: center;">
+                    <div style="background: #f0f0f0; height: 20px; border-radius: 10px; overflow: hidden; position: relative;">
+                        <div style="background: linear-gradient(90deg, #22c55e, #16a34a); height: 100%; width: ${porcentaje}%;" title="${porcentaje}%"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function actualizarEstadisticas() {
+    cargarEstadisticas();
+}

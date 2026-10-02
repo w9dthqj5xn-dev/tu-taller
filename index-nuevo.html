@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Taller de Reparaciones</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Stylesheets existentes -->
+    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="stylesheet" href="responsive.css?v=1">
+    
+    <!-- Librerías externas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+        }
+
+        /* SIDEBAR STYLES */
+        .main-app {
+            display: flex;
+            height: 100vh;
+            background: #f8fafc;
+        }
+
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+            overflow-y: auto;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            min-height: 80px;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .sidebar-logo {
+            font-size: 32px;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .sidebar-title {
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+
+        .sidebar.collapsed .sidebar-title {
+            display: none;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            right: 8px;
+            top: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 18px;
+        }
+
+        .sidebar-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            padding: 20px 0;
+            overflow-y: auto;
+        }
+
+        .menu-item {
+            padding: 0;
+            margin: 8px 10px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .menu-item a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .menu-item a:hover {
+            color: white;
+            background: rgba(245, 158, 11, 0.1);
+            border-left-color: #f59e0b;
+        }
+
+        .menu-item.active a {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.15);
+            border-left-color: #f59e0b;
+        }
+
+        .menu-item a span {
+            white-space: nowrap;
+        }
+
+        .sidebar.collapsed .menu-item a span {
+            display: none;
+        }
+
+        .sidebar.collapsed .menu-item a {
+            justify-content: center;
+            padding: 12px;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .user-info {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+        }
+
+        .user-info .user-name {
+            color: white;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .sidebar.collapsed .user-info {
+            display: none;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
+        }
+
+        .app-container {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+            height: 100vh;
+            overflow-y: auto;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .app-container.sidebar-collapsed {
+            margin-left: 70px;
+            width: calc(100% - 70px);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 260px;
+            }
+
+            .app-container {
+                margin-left: 260px;
+                width: calc(100% - 260px);
+            }
+
+            .sidebar.collapsed {
+                width: 70px;
+            }
+
+            .app-container.sidebar-collapsed {
+                margin-left: 70px;
+                width: calc(100% - 70px);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 260px;
+                z-index: 999;
+            }
+
+            .sidebar.mobile-active {
+                transform: translateX(0);
+            }
+
+            .app-container {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .menu-toggle-btn {
+                display: flex !important;
+                position: fixed;
+                top: 15px;
+                left: 15px;
+                z-index: 998;
+                background: linear-gradient(135deg, #f59e0b, #d97706);
+                color: white;
+                border: none;
+                width: 44px;
+                height: 44px;
+                border-radius: 8px;
+                cursor: pointer;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+            }
+
+            .sidebar-toggle {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar {
+                width: 100%;
+            }
+        }
+
+        /* LOGIN SCREEN */
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .login-header h1 {
+            color: #1e293b;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .login-header p {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-group label {
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .input-group input {
+            padding: 12px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .auth-divider {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+            position: relative;
+            margin: 8px 0;
+        }
+
+        .auth-divider span {
+            background: white;
+            padding: 0 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .google-signin-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: white;
+            color: #1e293b;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .google-signin-btn:hover {
+            border-color: #667eea;
+            background: #f8fafc;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .admin-link {
+            display: inline-block;
+            margin-top: 12px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .admin-link:hover {
+            color: #764ba2;
+        }
+
+        /* LOGIN SCREEN - HIDE WHEN APP IS SHOWN */
+        .login-screen.hidden {
+            display: none;
+        }
+
+        .main-app.hidden {
+            display: none;
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <!-- PANTALLA DE LOGIN -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="login-icon">🔧</div>
+                <h1>Taller de Reparaciones</h1>
+                <p>Sistema de Gestión Profesional</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="input-group">
+                    <label for="loginUsername">Usuario</label>
+                    <input type="text" id="loginUsername" placeholder="Ingresa tu usuario" required autocomplete="username">
+                </div>
+                <div class="input-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <input type="password" id="loginPassword" placeholder="Ingresa tu contraseña" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="login-btn">Iniciar Sesión</button>
+                
+                <div class="auth-divider">
+                    <span>o</span>
+                </div>
+                
+                <button type="button" class="google-signin-btn" onclick="signInWithGoogle()">
+                    <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" width="20" height="20">
+                    Continuar con Google
+                </button>
+                
+                <button type="button" class="login-btn" onclick="mostrarActivacionLicencia()" style="background: linear-gradient(135deg, #28a745, #20c997);">🔐 Activar Licencia</button>
+                <div class="login-footer">
+                    <p><small>© 2025 Todos los derechos reservados<br><strong>Ing. Carlos Jiménez</strong></small></p>
+                    <a href="licencias.html" class="admin-link">🔑 Administrador de Licencias</a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- MODAL DE ACTIVACIÓN DE LICENCIA -->
+        <div id="modalLicencia" class="login-container" style="display: none; max-width: 500px; position: absolute;">
+            <div class="login-header">
+                <div class="login-icon">🔐</div>
+                <h1>Activar Licencia</h1>
+                <p>Ingresa tu clave de licencia para activar el sistema</p>
+            </div>
+            <form id="licenseActivationForm" class="login-form" onsubmit="activarLicencia(event)">
+                <div class="input-group">
+                    <label for="licenseKey">Clave de Licencia</label>
+                    <input type="text" id="licenseKey" placeholder="TT-XXX-XXXXXXXX-XXXXX-XXXX" required style="text-transform: uppercase; font-family: monospace;">
+                    <small style="color: #666; display: block; margin-top: 5px;">Ejemplo: TT-MEN-ABCD1234-K5N2M-A9B2</small>
+                </div>
+                <div id="licenseError" style="display: none; padding: 12px; background: #f8d7da; color: #721c24; border-radius: 8px; margin-bottom: 15px; font-size: 14px;"></div>
+                <div id="licenseSuccess" style="display: none; padding: 12px; background: #d4edda; color: #155724; border-radius: 8px; margin-bottom: 15px; font-size: 14px;"></div>
+                <button type="submit" class="login-btn">Validar y Continuar</button>
+                <button type="button" class="login-btn" onclick="ocultarActivacionLicencia()" style="background: #6c757d; margin-top: 10px;">Cancelar</button>
+            </form>
+        </div>
+        
+        <!-- MODAL DE REGISTRO DE USUARIO -->
+        <div id="modalRegistro" class="login-container" style="display: none; max-width: 500px; position: absolute;">
+            <div class="login-header">
+                <div class="login-icon">👤</div>
+                <h1>Crear Usuario</h1>
+                <p>Configura tu usuario para acceder al sistema</p>
+            </div>
+            <form id="userRegistrationForm" class="login-form" onsubmit="registrarUsuario(event)">
+                <div class="input-group">
+                    <label for="regNombreTaller">Nombre del Taller</label>
+                    <input type="text" id="regNombreTaller" placeholder="Mi Taller de Reparaciones" required>
+                </div>
+                <div class="input-group">
+                    <label for="regUsuario">Usuario</label>
+                    <input type="text" id="regUsuario" placeholder="usuario" required autocomplete="off">
+                    <small style="color: #666; display: block; margin-top: 5px;">Mínimo 4 caracteres</small>
+                </div>
+                <div class="input-group">
+                    <label for="regPassword">Contraseña</label>
+                    <input type="password" id="regPassword" placeholder="Contraseña segura" required autocomplete="new-password">
+                    <small style="color: #666; display: block; margin-top: 5px;">Mínimo 6 caracteres</small>
+                </div>
+                <div class="input-group">
+                    <label for="regPasswordConfirm">Confirmar Contraseña</label>
+                    <input type="password" id="regPasswordConfirm" placeholder="Repite la contraseña" required autocomplete="new-password">
+                </div>
+                <div id="registroError" style="display: none; padding: 12px; background: #f8d7da; color: #721c24; border-radius: 8px; margin-bottom: 15px; font-size: 14px;"></div>
+                <button type="submit" class="login-btn">Crear Usuario y Acceder</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- APLICACIÓN PRINCIPAL CON SIDEBAR -->
+    <div id="mainApp" class="main-app" style="display: none;">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🔧</div>
+                <div class="sidebar-title">Tu Taller</div>
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Colapsar/Expandir">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-menu">
+                <div class="menu-item active" onclick="mostrarSeccion('dashboard', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+                <div class="menu-item" onclick="mostrarSeccion('clientes', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-users"></i>
+                        <span>Clientes</span>
+                    </a>
+                </div>
+                <div class="menu-item" onclick="mostrarSeccion('ordenes', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-wrench"></i>
+                        <span>Órdenes</span>
+                    </a>
+                </div>
+                <div class="menu-item" onclick="mostrarSeccion('tiendas', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-store"></i>
+                        <span>Tiendas</span>
+                    </a>
+                </div>
+                <div class="menu-item" onclick="mostrarSeccion('pagos', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Pagos</span>
+                    </a>
+                </div>
+                <div class="menu-item" onclick="mostrarSeccion('inventario', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-boxes"></i>
+                        <span>Inventario</span>
+                    </a>
+                </div>
+                <div class="menu-item" onclick="mostrarSeccion('reportes', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-file-chart-bar"></i>
+                        <span>Reportes</span>
+                    </a>
+                </div>
+                <div class="menu-item" onclick="mostrarSeccion('buscar', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-search"></i>
+                        <span>Buscar</span>
+                    </a>
+                </div>
+                <div class="menu-item" onclick="mostrarSeccion('gastos', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Gastos</span>
+                    </a>
+                </div>
+                <div class="menu-item" onclick="mostrarSeccion('configuracion', event)">
+                    <a href="javascript:void(0)">
+                        <i class="fas fa-cog"></i>
+                        <span>Configuración</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div style="font-size: 10px; opacity: 0.7;">Usuario conectado</div>
+                    <div class="user-name" id="sidebarUserName">Admin</div>
+                </div>
+                <button class="logout-btn" onclick="cerrarSesion()">🚪 Cerrar Sesión</button>
+            </div>
+        </aside>
+
+        <!-- CONTENEDOR DE APP -->
+        <button class="menu-toggle-btn" onclick="toggleMobileSidebar()" style="display: none;" title="Menú">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <div class="app-container">
+            <!-- CONTENIDO ORIGINAL DE LA APP -->
+            <div class="container">
+                <header>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h1>🔧 Taller de Reparaciones</h1>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="importarDatos()" class="btn-logout" style="background: #10b981;" title="Importar backup de datos">📤 Importar</button>
+                            <button onclick="exportarDatos()" class="btn-logout" style="background: #8b5cf6;" title="Exportar backup de datos">📥 Exportar</button>
+                            <button onclick="mostrarSeccion('configuracion')" class="btn-logout" style="background: #6366f1;" title="Configuración de taller">⚙️ Configuración</button>
+                        </div>
+                    </div>
+                </header>
+
+                <main>
+                    <!-- DASHBOARD -->
+                    <section id="dashboard" class="section active">
+                        <h2>Panel de Control</h2>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <h3>Total Clientes</h3>
+                                <p class="stat-number" id="totalClientes">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Órdenes Activas</h3>
+                                <p class="stat-number" id="ordenesActivas">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h3>En Reparación</h3>
+                                <p class="stat-number" id="enReparacion">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Listas para Entrega</h3>
+                                <p class="stat-number" id="listasEntrega">0</p>
+                            </div>
+                        </div>
+                        <div class="recent-orders">
+                            <h3>Órdenes Recientes</h3>
+                            <div id="ordenesRecientes"></div>
+                        </div>
+                    </section>
+
+                    <!-- CLIENTES -->
+                    <section id="clientes" class="section">
+                        <div class="section-header">
+                            <h2>Gestión de Clientes</h2>
+                            <button class="btn-primary" onclick="mostrarFormCliente()">+ Nuevo Cliente</button>
+                        </div>
+
+                        <div id="formCliente" class="form-container" style="display: none;">
+                            <h3>Nuevo Cliente</h3>
+                            <form id="clienteForm">
+                                <input type="hidden" id="clienteId">
+                                <div class="form-group">
+                                    <label>Nombre *</label>
+                                    <input type="text" id="clienteNombre" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Apellido *</label>
+                                    <input type="text" id="clienteApellido" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Celular *</label>
+                                    <input type="tel" id="clienteCelular" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="clienteEmail">
+                                </div>
+                                <div class="form-group">
+                                    <label>Dirección</label>
+                                    <input type="text" id="clienteDireccion">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn-primary">Guardar</button>
+                                    <button type="button" class="btn-secondary" onclick="cancelarFormCliente()">Cancelar</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="search-container" style="margin-bottom: 20px;">
+                            <input type="text" id="busquedaClientes" placeholder="Buscar por nombre, apellido, celular o email..." oninput="filtrarClientes()">
+                            <button class="btn-primary" onclick="filtrarClientes()">🔍 Buscar</button>
+                        </div>
+
+                        <div id="listaClientes" class="table-container"></div>
+                    </section>
+
+                    <!-- ÓRDENES -->
+                    <section id="ordenes" class="section">
+                        <div class="section-header">
+                            <h2>Órdenes de Reparación</h2>
+                            <button class="btn-primary" onclick="mostrarFormOrden()">+ Nueva Orden</button>
+                        </div>
+
+                        <div id="formOrden" class="form-container" style="display: none;">
+                            <h3>Nueva Orden de Reparación</h3>

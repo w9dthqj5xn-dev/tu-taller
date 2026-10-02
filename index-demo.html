@@ -16,7 +16,6 @@
     <!-- Estilos principales -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="responsive.css">
-    <link rel="stylesheet" href="theme-moderno.css">
     
     <style>
         /* === LAYOUT PRINCIPAL CON SIDEBAR === */
@@ -331,36 +330,46 @@
         .sidebar {
             animation: slideInLeft 0.3s ease;
         }
+
+        /* Botones de acciones rápidas */
+        .quick-action-btn {
+            padding: 15px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .quick-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        .quick-action-btn.green {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .quick-action-btn.green:hover {
+            box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        .quick-action-btn.orange {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .quick-action-btn.orange:hover {
+            box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3);
+        }
     </style>
 </head>
 <body>
-    <!-- PANTALLA DE LOGIN -->
-    <div id="loginScreen" class="login-screen">
-        <div class="login-container">
-            <div class="login-header">
-                <div class="login-icon">🔧</div>
-                <h1>Tu Taller</h1>
-                <p>Sistema de Gestión de Talleres</p>
-            </div>
-            <form class="login-form" id="loginForm">
-                <div class="input-group">
-                    <label for="loginUsername">Usuario</label>
-                    <input type="text" id="loginUsername" placeholder="Ingresa tu usuario" required>
-                </div>
-                <div class="input-group">
-                    <label for="loginPassword">Contraseña</label>
-                    <input type="password" id="loginPassword" placeholder="Ingresa tu contraseña" required>
-                </div>
-                <button type="submit" class="login-btn">Iniciar Sesión</button>
-            </form>
-            <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #9ca3af;">
-                <p>👤 Usuario: <strong>admin</strong> | 🔑 Contraseña: <strong>admin123</strong></p>
-            </div>
-        </div>
-    </div>
-
-    <!-- APLICACIÓN PRINCIPAL -->
-    <div id="mainApp" class="main-app" style="display: none;">
+    <!-- APLICACIÓN PRINCIPAL (DEMOSTRACIÓN) -->
+    <div class="main-app">
         <!-- SIDEBAR -->
         <div class="sidebar">
             <div class="sidebar-header">
@@ -391,7 +400,7 @@
                 <li class="menu-item">
                     <a href="#" onclick="mostrarSeccion('ordenes', event)">
                         <i class="fas fa-wrench"></i>
-                        <span>🔧 Órdenes de Reparación</span>
+                        <span>🔧 Órdenes</span>
                     </a>
                 </li>
 
@@ -439,13 +448,13 @@
             <!-- Footer del Sidebar -->
             <div class="sidebar-footer">
                 <div class="user-info">
-                    <div class="user-avatar" id="avatarUsuario">A</div>
+                    <div class="user-avatar">A</div>
                     <div class="user-details">
-                        <h4 id="nombreUsuario">Admin</h4>
-                        <p id="nombreTaller">Taller</p>
+                        <h4>Admin</h4>
+                        <p>Tu Taller</p>
                     </div>
                 </div>
-                <button class="logout-btn" onclick="cerrarSesion()">
+                <button class="logout-btn">
                     <i class="fas fa-sign-out-alt"></i> Salir
                 </button>
             </div>
@@ -457,9 +466,7 @@
             <div class="app-header">
                 <h1 class="header-title" id="headerTitle">Dashboard</h1>
                 <div class="header-actions">
-                    <button class="search-box" placeholder="🔍 Buscar..." id="searchInput" style="border: none; cursor: pointer;">
-                        <i class="fas fa-search"></i>
-                    </button>
+                    <input type="text" class="search-box" placeholder="🔍 Buscar...">
                 </div>
             </div>
 
@@ -472,7 +479,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div>
                                     <p style="margin: 0; font-size: 13px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Órdenes Pendientes</p>
-                                    <h2 id="ordenesTotal" style="margin: 8px 0 0 0; font-size: 32px; font-weight: 700; color: #1e293b;">0</h2>
+                                    <h2 style="margin: 8px 0 0 0; font-size: 32px; font-weight: 700; color: #1e293b;">12</h2>
                                 </div>
                                 <div style="font-size: 32px; opacity: 0.2;">📋</div>
                             </div>
@@ -482,7 +489,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div>
                                     <p style="margin: 0; font-size: 13px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Dinero a Cobrar</p>
-                                    <h2 id="dineroTotal" style="margin: 8px 0 0 0; font-size: 32px; font-weight: 700; color: #10b981;">$0</h2>
+                                    <h2 style="margin: 8px 0 0 0; font-size: 32px; font-weight: 700; color: #10b981;">$2.450.000</h2>
                                 </div>
                                 <div style="font-size: 32px; opacity: 0.2;">💰</div>
                             </div>
@@ -492,7 +499,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div>
                                     <p style="margin: 0; font-size: 13px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Total de Clientes</p>
-                                    <h2 id="clientesTotal" style="margin: 8px 0 0 0; font-size: 32px; font-weight: 700; color: #f59e0b;">0</h2>
+                                    <h2 style="margin: 8px 0 0 0; font-size: 32px; font-weight: 700; color: #f59e0b;">48</h2>
                                 </div>
                                 <div style="font-size: 32px; opacity: 0.2;">👥</div>
                             </div>
@@ -502,7 +509,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div>
                                     <p style="margin: 0; font-size: 13px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Técnicos Activos</p>
-                                    <h2 id="tecnicosActivos" style="margin: 8px 0 0 0; font-size: 32px; font-weight: 700; color: #8b5cf6;">0</h2>
+                                    <h2 style="margin: 8px 0 0 0; font-size: 32px; font-weight: 700; color: #8b5cf6;">5</h2>
                                 </div>
                                 <div style="font-size: 32px; opacity: 0.2;">👨‍🔧</div>
                             </div>
@@ -512,16 +519,54 @@
                     <div class="card">
                         <h3 style="margin: 0 0 20px 0; color: #1e293b; font-weight: 700;">Acciones Rápidas</h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-                            <button onclick="mostrarSeccion('clientes', event)" style="padding: 15px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                            <button class="quick-action-btn" onclick="mostrarSeccion('clientes', event)">
                                 ➕ Nuevo Cliente
                             </button>
-                            <button onclick="mostrarSeccion('ordenes', event)" style="padding: 15px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                            <button class="quick-action-btn green" onclick="mostrarSeccion('ordenes', event)">
                                 ➕ Nueva Orden
                             </button>
-                            <button onclick="mostrarSeccion('pagos', event)" style="padding: 15px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                            <button class="quick-action-btn orange" onclick="mostrarSeccion('pagos', event)">
                                 💳 Registrar Pago
                             </button>
                         </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3 style="margin: 0 0 15px 0; color: #1e293b; font-weight: 700;">Últimas Órdenes</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #475569; font-size: 13px;">ID</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #475569; font-size: 13px;">Cliente</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #475569; font-size: 13px;">Dispositivo</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #475569; font-size: 13px;">Estado</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #475569; font-size: 13px;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 12px; color: #334155;">#001</td>
+                                    <td style="padding: 12px; color: #334155;">Carlos Jiménez</td>
+                                    <td style="padding: 12px; color: #334155;">iPhone 14</td>
+                                    <td style="padding: 12px;"><span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: rgba(16, 185, 129, 0.1); color: #059669;">Listo</span></td>
+                                    <td style="padding: 12px; color: #334155; font-weight: 600;">$150.000</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 12px; color: #334155;">#002</td>
+                                    <td style="padding: 12px; color: #334155;">María García</td>
+                                    <td style="padding: 12px; color: #334155;">Samsung A13</td>
+                                    <td style="padding: 12px;"><span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: rgba(59, 130, 246, 0.1); color: #1d4ed8;">En Reparación</span></td>
+                                    <td style="padding: 12px; color: #334155; font-weight: 600;">$85.000</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 12px; color: #334155;">#003</td>
+                                    <td style="padding: 12px; color: #334155;">Juan López</td>
+                                    <td style="padding: 12px; color: #334155;">Laptop HP</td>
+                                    <td style="padding: 12px;"><span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: rgba(245, 158, 11, 0.1); color: #d97706;">Esperando Repuestos</span></td>
+                                    <td style="padding: 12px; color: #334155; font-weight: 600;">$380.000</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -529,7 +574,7 @@
                 <div id="clientes" class="content-section">
                     <div class="card">
                         <h2 style="margin: 0 0 20px 0; color: #1e293b;">👥 Gestión de Clientes</h2>
-                        <p style="color: #6b7280;">Esta sección está siendo cargada...</p>
+                        <p style="color: #6b7280; margin: 0;">Aquí puedes gestionar todos los clientes registrados en el sistema.</p>
                     </div>
                 </div>
 
@@ -537,7 +582,7 @@
                 <div id="ordenes" class="content-section">
                     <div class="card">
                         <h2 style="margin: 0 0 20px 0; color: #1e293b;">🔧 Órdenes de Reparación</h2>
-                        <p style="color: #6b7280;">Esta sección está siendo cargada...</p>
+                        <p style="color: #6b7280; margin: 0;">Aquí puedes ver y gestionar todas las órdenes de reparación.</p>
                     </div>
                 </div>
 
@@ -545,7 +590,7 @@
                 <div id="inventario" class="content-section">
                     <div class="card">
                         <h2 style="margin: 0 0 20px 0; color: #1e293b;">📦 Inventario</h2>
-                        <p style="color: #6b7280;">Esta sección está siendo cargada...</p>
+                        <p style="color: #6b7280; margin: 0;">Aquí puedes controlar tu inventario de repuestos.</p>
                     </div>
                 </div>
 
@@ -553,7 +598,7 @@
                 <div id="pagos" class="content-section">
                     <div class="card">
                         <h2 style="margin: 0 0 20px 0; color: #1e293b;">💳 Gestión de Pagos</h2>
-                        <p style="color: #6b7280;">Esta sección está siendo cargada...</p>
+                        <p style="color: #6b7280; margin: 0;">Aquí puedes ver las cuentas por cobrar y registrar pagos.</p>
                     </div>
                 </div>
 
@@ -561,7 +606,7 @@
                 <div id="reportes" class="content-section">
                     <div class="card">
                         <h2 style="margin: 0 0 20px 0; color: #1e293b;">📊 Reportes</h2>
-                        <p style="color: #6b7280;">Esta sección está siendo cargada...</p>
+                        <p style="color: #6b7280; margin: 0;">Aquí puedes ver reportes y análisis del negocio.</p>
                     </div>
                 </div>
 
@@ -569,7 +614,7 @@
                 <div id="tecnicos" class="content-section">
                     <div class="card">
                         <h2 style="margin: 0 0 20px 0; color: #1e293b;">👨‍🔧 Gestión de Técnicos</h2>
-                        <p style="color: #6b7280;">Esta sección está siendo cargada...</p>
+                        <p style="color: #6b7280; margin: 0;">Aquí puedes gestionar el equipo de técnicos.</p>
                     </div>
                 </div>
 
@@ -577,20 +622,12 @@
                 <div id="configuracion" class="content-section">
                     <div class="card">
                         <h2 style="margin: 0 0 20px 0; color: #1e293b;">⚙️ Configuración</h2>
-                        <p style="color: #6b7280;">Esta sección está siendo cargada...</p>
+                        <p style="color: #6b7280; margin: 0;">Aquí puedes configurar los ajustes del sistema.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Scripts Firebase -->
-    <script src="env.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="firebase-licencias.js"></script>
-    
-    <!-- Script principal de la aplicación -->
-    <script src="app.js"></script>
 
     <script>
         // Función para cambiar de sección
@@ -628,42 +665,6 @@
             };
             
             document.getElementById('headerTitle').textContent = titles[seccionId] || 'Tu Taller';
-            
-            // Cerrar sidebar en mobile
-            if (window.innerWidth <= 768) {
-                document.querySelector('.sidebar').classList.remove('active');
-            }
-        }
-
-        // Función para cerrar sesión
-        function cerrarSesion() {
-            if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-                localStorage.removeItem('sesionActiva');
-                localStorage.removeItem('usuario');
-                localStorage.removeItem('nombreTaller');
-                location.reload();
-            }
-        }
-
-        // Actualizar información del usuario al cargar
-        document.addEventListener('DOMContentLoaded', () => {
-            const usuario = localStorage.getItem('usuario') || 'Admin';
-            const nombreTaller = localStorage.getItem('nombreTaller') || 'Tu Taller';
-            
-            document.getElementById('nombreUsuario').textContent = usuario;
-            document.getElementById('nombreTaller').textContent = nombreTaller;
-            
-            // Avatar con primera letra del usuario
-            const letra = usuario.charAt(0).toUpperCase();
-            document.getElementById('avatarUsuario').textContent = letra;
-        });
-
-        // Toggle sidebar en mobile
-        const menuToggle = document.getElementById('menuToggle');
-        if (menuToggle) {
-            menuToggle.addEventListener('click', () => {
-                document.querySelector('.sidebar').classList.toggle('active');
-            });
         }
     </script>
 </body>

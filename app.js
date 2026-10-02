@@ -6450,9 +6450,15 @@ async function cargarEstadisticas() {
     
     try {
         const periodo = document.getElementById('filtroPerioedoStats').value || 'mes';
+        const usuario = localStorage.getItem('usuario');
         
-        // Obtener todas las órdenes
-        const snapshot = await db.collection('ordenes').get();
+        if (!usuario) {
+            console.error('❌ Usuario no autenticado');
+            return;
+        }
+        
+        // Obtener todas las órdenes del usuario
+        const snapshot = await db.collection('usuarios-data').doc(usuario).collection('ordenes').get();
         const ordenes = [];
         
         snapshot.forEach(doc => {

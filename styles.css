@@ -1168,3 +1168,109 @@ tr:hover {
         padding: 20px;
     }
 }
+
+/* === DASHBOARD SWIPE GESTURES === */
+.swipe-indicator {
+    display: none;
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+    padding: 12px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 100;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.dashboard-header h2 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.8em;
+}
+
+.btn-close-dashboard {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #e74c3c;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: none;
+}
+
+.btn-close-dashboard:hover {
+    background-color: #ffe6e6;
+    transform: scale(1.1);
+}
+
+.btn-close-dashboard:active {
+    transform: scale(0.95);
+}
+
+/* Mostrar en móviles */
+@media (max-width: 768px) {
+    .swipe-indicator {
+        display: block;
+    }
+    
+    .btn-close-dashboard {
+        display: block;
+    }
+    
+    #dashboard.section.active {
+        position: relative;
+        touch-action: pan-y;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+    }
+    
+    #dashboard.dragging {
+        transition: none !important;
+    }
+    
+    #dashboard.closed {
+        animation: slideOutDown 0.4s ease forwards;
+    }
+}
+
+@keyframes slideOutDown {
+    to {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+}
+
+/* Touch optimizations */
+@media (max-width: 768px) {
+    button, input, select, textarea {
+        -webkit-appearance: none;
+        appearance: none;
+    }
+}

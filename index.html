@@ -429,8 +429,15 @@
 
         <main>
             <!-- Dashboard -->
-            <section id="dashboard" class="section active">
-                <h2>Panel de Control</h2>
+            <section id="dashboard" class="section active" data-swipeable="true">
+                <!-- Indicador de arrastre móvil -->
+                <div class="swipe-indicator">
+                    <span>☰ Desliza hacia abajo para cerrar</span>
+                </div>
+                <div class="dashboard-header">
+                    <h2>Panel de Control</h2>
+                    <button class="btn-close-dashboard" onclick="cerrarDashboard()" aria-label="Cerrar dashboard">✕</button>
+                </div>
                 <div class="stats-grid">
                     <div class="stat-card">
                         <h3>Total Clientes</h3>

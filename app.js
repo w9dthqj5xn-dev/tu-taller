@@ -157,6 +157,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     `;
     document.head.appendChild(style);
+    
+    // Inicializar gestos de swipe para dispositivos móviles
+    setTimeout(() => {
+        initSwipeGestures();
+    }, 500);
 });
 
 // Función para mostrar mensajes
@@ -6865,4 +6870,146 @@ function llenarTablaReparaciones(reparaciones) {
 
 function actualizarEstadisticas() {
     cargarEstadisticas();
+}
+
+// === DASHBOARD SWIPE GESTURES ===
+let swipeStartY = 0;
+let swipeStartX = 0;
+let isDragging = false;
+let dragOffset = 0;
+
+function cargarDashboard() {
+    actualizarDashboard();
+}
+
+function initSwipeGestures() {
+    const dashboard = document.getElementById('dashboard');
+    if (!dashboard) return;
+    
+    // Detectar inicio del toque
+    dashboard.addEventListener('touchstart', (e) => {
+        if (!isMobile()) return;
+        
+        swipeStartY = e.touches[0].clientY;
+        swipeStartX = e.touches[0].clientX;
+        isDragging = false;
+        dragOffset = 0;
+    }, { passive: true });
+    
+    // Detectar movimiento del toque
+    dashboard.addEventListener('touchmove', (e) => {
+        if (!isMobile() || swipeStartY === 0) return;
+        
+        const currentY = e.touches[0].clientY;
+        const currentX = e.touches[0].clientX;
+        const diffY = currentY - swipeStartY;
+        const diffX = Math.abs(currentX - swipeStartX);
+        
+        // Solo procesar si es un movimiento vertical (más que horizontal)
+        if (Math.abs(diffY) > diffX && diffY > 10) {
+            isDragging = true;
+            dragOffset = Math.max(0, diffY); // Solo permitir arrastrar hacia abajo
+            
+            // Aplicar transformación visual mientras se arrastra
+            dashboard.style.transition = 'none';
+            dashboard.style.transform = `translateY(${dragOffset * 0.5}px)`;
+            dashboard.style.opacity = Math.max(0.5, 1 - (dragOffset / 500));
+            
+            dashboard.classList.add('dragging');
+        }
+    }, { passive: true });
+    
+    // Detectar fin del toque
+    dashboard.addEventListener('touchend', () => {
+        if (!isDragging) {
+            swipeStartY = 0;
+            return;
+        }
+        
+        dashboard.classList.remove('dragging');
+        
+        // Si se arrastró más de 100px hacia abajo, cerrar dashboard
+        if (dragOffset > 100) {
+            cerrarDashboard();
+        } else {
+            // Si no se arrastró lo suficiente, regresar al estado original
+            dashboard.style.transition = 'all 0.3s ease';
+            dashboard.style.transform = 'translateY(0)';
+            dashboard.style.opacity = '1';
+        }
+        
+        isDragging = false;
+        dragOffset = 0;
+        swipeStartY = 0;
+        swipeStartX = 0;
+    });
+}
+
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+        || window.matchMedia('(max-width: 768px)').matches;
+}
+
+function cerrarDashboard() {
+    const dashboard = document.getElementById('dashboard');
+    if (!dashboard) return;
+    
+    // Agregar clase de cierre
+    dashboard.classList.add('closed');
+    
+    // Después de la animación, esconder el dashboard
+    setTimeout(() => {
+        dashboard.classList.remove('active', 'closed');
+        dashboard.style.transform = '';
+        dashboard.style.opacity = '';
+        dashboard.style.transition = '';
+        
+        // Mostrar una sección alternativa (Órdenes)
+        mostrarSeccion('ordenes');
+    }, 400);
+}
+
+function mostrarSeccion(id, event) {
+    if (event) {
+        event.preventDefault();
+    }
+    
+    // Ocultar todas las secciones
+    const secciones = document.querySelectorAll('.section');
+    secciones.forEach(sec => sec.classList.remove('active'));
+    
+    // Mostrar la sección seleccionada
+    const seccion = document.getElementById(id);
+    if (seccion) {
+        seccion.classList.add('active');
+        
+        // Marcar el menú como activo
+        const menuItems = document.querySelectorAll('.menu-item');
+        menuItems.forEach(item => item.classList.remove('active'));
+        
+        const menuItem = event?.target?.closest('.menu-item') || 
+                        Array.from(menuItems).find(item => 
+                            item.querySelector('a')?.onclick?.toString().includes(`'${id}'`)
+                        );
+        
+        if (menuItem) {
+            menuItem.classList.add('active');
+        }
+        
+        // Cargar datos específicos de la sección si es necesario
+        if (id === 'dashboard') {
+            cargarDashboard();
+            // Reiniciar gestos de swipe para el dashboard
+            setTimeout(initSwipeGestures, 100);
+        } else if (id === 'clientes') {
+            cargarClientes();
+        } else if (id === 'ordenes') {
+            cargarOrdenes();
+        } else if (id === 'estadisticas') {
+            cargarEstadisticas();
+        }
+        
+        // Scroll hacia la parte superior
+        window.scrollTo(0, 0);
+    }
 }

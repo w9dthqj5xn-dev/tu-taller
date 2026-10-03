@@ -6749,7 +6749,6 @@ function generarGraficaMarcas(marcas) {
         }
     });
 }
-}
 
 function generarGraficaReparaciones(reparaciones) {
     const ctx = document.getElementById('chartReparaciones');

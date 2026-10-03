@@ -6529,12 +6529,24 @@ function filtrarOrdenesPorPeriodo(ordenes, periodo) {
 function analizarMarcas(ordenes) {
     const marcas = {};
     
+    // Función para normalizar marca
+    const normalizarMarca = (marca) => {
+        return marca
+            .toLowerCase()           // Minúsculas
+            .trim()                  // Espacios inicio/final
+            .replace(/\s+/g, ' ')   // Múltiples espacios a uno
+            .replace(/[^\w\sáéíóúñ]/g, ''); // Eliminar caracteres especiales excepto letras y números
+    };
+    
     ordenes.forEach(orden => {
-        // Normalizar la marca: minúsculas y sin espacios extra
-        const marca = (orden.marca || orden.modeloDispositivo?.split(' ')[0] || 'No especificada')
-            .toLowerCase()
-            .trim();
-        marcas[marca] = (marcas[marca] || 0) + 1;
+        // Obtener marca y normalizar
+        const marcaBruta = orden.marca || orden.modeloDispositivo?.split(' ')[0] || 'No especificada';
+        const marca = normalizarMarca(marcaBruta);
+        
+        // Solo contar si no está vacía
+        if (marca.trim().length > 0) {
+            marcas[marca] = (marcas[marca] || 0) + 1;
+        }
     });
     
     // Ordenar descendente
@@ -6546,21 +6558,35 @@ function analizarMarcas(ordenes) {
 function analizarReparaciones(ordenes) {
     const reparaciones = {};
     
+    // Función para normalizar tipo de reparación
+    const normalizarTipo = (tipo) => {
+        return tipo
+            .toLowerCase()           // Minúsculas
+            .trim()                  // Espacios inicio/final
+            .replace(/\s+/g, ' ')   // Múltiples espacios a uno
+            .replace(/[^\w\sáéíóúñ]/g, ''); // Eliminar caracteres especiales
+    };
+    
     ordenes.forEach(orden => {
         // Analizar artículos de la orden
         if (orden.articulos && Array.isArray(orden.articulos)) {
             orden.articulos.forEach(articulo => {
                 // Normalizar: minúsculas y sin espacios extra
-                const tipo = (articulo.descripcion || articulo.nombre || 'Otro')
-                    .toLowerCase()
-                    .trim();
-                reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
+                const descripcion = articulo.descripcion || articulo.nombre || 'Otro';
+                const tipo = normalizarTipo(descripcion);
+                
+                // Solo contar si no está vacía
+                if (tipo.trim().length > 0) {
+                    reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
+                }
             });
         }
         // Si no hay artículos, usar descripción general
         else if (orden.descripcion) {
-            const tipo = orden.descripcion.substring(0, 50).toLowerCase().trim();
-            reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
+            const tipo = normalizarTipo(orden.descripcion.substring(0, 50));
+            if (tipo.trim().length > 0) {
+                reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
+            }
         }
     });
     

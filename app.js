@@ -6558,6 +6558,39 @@ function analizarMarcas(ordenes) {
 function analizarReparaciones(ordenes) {
     const reparaciones = {};
     
+    // Mapa de categorización inteligente para tipos de reparación
+    const categorizarReparacion = (texto) => {
+        const t = texto.toLowerCase().trim();
+        
+        // Palabras clave para categorización
+        const categorias = {
+            'Pantalla': ['pantalla', 'lcd', 'oled', 'display', 'cristal', 'vidrio', 'screen'],
+            'Batería': ['bateria', 'batería', 'battery', 'carga'],
+            'Botón': ['boton', 'botón', 'button', 'tecla'],
+            'Micrófono': ['microfono', 'micrófono', 'mic', 'audio'],
+            'Pin de Carga': ['pin', 'conector', 'usb', 'puerto'],
+            'Tapa Trasera': ['tapa', 'trasera', 'back', 'carcasa'],
+            'Desbloqueo': ['desbloqueo', 'desbloquear', 'unlock', 'patron', 'huella'],
+            'Altavoz': ['altavoz', 'speaker', 'sonido'],
+            'Cámara': ['camara', 'cámara', 'camera', 'foto'],
+            'Antena': ['antena', 'wifi', 'señal'],
+            'Tornillos': ['tornillo', 'tornillos', 'screw'],
+            'Limpieza': ['limpieza', 'limpiar', 'cleaning', 'polvo']
+        };
+        
+        // Buscar coincidencia con palabras clave
+        for (let [categoria, palabras] of Object.entries(categorias)) {
+            for (let palabra of palabras) {
+                if (t.includes(palabra)) {
+                    return categoria;
+                }
+            }
+        }
+        
+        // Si no coincide, devolver el texto limpio
+        return texto.substring(0, 30);
+    };
+    
     // Función para normalizar tipo de reparación
     const normalizarTipo = (tipo) => {
         return tipo
@@ -6568,24 +6601,27 @@ function analizarReparaciones(ordenes) {
     };
     
     ordenes.forEach(orden => {
-        // Analizar artículos de la orden
-        if (orden.articulos && Array.isArray(orden.articulos)) {
+        let tipoAnalizado = null;
+        
+        // Prioridad 1: Analizar artículos de la orden
+        if (orden.articulos && Array.isArray(orden.articulos) && orden.articulos.length > 0) {
             orden.articulos.forEach(articulo => {
-                // Normalizar: minúsculas y sin espacios extra
                 const descripcion = articulo.descripcion || articulo.nombre || 'Otro';
-                const tipo = normalizarTipo(descripcion);
+                const tipo = categorizarReparacion(descripcion);
+                const tipoNormalizado = normalizarTipo(tipo);
                 
-                // Solo contar si no está vacía
-                if (tipo.trim().length > 0) {
-                    reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
+                if (tipoNormalizado.trim().length > 0) {
+                    reparaciones[tipoNormalizado] = (reparaciones[tipoNormalizado] || 0) + 1;
                 }
             });
         }
-        // Si no hay artículos, usar descripción general
-        else if (orden.descripcion) {
-            const tipo = normalizarTipo(orden.descripcion.substring(0, 50));
-            if (tipo.trim().length > 0) {
-                reparaciones[tipo] = (reparaciones[tipo] || 0) + 1;
+        // Prioridad 2: Si no hay artículos, analizar el problema reportado
+        else if (orden.problema && orden.problema.trim().length > 0) {
+            const tipo = categorizarReparacion(orden.problema);
+            const tipoNormalizado = normalizarTipo(tipo);
+            
+            if (tipoNormalizado.trim().length > 0) {
+                reparaciones[tipoNormalizado] = (reparaciones[tipoNormalizado] || 0) + 1;
             }
         }
     });

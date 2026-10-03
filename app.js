@@ -6534,25 +6534,46 @@ function filtrarOrdenesPorPeriodo(ordenes, periodo) {
 function analizarMarcas(ordenes) {
     const marcas = {};
     
-    // Función para normalizar marca
+    // Función mejorada para normalizar marca
     const normalizarMarca = (marca) => {
+        if (!marca || typeof marca !== 'string') return '';
+        
         return marca
-            .toLowerCase()           // Minúsculas
-            .trim()                  // Espacios inicio/final
-            .replace(/\s+/g, ' ')   // Múltiples espacios a uno
-            .replace(/[^\w\sáéíóúñ]/g, ''); // Eliminar caracteres especiales excepto letras y números
+            .toLowerCase()                      // Minúsculas
+            .trim()                             // Espacios inicio/final
+            .replace(/\s+/g, ' ')               // Múltiples espacios a uno
+            .replace(/[^\w\sáéíóúñ]/g, '')     // Eliminar caracteres especiales
+            .trim();                            // Trim final para eliminar espacios generados
     };
     
-    ordenes.forEach(orden => {
-        // Obtener marca y normalizar
-        const marcaBruta = orden.marca || orden.modeloDispositivo?.split(' ')[0] || 'No especificada';
+    console.log('📊 Analizando marcas. Total órdenes:', ordenes.length);
+    
+    ordenes.forEach((orden, idx) => {
+        // Obtener marca - priorizando el campo marca
+        let marcaBruta = (orden.marca || '').trim();
+        
+        // Si no tiene marca, intentar obtener de modeloDispositivo
+        if (!marcaBruta && orden.modeloDispositivo) {
+            marcaBruta = orden.modeloDispositivo.split(' ')[0];
+        }
+        
+        // Si aún no tiene marca, ignorar
+        if (!marcaBruta) {
+            return;
+        }
+        
+        // Normalizar
         const marca = normalizarMarca(marcaBruta);
         
-        // Solo contar si no está vacía
-        if (marca.trim().length > 0) {
+        // Solo contar si no está vacía después de normalizar
+        if (marca.length > 0) {
             marcas[marca] = (marcas[marca] || 0) + 1;
+            console.log(`  ✓ Orden ${idx}: "${marcaBruta}" -> "${marca}" (Total: ${marcas[marca]})`);
         }
     });
+    
+    console.log('✅ Marcas procesadas:', Object.keys(marcas).length, 'marcas únicas');
+    console.log('📋 Resultado final:', marcas);
     
     // Ordenar descendente
     return Object.fromEntries(
@@ -6657,15 +6678,24 @@ function generarGraficaMarcas(marcas) {
     const ctx = document.getElementById('chartMarcas');
     if (!ctx) return;
     
-    // Función para capitalizar primera letra
+    // Función mejorada para capitalizar (Titulo Case)
     const capitalizar = (str) => {
-        return str.charAt(0).toUpperCase() + str.slice(1);
+        return str
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
     };
     
-    const labels = Object.keys(marcas).slice(0, 10).map(label => capitalizar(label));
-    const datos = Object.values(marcas).slice(0, 10);
+    // Obtener labels únicos y ordenados - eliminar duplicados
+    const marcasArray = Object.entries(marcas).slice(0, 10);
+    const labels = marcasArray.map(([label]) => capitalizar(label));
+    const datos = marcasArray.map(([, count]) => count);
     const total = datos.reduce((a, b) => a + b, 0);
     const porcentajes = datos.map(d => ((d / total) * 100).toFixed(1));
+    
+    console.log('📈 Generando gráfica de marcas:');
+    console.log('  Labels (únicos):', labels);
+    console.log('  Datos:', datos);
     
     // Destruir gráfica anterior si existe
     if (chartMarcasInstance) {
@@ -6718,6 +6748,7 @@ function generarGraficaMarcas(marcas) {
             }
         }
     });
+}
 }
 
 function generarGraficaReparaciones(reparaciones) {
@@ -6805,9 +6836,12 @@ function llenarTablaMarcas(marcas) {
     
     const total = Object.values(marcas).reduce((a, b) => a + b, 0);
     
-    // Función para capitalizar primera letra
+    // Función mejorada para capitalizar (Titulo Case)
     const capitalizar = (str) => {
-        return str.charAt(0).toUpperCase() + str.slice(1);
+        return str
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
     };
     
     let html = '';

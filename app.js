@@ -6558,6 +6558,8 @@ function analizarMarcas(ordenes) {
 function analizarReparaciones(ordenes) {
     const reparaciones = {};
     
+    console.log('🔧 Analizando reparaciones. Total de órdenes:', ordenes.length);
+    
     // Mapa de categorización inteligente para tipos de reparación
     const categorizarReparacion = (texto) => {
         const t = texto.toLowerCase().trim();
@@ -6600,8 +6602,16 @@ function analizarReparaciones(ordenes) {
             .replace(/[^\w\sáéíóúñ]/g, ''); // Eliminar caracteres especiales
     };
     
-    ordenes.forEach(orden => {
+    let conteoProblema = 0;
+    
+    ordenes.forEach((orden, idx) => {
         let tipoAnalizado = null;
+        
+        console.log(`📌 Orden ${idx}:`, {
+            id: orden.id,
+            problema: orden.problema,
+            articulos: orden.articulos ? orden.articulos.length : 0
+        });
         
         // Prioridad 1: Analizar artículos de la orden
         if (orden.articulos && Array.isArray(orden.articulos) && orden.articulos.length > 0) {
@@ -6617,14 +6627,20 @@ function analizarReparaciones(ordenes) {
         }
         // Prioridad 2: Si no hay artículos, analizar el problema reportado
         else if (orden.problema && orden.problema.trim().length > 0) {
+            conteoProblema++;
             const tipo = categorizarReparacion(orden.problema);
             const tipoNormalizado = normalizarTipo(tipo);
+            
+            console.log(`  ✓ Problema encontrado: "${orden.problema}" -> Categoría: "${tipo}" -> Normalizado: "${tipoNormalizado}"`);
             
             if (tipoNormalizado.trim().length > 0) {
                 reparaciones[tipoNormalizado] = (reparaciones[tipoNormalizado] || 0) + 1;
             }
         }
     });
+    
+    console.log(`✅ Reparaciones procesadas: ${conteoProblema} órdenes con problema`);
+    console.log('📊 Resultado:', reparaciones);
     
     // Ordenar descendente
     return Object.fromEntries(

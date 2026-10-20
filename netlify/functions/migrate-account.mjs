@@ -39,12 +39,19 @@ export default async function handler(request, context) {
             .get();
 
         if (users.size !== 1) {
+            console.warn('Legacy account migration lookup did not find one account', {
+                matchingAccounts: users.size
+            });
             return jsonResponse({ error: 'Usuario o contraseña incorrectos' }, 401);
         }
 
         const legacyUser = users.docs[0];
         const userData = legacyUser.data();
         if (typeof userData.password !== 'string' || userData.password !== password) {
+            console.warn('Legacy account migration credentials did not match', {
+                hasLegacyPassword: typeof userData.password === 'string',
+                hasAuthUid: typeof userData.authUid === 'string' && userData.authUid.length > 0
+            });
             return jsonResponse({ error: 'Usuario o contraseña incorrectos' }, 401);
         }
 

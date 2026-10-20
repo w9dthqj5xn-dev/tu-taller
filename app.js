@@ -32,7 +32,9 @@ async function llamarFuncionSegura(ruta, opciones = {}) {
     });
     const resultado = await respuesta.json();
     if (!respuesta.ok) {
-        throw new Error(resultado.error || 'No se pudo completar la operación.');
+        const error = new Error(resultado.error || 'No se pudo completar la operación.');
+        error.status = respuesta.status;
+        throw error;
     }
     return resultado;
 }
@@ -369,7 +371,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             if (![
                 'auth/user-not-found',
                 'auth/invalid-credential',
-                'auth/invalid-login-credentials'
+                'auth/invalid-login-credentials',
+                'auth/operation-not-allowed'
             ].includes(errorAuth.code)) {
                 throw errorAuth;
             }
@@ -420,9 +423,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         window.usuarioSesionActiva = null;
         licenciaActivaEnMemoria = null;
         licenciaTemporalEnMemoria = null;
-        const mensaje = error.message === 'Usuario o contraseña incorrectos' || error.message.includes('intentos')
+        const mensaje = error.status && error.status !== 401
             ? error.message
-            : 'Usuario o contraseña incorrectos';
+            : error.message === 'Usuario o contraseña incorrectos' || error.message.includes('intentos')
+                ? error.message
+                : 'Usuario o contraseña incorrectos';
         alert(`❌ ${mensaje}`);
         document.getElementById('loginPassword').value = '';
     }

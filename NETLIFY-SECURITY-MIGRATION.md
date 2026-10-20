@@ -31,6 +31,18 @@ node admin-tools/create-license-admin.mjs admin_licencias /ruta/privada/service-
 
 No reutilices claves de servicio que hayan sido compartidas o expuestas. La cuenta creada inicia sesión en `/licencias.html`, donde puede generar, listar, suspender y reactivar licencias. No almacenes el JSON de cuenta de servicio en el repositorio ni en `env.js`.
 
+Si una cuenta existente ya fue migrada y necesita restablecer su contraseña, el script siguiente actualiza Firebase Authentication sin eliminar ni modificar sus datos de Firestore. La contraseña se solicita de forma oculta en una terminal interactiva:
+
+```sh
+node admin-tools/reset-account-password.mjs <usuario> /ruta/privada/service-account.json
+```
+
+Para generar localmente una contraseña temporal segura en vez de escribirla:
+
+```sh
+node admin-tools/reset-account-password.mjs <usuario> /ruta/privada/service-account.json --generate
+```
+
 ## Importante
 
 - `env.js` solo contiene configuración pública de Firebase. El script de build no imprime su contenido.

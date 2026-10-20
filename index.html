@@ -592,8 +592,21 @@
                             <input type="text" id="ordenIMEI">
                         </div>
                         <div class="form-group">
-                            <label>Problema Reportado *</label>
-                            <textarea id="ordenProblema" rows="3" required></textarea>
+                            <label style="font-weight: 600; display: block; margin-bottom: 10px;">Tipo de servicio *</label>
+                            <div id="ordenTipoServicioSelector" role="group" aria-label="Tipo de servicio" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                <button type="button" class="btn-secondary" data-tipo-servicio="reparacion" aria-pressed="false" onclick="seleccionarTipoServicio('reparacion')">🔧 Reparación</button>
+                                <button type="button" class="btn-secondary" data-tipo-servicio="software" aria-pressed="false" onclick="seleccionarTipoServicio('software')">💿 Software</button>
+                                <button type="button" class="btn-secondary" data-tipo-servicio="desbloqueo" aria-pressed="false" onclick="seleccionarTipoServicio('desbloqueo')">🔓 Desbloqueo</button>
+                            </div>
+                            <div id="ordenTipoServicioMensaje" role="alert" style="display: none; color: #b91c1c; margin-top: 8px;"></div>
+                        </div>
+                        <div id="ordenChecklistProblema" class="form-group" style="display: none; background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                            <h4 id="ordenChecklistProblemaTitulo" style="margin: 0 0 12px;"></h4>
+                            <div id="ordenChecklistProblemaItems" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ordenProblema">Detalles adicionales del problema *</label>
+                            <textarea id="ordenProblema" rows="3" required placeholder="Describe cualquier detalle adicional que explique el problema reportado."></textarea>
                         </div>
                         <div class="form-group">
                             <label>Accesorios Incluidos</label>
@@ -1512,7 +1525,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="firebase-config.js?v=14"></script>
-    <script src="app.js?v=15"></script>
+    <script src="app.js?v=16"></script>
 
     <!-- Scripts de Sidebar Colapsable -->
     <script>

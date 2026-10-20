@@ -1540,7 +1540,7 @@ function verHistorialCliente(id) {
         html += '<p>No hay órdenes registradas para este cliente.</p>';
     } else {
         ordenes.forEach(orden => {
-            html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><p><strong>Dispositivo:</strong> ${orden.marca} ${orden.modelo} (${orden.tipoDispositivo})</p><p><strong>Problema:</strong> ${orden.problema}</p><p><strong>Fecha:</strong> ${formatearFecha(orden.fechaIngreso)}</p>${orden.presupuesto ? `<p><strong>Presupuesto:</strong> $${orden.presupuesto}</p>` : ''}</div>`;
+            html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><p><strong>Dispositivo:</strong> ${orden.marca} ${orden.modelo} (${orden.tipoDispositivo})</p><p><strong>Problema:</strong> ${escaparHtml(orden.problema).replace(/\n/g, '<br>')}</p><p><strong>Fecha:</strong> ${formatearFecha(orden.fechaIngreso)}</p>${orden.presupuesto ? `<p><strong>Presupuesto:</strong> $${orden.presupuesto}</p>` : ''}</div>`;
         });
     }
     const modal = document.createElement('div');
@@ -1551,6 +1551,136 @@ function verHistorialCliente(id) {
 
 // ÓRDENES
 let repuestosOrdenTemp = [];
+let tipoServicioOrdenActual = null;
+
+const TIPOS_SERVICIO_ORDEN = {
+    reparacion: {
+        nombre: 'Reparación',
+        items: [
+            'Pantalla rota, partida o sin imagen',
+            'Batería no carga o dura poco',
+            'Puerto o centro de carga dañado',
+            'El equipo no enciende',
+            'Problema con botones',
+            'Problema de audio, micrófono o altavoz',
+            'Problema con cámara',
+            'Problema de señal, Wi-Fi o Bluetooth',
+            'Equipo mojado o con daño por líquido',
+            'Otro, especificar'
+        ]
+    },
+    software: {
+        nombre: 'Software',
+        items: [
+            'El equipo se queda en el logo o no inicia el sistema',
+            'Se reinicia o se apaga solo',
+            'Equipo lento o se congela',
+            'Error al actualizar el sistema',
+            'Aplicaciones no abren o presentan errores',
+            'Virus, publicidad o aplicaciones no deseadas',
+            'Restaurar o reinstalar el sistema',
+            'Recuperar o respaldar información',
+            'Problema de configuración del sistema',
+            'Otro, especificar'
+        ]
+    },
+    desbloqueo: {
+        nombre: 'Desbloqueo',
+        items: [
+            'PIN o contraseña de pantalla olvidados',
+            'Patrón de pantalla olvidado',
+            'Desbloqueo de cuenta Google (FRP), con autorización del propietario',
+            'Desbloqueo de Apple ID o iCloud, con acreditación del propietario',
+            'Bloqueo de operador o liberación de red',
+            'Cuenta del equipo bloqueada',
+            'Otro, especificar'
+        ]
+    }
+};
+
+function escaparHtml(texto) {
+    return String(texto ?? '').replace(/[&<>"']/g, caracter => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[caracter]);
+}
+
+function seleccionarTipoServicio(tipo, seleccionados = [], otroDetalle = '') {
+    if (!TIPOS_SERVICIO_ORDEN[tipo]) return;
+    if (tipoServicioOrdenActual === tipo && seleccionados.length === 0 && !otroDetalle) return;
+
+    tipoServicioOrdenActual = tipo;
+    document.querySelectorAll('[data-tipo-servicio]').forEach(boton => {
+        const seleccionado = boton.dataset.tipoServicio === tipo;
+        boton.classList.toggle('btn-primary', seleccionado);
+        boton.classList.toggle('btn-secondary', !seleccionado);
+        boton.setAttribute('aria-pressed', String(seleccionado));
+    });
+
+    const definicion = TIPOS_SERVICIO_ORDEN[tipo];
+    document.getElementById('ordenTipoServicioMensaje').style.display = 'none';
+    document.getElementById('ordenChecklistProblema').style.display = 'block';
+    document.getElementById('ordenChecklistProblemaTitulo').textContent = `Checklist de ${definicion.nombre}`;
+
+    const valoresOtro = seleccionados.filter(item => item.startsWith('Otro: '));
+    const otrosMarcados = seleccionados.includes('Otro, especificar') || valoresOtro.length > 0;
+    const textoOtro = otroDetalle || valoresOtro[0]?.slice('Otro: '.length) || '';
+    const contenedor = document.getElementById('ordenChecklistProblemaItems');
+    contenedor.innerHTML = definicion.items.map((item, indice) => {
+        const esOtro = item === 'Otro, especificar';
+        const marcado = esOtro
+            ? otrosMarcados
+            : seleccionados.includes(item);
+        const id = `problemaChecklist-${tipo}-${indice}`;
+        return `<div>
+            <label for="${id}" style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+                <input id="${id}" type="checkbox" class="orden-problema-checklist" value="${escaparHtml(item)}" ${esOtro ? 'data-otro="true"' : ''} ${marcado ? 'checked' : ''} style="width: auto; margin-top: 3px;">
+                <span>${escaparHtml(item)}</span>
+            </label>
+            ${esOtro ? `<input id="ordenProblemaOtro" type="text" value="${escaparHtml(textoOtro)}" placeholder="Especifica el problema" aria-label="Especifica otro problema" style="display: ${marcado ? 'block' : 'none'}; width: 100%; margin: 8px 0 0 24px; max-width: calc(100% - 24px); box-sizing: border-box;">` : ''}
+        </div>`;
+    }).join('');
+
+    const casillaOtro = contenedor.querySelector('[data-otro="true"]');
+    if (casillaOtro) {
+        casillaOtro.addEventListener('change', () => {
+            const campoOtro = document.getElementById('ordenProblemaOtro');
+            campoOtro.style.display = casillaOtro.checked ? 'block' : 'none';
+            if (!casillaOtro.checked) campoOtro.value = '';
+        });
+    }
+}
+
+function limpiarTipoServicio() {
+    tipoServicioOrdenActual = null;
+    document.querySelectorAll('[data-tipo-servicio]').forEach(boton => {
+        boton.classList.remove('btn-primary');
+        boton.classList.add('btn-secondary');
+        boton.setAttribute('aria-pressed', 'false');
+    });
+    document.getElementById('ordenChecklistProblema').style.display = 'none';
+    document.getElementById('ordenChecklistProblemaItems').replaceChildren();
+    document.getElementById('ordenTipoServicioMensaje').style.display = 'none';
+}
+
+function obtenerProblemasChecklist() {
+    const seleccionados = [];
+    for (const casilla of document.querySelectorAll('.orden-problema-checklist:checked')) {
+        if (casilla.dataset.otro === 'true') {
+            const textoOtro = document.getElementById('ordenProblemaOtro').value.trim();
+            if (!textoOtro) {
+                return { seleccionados: [], error: 'Especifica el otro problema seleccionado.' };
+            }
+            seleccionados.push(`Otro: ${textoOtro}`);
+        } else {
+            seleccionados.push(casilla.value);
+        }
+    }
+    return { seleccionados, error: null };
+}
 
 function toggleGarantia() {
     const radioConGarantia = document.querySelector('input[name="tipoGarantia"][value="con"]');
@@ -1690,6 +1820,7 @@ async function crearOrdenClienteFinal() {
 function mostrarFormOrden() {
     document.getElementById('formOrden').style.display = 'block';
     document.getElementById('ordenForm').reset();
+    limpiarTipoServicio();
     document.getElementById('ordenId').value = '';
     
     // Limpiar el input de búsqueda de cliente si existe
@@ -1927,6 +2058,7 @@ function actualizarRepuestosSeleccionados() {
 function cancelarFormOrden() {
     document.getElementById('formOrden').style.display = 'none';
     document.getElementById('ordenForm').reset();
+    limpiarTipoServicio();
 }
 
 function cargarClientesSelect() {
@@ -2029,6 +2161,43 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
     
     const ordenes = Storage.get('ordenes');
     const id = document.getElementById('ordenId').value;
+    const ordenAnterior = id ? ordenes.find(o => o.id === parseInt(id)) : null;
+    const tipoServicio = tipoServicioOrdenActual || ordenAnterior?.tipoServicio || '';
+    const mensajeTipoServicio = document.getElementById('ordenTipoServicioMensaje');
+    const detallesProblema = document.getElementById('ordenProblema').value.trim();
+
+    if (!tipoServicio && !ordenAnterior) {
+        mensajeTipoServicio.textContent = 'Selecciona Reparación, Software o Desbloqueo.';
+        mensajeTipoServicio.style.display = 'block';
+        document.getElementById('ordenTipoServicioSelector').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    if (!detallesProblema) {
+        document.getElementById('ordenProblema').setCustomValidity('Escribe los detalles adicionales del problema.');
+        document.getElementById('ordenProblema').reportValidity();
+        document.getElementById('ordenProblema').setCustomValidity('');
+        return;
+    }
+
+    let problemasChecklist = ordenAnterior?.problemasChecklist || [];
+    if (tipoServicioOrdenActual) {
+        const resultadoChecklist = obtenerProblemasChecklist();
+        if (resultadoChecklist.error) {
+            alert(resultadoChecklist.error);
+            document.getElementById('ordenProblemaOtro')?.focus();
+            return;
+        }
+        if (resultadoChecklist.seleccionados.length === 0) {
+            alert('Selecciona al menos un problema del checklist.');
+            document.getElementById('ordenChecklistProblema').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        problemasChecklist = resultadoChecklist.seleccionados;
+    }
+    const tipoServicioNombre = TIPOS_SERVICIO_ORDEN[tipoServicio]?.nombre || tipoServicio;
+    const problema = tipoServicioOrdenActual
+        ? `Tipo de servicio: ${tipoServicioNombre}\nProblemas seleccionados: ${problemasChecklist.join(', ')}\nDetalles adicionales: ${detallesProblema}`
+        : detallesProblema;
     
     const tieneGarantia = document.querySelector('input[name="tipoGarantia"]:checked').value === 'con';
     const anticipo = limpiarNumero(document.getElementById('ordenAnticipo').value);
@@ -2045,7 +2214,10 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
         marca: document.getElementById('ordenMarca').value,
         modelo: document.getElementById('ordenModelo').value,
         imei: document.getElementById('ordenIMEI').value,
-        problema: document.getElementById('ordenProblema').value,
+        problema,
+        problemaDetalle: detallesProblema,
+        tipoServicio,
+        problemasChecklist,
         accesorios: document.getElementById('ordenAccesorios').value,
         estado: document.getElementById('ordenEstado').value,
         presupuesto: limpiarNumero(document.getElementById('ordenPresupuesto').value),
@@ -2209,7 +2381,7 @@ function filtrarOrdenes() {
         // Generar HTML de inspección
         let inspeccionHtml = generarHtmlInspeccion(orden);
         
-        html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><div class="orden-info"><div class="info-item"><span class="info-label">Cliente:</span> ${clienteNombre}</div>${tiendaInfo}<div class="info-item"><span class="info-label">Dispositivo:</span> ${orden.marca} ${orden.modelo}</div><div class="info-item"><span class="info-label">Tipo:</span> ${orden.tipoDispositivo}</div><div class="info-item"><span class="info-label">Fecha Ingreso:</span> ${formatearFecha(orden.fechaIngreso)}</div>${orden.presupuesto ? `<div class="info-item"><span class="info-label">Presupuesto:</span> $${orden.presupuesto.toFixed(2)}</div><div class="info-item"><span class="info-label">Anticipo:</span> $${orden.anticipo.toFixed(2)}</div><div class="info-item"><span class="info-label">Saldo:</span> <strong>$${saldo.toFixed(2)}</strong></div>` : ''}${orden.tecnico ? `<div class="info-item"><span class="info-label">Técnico:</span> ${orden.tecnico}</div>` : ''}</div><p><strong>Problema:</strong> ${orden.problema}</p>${orden.notas ? `<p><strong>Notas:</strong> ${orden.notas}</p>` : ''}${repuestosHtml}${inspeccionHtml}${garantiaHtml}<div style="margin-top: 15px;"><button class="btn-success" onclick="editarOrden(${orden.id})">Editar</button><button class="btn-secondary" onclick="cambiarEstadoOrden(${orden.id})">Cambiar Estado</button>${orden.estado !== 'Entregado' && orden.estado !== 'Cancelado' ? `<button class="btn-primary" onclick="abrirModalArticulos(${orden.id})" style="background: #ff9800;">🔧 + Artículos</button>` : ''}<button class="btn-primary" onclick="imprimirRecibo(${orden.id})">📄 Imprimir</button><button class="btn-primary" onclick="enviarWhatsApp(${orden.id})" style="background: #25d366;">📱 WhatsApp</button>${saldo > 0 ? `<button class="btn-primary" onclick="registrarPago(${orden.id})">💰 Pagar</button>` : ''}<button class="btn-danger" onclick="eliminarOrden(${orden.id})">Eliminar</button></div></div>`;
+        html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><div class="orden-info"><div class="info-item"><span class="info-label">Cliente:</span> ${clienteNombre}</div>${tiendaInfo}<div class="info-item"><span class="info-label">Dispositivo:</span> ${orden.marca} ${orden.modelo}</div><div class="info-item"><span class="info-label">Tipo:</span> ${orden.tipoDispositivo}</div><div class="info-item"><span class="info-label">Fecha Ingreso:</span> ${formatearFecha(orden.fechaIngreso)}</div>${orden.presupuesto ? `<div class="info-item"><span class="info-label">Presupuesto:</span> $${orden.presupuesto.toFixed(2)}</div><div class="info-item"><span class="info-label">Anticipo:</span> $${orden.anticipo.toFixed(2)}</div><div class="info-item"><span class="info-label">Saldo:</span> <strong>$${saldo.toFixed(2)}</strong></div>` : ''}${orden.tecnico ? `<div class="info-item"><span class="info-label">Técnico:</span> ${orden.tecnico}</div>` : ''}</div><p><strong>Problema:</strong> ${escaparHtml(orden.problema).replace(/\n/g, '<br>')}</p>${orden.notas ? `<p><strong>Notas:</strong> ${orden.notas}</p>` : ''}${repuestosHtml}${inspeccionHtml}${garantiaHtml}<div style="margin-top: 15px;"><button class="btn-success" onclick="editarOrden(${orden.id})">Editar</button><button class="btn-secondary" onclick="cambiarEstadoOrden(${orden.id})">Cambiar Estado</button>${orden.estado !== 'Entregado' && orden.estado !== 'Cancelado' ? `<button class="btn-primary" onclick="abrirModalArticulos(${orden.id})" style="background: #ff9800;">🔧 + Artículos</button>` : ''}<button class="btn-primary" onclick="imprimirRecibo(${orden.id})">📄 Imprimir</button><button class="btn-primary" onclick="enviarWhatsApp(${orden.id})" style="background: #25d366;">📱 WhatsApp</button>${saldo > 0 ? `<button class="btn-primary" onclick="registrarPago(${orden.id})">💰 Pagar</button>` : ''}<button class="btn-danger" onclick="eliminarOrden(${orden.id})">Eliminar</button></div></div>`;
     });
     container.innerHTML = html;
 }
@@ -2240,7 +2412,11 @@ function editarOrden(id) {
     document.getElementById('ordenMarca').value = orden.marca;
     document.getElementById('ordenModelo').value = orden.modelo;
     document.getElementById('ordenIMEI').value = orden.imei;
-    document.getElementById('ordenProblema').value = orden.problema;
+    document.getElementById('ordenProblema').value = orden.problemaDetalle ?? orden.problema;
+    limpiarTipoServicio();
+    if (TIPOS_SERVICIO_ORDEN[orden.tipoServicio]) {
+        seleccionarTipoServicio(orden.tipoServicio, orden.problemasChecklist || []);
+    }
     document.getElementById('ordenAccesorios').value = orden.accesorios;
     document.getElementById('ordenEstado').value = orden.estado;
     document.getElementById('ordenPresupuesto').value = orden.presupuesto;
@@ -3654,7 +3830,7 @@ async function imprimirFacturaCompleta() {
         
         <div style="margin: 8px 0; padding: 5px 0; border-bottom: 1px dashed #666;">
             <div style="font-weight: bold; margin-bottom: 3px;">PROBLEMA REPORTADO</div>
-            <div style="line-height: 1.4;">${orden.problema}</div>
+            <div style="line-height: 1.4;">${escaparHtml(orden.problema).replace(/\n/g, '<br>')}</div>
         </div>
         
         ${orden.inspeccion && orden.inspeccion.seccion && orden.inspeccion.items && orden.inspeccion.items.length > 0 ? `
@@ -3811,7 +3987,7 @@ function imprimirTicketPequeno(orden, cliente, nombreTaller) {
             
             <div style="padding: 3mm 0;">
                 <strong>PROBLEMA:</strong><br>
-                ${orden.problema}
+                ${escaparHtml(orden.problema).replace(/\n/g, '<br>')}
             </div>
         </div>
     </div>`;
@@ -3928,7 +4104,7 @@ function mostrarResultados(resultados) {
             const tienda = orden.tiendaId ? tiendas.find(t => t.id === orden.tiendaId) : null;
             // Si tiene tienda asignada, mostrar el nombre de la tienda; si no, mostrar el cliente
             const clienteNombre = tienda ? tienda.nombre : (cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cliente no encontrado');
-            html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><p><strong>Cliente:</strong> ${clienteNombre}</p><p><strong>Dispositivo:</strong> ${orden.marca} ${orden.modelo}</p><p><strong>Problema:</strong> ${orden.problema}</p><button class="btn-success" onclick="editarOrden(${orden.id})">Editar</button><button class="btn-primary" onclick="imprimirRecibo(${orden.id})">Imprimir</button></div>`;
+            html += `<div class="orden-card"><div class="orden-header"><span class="orden-numero">Orden #${orden.numero}</span><span class="badge badge-${getEstadoClass(orden.estado)}">${orden.estado}</span></div><p><strong>Cliente:</strong> ${clienteNombre}</p><p><strong>Dispositivo:</strong> ${orden.marca} ${orden.modelo}</p><p><strong>Problema:</strong> ${escaparHtml(orden.problema).replace(/\n/g, '<br>')}</p><button class="btn-success" onclick="editarOrden(${orden.id})">Editar</button><button class="btn-primary" onclick="imprimirRecibo(${orden.id})">Imprimir</button></div>`;
         });
     }
     if (resultados.clientes.length === 0 && resultados.ordenes.length === 0) {
@@ -3951,6 +4127,7 @@ window.mostrarFormCliente = mostrarFormCliente;
 window.cancelarFormCliente = cancelarFormCliente;
 window.mostrarFormOrden = mostrarFormOrden;
 window.cancelarFormOrden = cancelarFormOrden;
+window.seleccionarTipoServicio = seleccionarTipoServicio;
 window.mostrarFormClienteRapido = mostrarFormClienteRapido;
 window.cancelarClienteRapido = cancelarClienteRapido;
 window.guardarClienteRapido = guardarClienteRapido;
@@ -6443,7 +6620,18 @@ function analizarReparaciones(ordenes) {
                 }
             });
         }
-        // Prioridad 2: Si no hay artículos, analizar el problema reportado
+        // Prioridad 2: Contar cada problema seleccionado en el checklist
+        else if (Array.isArray(orden.problemasChecklist) && orden.problemasChecklist.length > 0) {
+            conteoProblema++;
+            orden.problemasChecklist.forEach(problemaChecklist => {
+                const tipo = categorizarReparacion(problemaChecklist);
+                const tipoNormalizado = normalizarTipo(tipo);
+                if (tipoNormalizado.trim().length > 0) {
+                    reparaciones[tipoNormalizado] = (reparaciones[tipoNormalizado] || 0) + 1;
+                }
+            });
+        }
+        // Prioridad 3: Para órdenes antiguas, analizar el texto libre reportado
         else if (orden.problema && orden.problema.trim().length > 0) {
             conteoProblema++;
             const tipo = categorizarReparacion(orden.problema);

@@ -338,7 +338,7 @@
                 <div class="input-group">
                     <label for="regUsuario">Usuario</label>
                     <input type="text" id="regUsuario" placeholder="usuario" required autocomplete="off">
-                    <small style="color: #666; display: block; margin-top: 5px;">Mínimo 4 caracteres</small>
+                    <small style="color: #666; display: block; margin-top: 5px;">De 4 a 64 caracteres; no uses /</small>
                 </div>
                 <div class="input-group">
                     <label for="regPassword">Contraseña</label>
@@ -391,7 +391,7 @@
                     <a href="javascript:void(0)"><i class="fas fa-boxes"></i> <span>Inventario</span></a>
                 </div>
                 <div class="menu-item" onclick="mostrarSeccion('reportes', event)">
-                    <a href="javascript:void(0)"><i class="fas fa-file-chart-bar"></i> <span>Reportes</span></a>
+                    <a href="javascript:void(0)"><i class="fas fa-file-lines"></i> <span>Reportes</span></a>
                 </div>
                 <div class="menu-item" onclick="mostrarSeccion('gastos', event)">
                     <a href="javascript:void(0)"><i class="fas fa-money-bill-wave"></i> <span>Gastos</span></a>
@@ -1176,8 +1176,8 @@
             </section>
 
             <section id="estadisticas" class="section">
-                <h2>📊 Estadísticas de Marcas y Reparaciones</h2>
-                <p style="color: #666; margin-bottom: 25px;">Análisis detallado de las marcas más reparadas y tipos de reparaciones más frecuentes en tu taller.</p>
+                <h2>📊 Estadísticas de Reparaciones</h2>
+                <p style="color: #666; margin-bottom: 25px;">Análisis de las marcas, modelos de equipos, tipos de reparaciones y clientes más frecuentes en tu taller.</p>
                 
                 <!-- Filtro de período -->
                 <div class="form-container" style="margin-bottom: 30px;">
@@ -1185,6 +1185,7 @@
                         <div class="form-group" style="flex: 1;">
                             <label style="font-weight: bold;">📅 Período de Análisis</label>
                             <select id="filtroPerioedoStats" style="width: 100%; padding: 12px; font-size: 14px;" onchange="actualizarEstadisticas()">
+                                <option value="semana">Esta Semana</option>
                                 <option value="mes">Este Mes</option>
                                 <option value="3meses">Últimos 3 Meses</option>
                                 <option value="6meses">Últimos 6 Meses</option>
@@ -1216,7 +1217,7 @@
                 </div>
 
                 <!-- Gráficas -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; margin-bottom: 30px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 30px; margin-bottom: 30px;">
                     <!-- Gráfica de Marcas -->
                     <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                         <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">🏷️ Marcas Más Reparadas (%)</h3>
@@ -1227,6 +1228,12 @@
                     <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                         <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">🔧 Tipos de Reparación (%)</h3>
                         <canvas id="chartReparaciones" style="max-height: 300px;"></canvas>
+                    </div>
+
+                    <!-- Gráfica de modelos -->
+                    <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">📱 Modelos Más Reparados</h3>
+                        <canvas id="chartModelos" style="max-height: 300px;"></canvas>
                     </div>
                 </div>
 
@@ -1263,6 +1270,44 @@
                                 </tr>
                             </thead>
                             <tbody id="tablaDetalleReparaciones">
+                                <tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">Cargando datos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-top: 30px;">
+                    <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">📱 Detalle de Modelos Reparados</h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Modelo</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Cantidad</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Porcentaje</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Visualización</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaDetalleModelos">
+                                <tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">Cargando datos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-top: 30px;">
+                    <h3 style="margin-top: 0; margin-bottom: 20px; color: #2c3e50;">👥 Clientes con Más Reparaciones</h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Cliente</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Órdenes</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Porcentaje</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Visualización</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaDetalleClientesStats">
                                 <tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">Cargando datos...</td></tr>
                             </tbody>
                         </table>
@@ -1456,9 +1501,6 @@
             sidebar.classList.toggle('collapsed');
             appContainer.classList.toggle('sidebar-collapsed');
             
-            // Guardar estado en localStorage
-            const isCollapsed = sidebar.classList.contains('collapsed');
-            localStorage.setItem('sidebarCollapsed', isCollapsed);
         }
 
         // Toggle Sidebar Mobile
@@ -1469,13 +1511,6 @@
 
         // Cerrar sidebar en móvil al hacer click en un item
         document.addEventListener('DOMContentLoaded', function() {
-            // Restaurar estado del sidebar desde localStorage
-            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-            if (isCollapsed) {
-                document.querySelector('.sidebar').classList.add('collapsed');
-                document.querySelector('.app-container').classList.add('sidebar-collapsed');
-            }
-
             // Cerrar sidebar móvil al hacer click en un menú
             const menuItems = document.querySelectorAll('.menu-item');
             menuItems.forEach(item => {
@@ -1491,7 +1526,7 @@
         // Actualizar nombre del usuario en el sidebar (cuando se inicia sesión)
         function actualizarNombreUsuarioSidebar() {
             const userNameElement = document.getElementById('sidebarUserName');
-            const usuarioGuardado = localStorage.getItem('usuarioActual') || 'Admin';
+            const usuarioGuardado = window.usuarioSesionActiva || 'Usuario';
             if (userNameElement) {
                 userNameElement.textContent = usuarioGuardado;
             }

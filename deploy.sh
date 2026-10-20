@@ -1,6 +1,5 @@
 #!/bin/bash
-# Script de deploy rápido
+set -euo pipefail
 
-echo "🚀 Iniciando deploy a Netlify..."
-git push origin main && netlify deploy --prod
-echo "✅ Deploy completado!"
+echo "🚀 Construyendo y desplegando a Netlify..."
+netlify deploy --build --prod

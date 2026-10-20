@@ -1,6 +1,11 @@
 #!/bin/bash
 # Script de build para generar variables de entorno para el frontend
 
+if [ -z "${FIREBASE_SERVICE_ACCOUNT:-}" ]; then
+  echo "❌ Falta configurar FIREBASE_SERVICE_ACCOUNT en el entorno de build." >&2
+  exit 1
+fi
+
 echo "🚀 Generando variables de entorno para el frontend..."
 
 # Crear el archivo env.js con las variables de entorno
@@ -13,12 +18,8 @@ window.ENV = {
   FIREBASE_STORAGE_BUCKET: '${FIREBASE_STORAGE_BUCKET}',
   FIREBASE_MESSAGING_SENDER_ID: '${FIREBASE_MESSAGING_SENDER_ID}',
   FIREBASE_APP_ID: '${FIREBASE_APP_ID}',
-  FIREBASE_MEASUREMENT_ID: '${FIREBASE_MEASUREMENT_ID}',
-  LICENSE_ADMIN_USER: '${LICENSE_ADMIN_USER}',
-  LICENSE_ADMIN_PASSWORD: '${LICENSE_ADMIN_PASSWORD}'
+  FIREBASE_MEASUREMENT_ID: '${FIREBASE_MEASUREMENT_ID}'
 };
 EOF
 
 echo "✅ Archivo env.js generado exitosamente"
-echo "📄 Contenido:"
-cat env.js

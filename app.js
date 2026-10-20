@@ -1,68 +1,169 @@
 // === SISTEMA DE AUTENTICACIÓN ===
+let usuarioActualFirebase = null;
+let nombreTallerActual = null;
+let licenciaActivaEnMemoria = null;
+let licenciaTemporalEnMemoria = null;
+let categoriasEnMemoria = [];
+let unsubscribeTiendas = null;
+
+async function obtenerEmailAuth(usuario) {
+    const nombreNormalizado = usuario.trim();
+    const bytes = new TextEncoder().encode(nombreNormalizado);
+    const hash = await crypto.subtle.digest('SHA-256', bytes);
+    const hashHex = Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+    return `u.${hashHex}@auth.tu-taller.invalid`;
+}
+
+function usuarioValido(usuario) {
+    return typeof usuario === 'string'
+        && usuario.trim().length >= 4
+        && usuario.trim().length <= 64
+        && !/[\/\u0000-\u001f\u007f]/.test(usuario);
+}
+
+async function llamarFuncionSegura(ruta, opciones = {}) {
+    const respuesta = await fetch(ruta, {
+        ...opciones,
+        headers: {
+            'content-type': 'application/json',
+            ...(opciones.headers || {})
+        },
+        cache: 'no-store'
+    });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) {
+        throw new Error(resultado.error || 'No se pudo completar la operación.');
+    }
+    return resultado;
+}
+
+async function verificarCuentaFirebase(usuarioAutenticado) {
+    const token = await usuarioAutenticado.getIdToken();
+    await llamarFuncionSegura('/api/ensure-account', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+        body: JSON.stringify({})
+    });
+}
+
+async function obtenerUsuarioAutenticado() {
+    if (auth.currentUser) return auth.currentUser;
+    return new Promise((resolve, reject) => {
+        const unsubscribe = auth.onAuthStateChanged(
+            usuario => {
+                unsubscribe();
+                resolve(usuario);
+            },
+            error => {
+                unsubscribe();
+                reject(error);
+            }
+        );
+    });
+}
+
 async function verificarSesion() {
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion === 'true') {
+    try {
+        const usuarioAutenticado = await obtenerUsuarioAutenticado();
+        if (!usuarioAutenticado) {
+            Storage.clear();
+            usuarioActualFirebase = null;
+            nombreTallerActual = null;
+            licenciaActivaEnMemoria = null;
+            licenciaTemporalEnMemoria = null;
+            window.usuarioSesionActiva = null;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            return;
+        }
+
+        const token = await usuarioAutenticado.getIdTokenResult();
+        const username = token.claims.username;
+        if (typeof username !== 'string' || !username) {
+            await auth.signOut();
+            usuarioActualFirebase = null;
+            nombreTallerActual = null;
+            licenciaActivaEnMemoria = null;
+            licenciaTemporalEnMemoria = null;
+            window.usuarioSesionActiva = null;
+            Storage.clear();
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            return;
+        }
+
+        usuarioActualFirebase = username;
+        nombreTallerActual = token.claims.nombreTaller || 'Taller de Reparaciones';
+        window.usuarioSesionActiva = username;
+        window.actualizarNombreUsuarioSidebar?.();
+        await verificarCuentaFirebase(usuarioAutenticado);
+
         // Verificar licencia si está activada
         if (!(await verificarLicenciaActiva())) {
             return;
         }
+        if (!(await cargarDatosUsuario(username))) {
+            await auth.signOut();
+            Storage.clear();
+            usuarioActualFirebase = null;
+            nombreTallerActual = null;
+            window.usuarioSesionActiva = null;
+            return;
+        }
+        inicializarSincronizacionTiendas();
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
-    } else {
+        actualizarDashboard();
+    } catch (error) {
+        console.error('Error al verificar la sesión:', error.code || error.message);
+        mostrarNotificacion('No se pudo validar la sesión. Intenta iniciar sesión de nuevo.', 'error');
+        if (auth.currentUser) {
+            try {
+                await auth.signOut();
+            } catch (signOutError) {
+                console.error('No se pudo limpiar la sesión inválida:', signOutError.code || signOutError.message);
+            }
+        }
+        Storage.clear();
+        usuarioActualFirebase = null;
+        nombreTallerActual = null;
+        window.usuarioSesionActiva = null;
         document.getElementById('loginScreen').style.display = 'flex';
         document.getElementById('mainApp').style.display = 'none';
     }
 }
 
 async function verificarLicenciaActiva() {
-    const licenciaActiva = localStorage.getItem('licenciaActiva');
-    if (!licenciaActiva) return true; // Si no hay licencia configurada, permitir acceso normal
-    
-    const licencia = JSON.parse(licenciaActiva);
-    
-    // IMPORTANTE: Sincronizar con Firebase para validar cambios recientes
     try {
-        if (licencia.licenseKey) {
-            const snapshot = await db.collection('licencias')
-                .where('licenseKey', '==', licencia.licenseKey)
-                .limit(1)
-                .get();
-            
-            if (!snapshot.empty) {
-                const licenciaActualizada = snapshot.docs[0].data();
-                // Actualizar el localStorage con los datos más recientes
-                localStorage.setItem('licenciaActiva', JSON.stringify(licenciaActualizada));
-                console.log('🔄 Licencia sincronizada desde Firebase');
-                
-                // Usar la versión actualizada para las validaciones
-                Object.assign(licencia, licenciaActualizada);
-            }
+        const usuario = await obtenerUsuarioAutenticado();
+        if (!usuario) return false;
+        const token = await usuario.getIdToken();
+        const { license } = await llamarFuncionSegura('/api/account-license', {
+            headers: { authorization: `Bearer ${token}` }
+        });
+
+        if (!license) {
+            licenciaActivaEnMemoria = null;
+            return true;
         }
-    } catch (error) {
-        console.warn('⚠️ No se pudo sincronizar licencia con Firebase:', error.message);
-        // Continuar con la versión local si Firebase no está disponible
-    }
-    
-    // Verificar si la licencia está suspendida
-    if (licencia.suspendida === true) {
-        alert('⚠️ Tu licencia ha sido suspendida. Por favor, contacta al administrador para más información.');
-        cerrarSesion();
-        return false;
-    }
-    
-    // Verificar si la licencia ha expirado
-    if (licencia.fechaExpiracion) {
-        const ahora = new Date();
-        const expiracion = new Date(licencia.fechaExpiracion);
-        
-        if (ahora > expiracion) {
-            alert('❌ Tu licencia ha expirado. Por favor, renueva tu licencia para continuar usando el sistema.');
-            cerrarSesion();
+
+        licenciaActivaEnMemoria = license;
+        if (license.suspendida) {
+            alert('⚠️ Tu licencia ha sido suspendida. Contacta al administrador.');
+            await cerrarSesion(false);
             return false;
         }
+        if (license.fechaExpiracion && new Date() > new Date(license.fechaExpiracion)) {
+            alert('❌ Tu licencia ha expirado. Contacta al administrador.');
+            await cerrarSesion(false);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('Error al verificar la licencia:', error.message);
+        mostrarNotificacion('No se pudo validar la licencia. Verifica tu conexión e intenta de nuevo.', 'error');
+        return false;
     }
-    
-    return true;
 }
 
 // Función para formatear números: sin decimales y con separador de miles
@@ -251,87 +352,75 @@ window.testFirebaseConfig = testFirebaseConfig;
 
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('loginUsername').value;
+    const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
-    
-    console.log('🔐 Intentando iniciar sesión con usuario:', username);
-    
+
+    if (!usuarioValido(username) || password.length < 6) {
+        alert('❌ Usuario o contraseña incorrectos');
+        return;
+    }
+
     try {
-        // Buscar usuario en Firebase Firestore
-        console.log('📡 Consultando Firebase...');
-        const snapshot = await db.collection('usuarios')
-            .where('usuario', '==', username)
-            .get();
-        
-        console.log('📊 Resultados de Firebase:', snapshot.size, 'documentos encontrados');
-        
-        let usuarioEncontrado = null;
-        if (!snapshot.empty) {
-            const userData = snapshot.docs[0].data();
-            console.log('👤 Usuario encontrado:', userData.usuario);
-            // Verificar contraseña
-            if (userData.password === password) {
-                usuarioEncontrado = userData;
-                console.log('✅ Contraseña correcta');
-            } else {
-                console.log('❌ Contraseña incorrecta');
+        const emailAuth = await obtenerEmailAuth(username);
+        let usuarioAutenticado;
+        try {
+            usuarioAutenticado = (await auth.signInWithEmailAndPassword(emailAuth, password)).user;
+        } catch (errorAuth) {
+            if (!['auth/user-not-found', 'auth/invalid-credential'].includes(errorAuth.code)) {
+                throw errorAuth;
             }
-        } else {
-            console.log('⚠️ No se encontró usuario en Firebase');
+
+            const { customToken } = await llamarFuncionSegura('/api/migrate-account', {
+                method: 'POST',
+                body: JSON.stringify({ username, password })
+            });
+            usuarioAutenticado = (await auth.signInWithCustomToken(customToken)).user;
         }
-        
-        // También permitir credenciales admin por defecto
-        const esAdmin = (username === 'admin' && password === 'admin123');
-        if (esAdmin) {
-            console.log('🔑 Login como admin por defecto');
+
+        const token = await usuarioAutenticado.getIdTokenResult();
+        const usernameAuth = token.claims.username;
+        if (typeof usernameAuth !== 'string' || !usernameAuth) {
+            await auth.signOut();
+            throw new Error('La cuenta no tiene una identidad válida.');
         }
-        
-        if (usuarioEncontrado || esAdmin) {
-            const nombreTaller = usuarioEncontrado ? (usuarioEncontrado.nombreTaller || 'Taller de Reparaciones') : 'Taller de Reparaciones';
-            
-            console.log('🎉 Login exitoso! Taller:', nombreTaller);
-            
-            // IMPORTANTE: Limpiar datos de cualquier usuario anterior
-            console.log('🧹 Limpiando datos de sesión anterior...');
-            Storage.clear();
-            localStorage.removeItem('licenciaActiva');
-            localStorage.removeItem('licenciaTemporal');
-            
-            localStorage.setItem('sesionActiva', 'true');
-            localStorage.setItem('usuario', username);
-            localStorage.setItem('nombreTaller', nombreTaller);
-            localStorage.setItem('usuarioActual', username); // Para identificar la configuración
-            localStorage.setItem('ultimoUsuarioLogin', username); // Backup para configuración
-            
-            // Cargar datos desde Firebase
-            console.log('📥 Cargando datos del usuario...');
-            const cargaExitosa = await cargarDatosUsuario(username);
-            
-            if (cargaExitosa) {
-                console.log('✅ Datos cargados correctamente');
-            } else {
-                console.warn('⚠️ Advertencia: No se pudieron cargar todos los datos');
-            }
-            
-            console.log('🚀 Mostrando aplicación principal');
-            
-            // Verificar licencia (ahora es async)
-            if (!(await verificarLicenciaActiva())) {
-                return;
-            }
-            
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
-            actualizarDashboard();
-        } else {
-            console.log('❌ Credenciales incorrectas');
-            alert('❌ Usuario o contraseña incorrectos');
-            document.getElementById('loginPassword').value = '';
-        }
+
+        Storage.clear();
+        licenciaActivaEnMemoria = null;
+        licenciaTemporalEnMemoria = null;
+        usuarioActualFirebase = usernameAuth;
+        nombreTallerActual = token.claims.nombreTaller || 'Taller de Reparaciones';
+        window.usuarioSesionActiva = usernameAuth;
+        window.actualizarNombreUsuarioSidebar?.();
+
+        await verificarCuentaFirebase(usuarioAutenticado);
+
+        if (!(await verificarLicenciaActiva())) return;
+        if (!(await cargarDatosUsuario(usernameAuth))) return;
+
+        inicializarSincronizacionTiendas();
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        actualizarDashboard();
     } catch (error) {
-        console.error('💥 Error al iniciar sesión:', error);
-        console.error('Stack:', error.stack);
-        alert(`❌ Error al verificar credenciales: ${error.message}\nRevisa la consola para más detalles.`);
+        console.error('Error al iniciar sesión:', error.code || error.message);
+        if (auth.currentUser) {
+            try {
+                await auth.signOut();
+            } catch (signOutError) {
+                console.error('No se pudo cerrar la sesión tras el error de inicio:', signOutError.code || signOutError.message);
+            }
+        }
+        Storage.clear();
+        usuarioActualFirebase = null;
+        nombreTallerActual = null;
+        window.usuarioSesionActiva = null;
+        licenciaActivaEnMemoria = null;
+        licenciaTemporalEnMemoria = null;
+        const mensaje = error.message === 'Usuario o contraseña incorrectos' || error.message.includes('intentos')
+            ? error.message
+            : 'Usuario o contraseña incorrectos';
+        alert(`❌ ${mensaje}`);
+        document.getElementById('loginPassword').value = '';
     }
 });
 
@@ -340,82 +429,27 @@ async function cargarDatosUsuario(usuario) {
     try {
         console.log('🔄 Cargando datos desde Firebase para:', usuario);
         
-        // Intentar cargar desde Firebase
-        let clientes = [];
-        let ordenes = [];
-        let repuestos = [];
-        
-        try {
-            clientes = await Storage.loadFromFirebase(usuario, 'clientes') || [];
-            ordenes = await Storage.loadFromFirebase(usuario, 'ordenes') || [];
-            repuestos = await Storage.loadFromFirebase(usuario, 'repuestos') || [];
-            
-            console.log(`✅ Datos cargados desde Firebase:`, {
-                clientes: clientes.length,
-                ordenes: ordenes.length,
-                repuestos: repuestos.length
-            });
-        } catch (firebaseError) {
-            console.warn('⚠️ Error al cargar desde Firebase, intentando con datos locales:', firebaseError.message);
-            
-            // Fallback: Usar datos locales si existen
-            clientes = Storage.get('clientes') || [];
-            ordenes = Storage.get('ordenes') || [];
-            repuestos = Storage.get('repuestos') || [];
-            
-            console.log(`📦 Usando datos locales como fallback:`, {
-                clientes: clientes.length,
-                ordenes: ordenes.length,
-                repuestos: repuestos.length
-            });
+        const datos = await Promise.all([
+            Storage.loadFromFirebase(usuario, 'clientes'),
+            Storage.loadFromFirebase(usuario, 'ordenes'),
+            Storage.loadFromFirebase(usuario, 'repuestos'),
+            Storage.loadFromFirebase(usuario, 'tiendas')
+        ]);
+        const [clientes, ordenes, repuestos] = datos;
+        categoriasEnMemoria = await cargarCategoriasFirebase(usuario);
+
+        const usuarioAutenticado = await obtenerUsuarioAutenticado();
+        if (!usuarioAutenticado) {
+            throw new Error('La sesión de Firebase expiró.');
         }
-        
-        // Siempre actualizar localStorage con los datos cargados
-        Storage.set('clientes', clientes);
-        Storage.set('ordenes', ordenes);
-        Storage.set('repuestos', repuestos);
-        
-        console.log(`💾 Datos guardados en localStorage para sesión actual`);
-        
-        // Buscar y cargar la licencia asociada al usuario
-        try {
-            console.log('🔍 Buscando licencia asociada al usuario:', usuario);
-            let licenciasSnapshot = await db.collection('licencias')
-                .where('usuarioAsociado', '==', usuario)
-                .limit(1)
-                .get();
-
-            // Fallback: si no está asociada por usuarioAsociado, intentar por licenseKey del usuario
-            if (licenciasSnapshot.empty) {
-                const usuarioSnapshot = await db.collection('usuarios')
-                    .where('usuario', '==', usuario)
-                    .limit(1)
-                    .get();
-
-                if (!usuarioSnapshot.empty) {
-                    const userData = usuarioSnapshot.docs[0].data();
-                    if (userData.licenseKey) {
-                        licenciasSnapshot = await db.collection('licencias')
-                            .where('licenseKey', '==', userData.licenseKey)
-                            .limit(1)
-                            .get();
-                    }
-                }
-            }
-            
-            if (!licenciasSnapshot.empty) {
-                const licencia = licenciasSnapshot.docs[0].data();
-                localStorage.setItem('licenciaActiva', JSON.stringify(licencia));
-                console.log('✅ Licencia cargada desde Firebase:', licencia.licenseKey);
-            } else {
-                console.log('⚠️ No se encontró licencia asignada en Firebase para este usuario');
-                // Muy importante: limpiar licencia previa para no heredar licencia de otro usuario
-                localStorage.removeItem('licenciaActiva');
-            }
-        } catch (licenciaError) {
-            console.warn('⚠️ Error al cargar licencia:', licenciaError.message);
-            localStorage.removeItem('licenciaActiva');
-            // Continuar sin error - la licencia puede no estar configurada
+        const token = await usuarioAutenticado.getIdToken();
+        const { license } = await llamarFuncionSegura('/api/account-license', {
+            headers: { authorization: `Bearer ${token}` }
+        });
+        if (license) {
+            licenciaActivaEnMemoria = license;
+        } else {
+            licenciaActivaEnMemoria = null;
         }
         
         // Mostrar notificación al usuario
@@ -435,28 +469,22 @@ async function cargarDatosUsuario(usuario) {
         
         return true;
     } catch (error) {
-        console.error('💥 Error crítico al cargar datos del usuario:', error);
-        console.error('Stack:', error.stack);
-        
-        // Último recurso: cargar del localStorage
-        try {
-            const clientesLocal = Storage.get('clientes') || [];
-            const ordenesLocal = Storage.get('ordenes') || [];
-            const repuestosLocal = Storage.get('repuestos') || [];
-            
-            console.log('📦 Usando datos del localStorage como último recurso');
-            
-            mostrarNotificacion(
-                `⚠️ Usando datos locales. Verifica tu conexión a internet.`, 
-                'warning'
-            );
-            return true;
-        } catch (fallbackError) {
-            console.error('❌ Error crítico: no hay datos disponibles', fallbackError);
-            mostrarNotificacion('❌ No se pudieron cargar tus datos. Por favor intenta de nuevo.', 'error');
-            return false;
-        }
+        console.error('💥 Error al cargar datos de Firebase:', error.code || error.message);
+        mostrarNotificacion('No se pudieron cargar los datos de Firebase. Verifica tu conexión e intenta de nuevo.', 'error');
+        Storage.clear();
+        usuarioActualFirebase = null;
+        nombreTallerActual = null;
+        window.usuarioSesionActiva = null;
+        licenciaActivaEnMemoria = null;
+        licenciaTemporalEnMemoria = null;
+        return false;
     }
+}
+
+async function cargarCategoriasFirebase(usuario) {
+    const snapshot = await db.collection('configuraciones').doc(usuario).get();
+    const categorias = snapshot.exists ? snapshot.data().categorias : null;
+    return Array.isArray(categorias) ? categorias : [];
 }
 
 // === SISTEMA DE LICENCIAS ===
@@ -491,120 +519,20 @@ async function activarLicencia(event) {
         return;
     }
     
-    // Buscar licencia en Firebase
     try {
-        const snapshot = await db.collection('licencias')
-            .where('licenseKey', '==', claveIngresada)
-            .get();
-        
-        let licenciaEncontrada = null;
-        
-        if (!snapshot.empty) {
-            licenciaEncontrada = snapshot.docs[0].data();
-        }
-        
-        // Si no se encuentra en Firebase, crear licencia básica desde el código
-        if (!licenciaEncontrada) {
-        // Extraer tipo de licencia del código (segunda parte)
-        const partes = claveIngresada.split('-');
-        const codigoTipo = partes[1];
-        
-        // Determinar tipo de licencia basado en el código
-        let licenseType = 'mensual';
-        let dias = 30;
-        
-        if (codigoTipo.startsWith('PRU')) {
-            licenseType = 'prueba';
-            dias = 3;
-        } else if (codigoTipo.startsWith('MEN')) {
-            licenseType = 'mensual';
-            dias = 30;
-        } else if (codigoTipo.startsWith('TRI')) {
-            licenseType = 'trimestral';
-            dias = 90;
-        } else if (codigoTipo.startsWith('SEM')) {
-            licenseType = 'semestral';
-            dias = 180;
-        } else if (codigoTipo.startsWith('ANU')) {
-            licenseType = 'anual';
-            dias = 365;
-        } else if (codigoTipo.startsWith('VIT')) {
-            licenseType = 'vitalicia';
-            dias = 0;
-        }
-        
-        // Crear licencia temporal
-        const ahora = new Date();
-        let fechaExpiracion = null;
-        if (dias > 0) {
-            fechaExpiracion = new Date();
-            fechaExpiracion.setDate(ahora.getDate() + dias);
-        }
-        
-        licenciaEncontrada = {
-            licenseKey: claveIngresada,
-            clientName: 'Cliente',
-            clientEmail: '',
-            licenseType: licenseType,
-            maxDevices: 1,
-            fechaCreacion: ahora.toISOString(),
-            fechaExpiracion: fechaExpiracion ? fechaExpiracion.toISOString() : null,
-            activa: true
-            };
-        }
-        
-        // Verificar si la licencia ha expirado
-    if (licenciaEncontrada.fechaExpiracion) {
-        const ahora = new Date();
-        const expiracion = new Date(licenciaEncontrada.fechaExpiracion);
-        
-        if (ahora > expiracion) {
-            errorDiv.textContent = '❌ Esta licencia ha expirado. Por favor contacta al administrador.';
-            errorDiv.style.display = 'block';
-            return;
-        }
-    }
-    
-    // Verificar si está suspendida
-    if (licenciaEncontrada.suspendida === true) {
-        errorDiv.textContent = '⚠️ Esta licencia está suspendida. Contacta al administrador.';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    
-    // Verificar si ya existe un usuario registrado con esta licencia EN ESTE DISPOSITIVO
-    const usuariosRegistrados = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-    const usuarioExistente = usuariosRegistrados.find(u => u.licenseKey === claveIngresada);
-    
-    if (usuarioExistente) {
-        // Si ya existe usuario en este dispositivo, permitir login directo
-        successDiv.innerHTML = `
-            ✅ Esta licencia ya está activada en este dispositivo<br>
-            <strong>Usuario:</strong> ${usuarioExistente.usuario}<br>
-            Puedes iniciar sesión con tus credenciales
-        `;
-        successDiv.style.display = 'block';
-        
-        setTimeout(() => {
-            ocultarActivacionLicencia();
-        }, 3000);
-        return;
-    }
-    
-    // Activar la licencia y guardar temporalmente
-    localStorage.setItem('licenciaActiva', JSON.stringify(licenciaEncontrada));
-    localStorage.setItem('licenciaTemporal', JSON.stringify(licenciaEncontrada));
-    
-    // Mostrar modal de registro de usuario
-    document.getElementById('modalLicencia').style.display = 'none';
-    document.getElementById('modalRegistro').style.display = 'block';
-    
-        // Pre-llenar el nombre del taller
-        document.getElementById('regNombreTaller').value = licenciaEncontrada.clientName;
-        
+        const { license } = await llamarFuncionSegura('/api/validate-license', {
+            method: 'POST',
+            body: JSON.stringify({ licenseKey: claveIngresada })
+        });
+
+        licenciaActivaEnMemoria = license;
+        licenciaTemporalEnMemoria = license;
+        document.getElementById('modalLicencia').style.display = 'none';
+        document.getElementById('modalRegistro').style.display = 'block';
+        document.getElementById('regNombreTaller').value = license.clientName;
     } catch (error) {
-        console.error('Error al validar licencia:', error);
-        errorDiv.textContent = '❌ Error al validar la licencia. Por favor intenta de nuevo.';
+        console.error('Error al validar licencia:', error.message);
+        errorDiv.textContent = `❌ ${error.message}`;
         errorDiv.style.display = 'block';
     }
 }
@@ -621,8 +549,8 @@ async function registrarUsuario(event) {
     errorDiv.style.display = 'none';
     
     // Validaciones
-    if (usuario.length < 4) {
-        errorDiv.textContent = '❌ El usuario debe tener al menos 4 caracteres';
+    if (!usuarioValido(usuario)) {
+        errorDiv.textContent = '❌ El usuario debe tener entre 4 y 64 caracteres y no incluir /';
         errorDiv.style.display = 'block';
         return;
     }
@@ -639,8 +567,7 @@ async function registrarUsuario(event) {
         return;
     }
     
-    // Obtener licencia temporal
-    const licenciaTemporal = JSON.parse(localStorage.getItem('licenciaTemporal'));
+    const licenciaTemporal = licenciaTemporalEnMemoria;
     
     if (!licenciaTemporal) {
         errorDiv.textContent = '❌ Error: No se encontró la licencia. Por favor intenta de nuevo.';
@@ -649,81 +576,42 @@ async function registrarUsuario(event) {
     }
     
     try {
-        // Verificar si el usuario ya existe en Firebase
-        const snapshot = await db.collection('usuarios')
-            .where('usuario', '==', usuario)
-            .get();
-        
-        if (!snapshot.empty) {
-            errorDiv.textContent = '❌ Este nombre de usuario ya está en uso. Elige otro.';
-            errorDiv.style.display = 'block';
-            return;
-        }
-        
-        // Crear nuevo usuario vinculado a la licencia
-        const nuevoUsuario = {
-            id: Date.now(),
-            nombreTaller,
-            usuario,
-            password,
-            email: licenciaTemporal.clientEmail || '',
-            licenseKey: licenciaTemporal.licenseKey,
-            fechaRegistro: new Date().toISOString(),
-            fechaCreacion: new Date().toISOString(),
-            licencia: licenciaTemporal,
-            estado: 'activo'
-        };
-        
-        // Guardar en Firebase
-        await db.collection('usuarios').add(nuevoUsuario);
-        
-        // IMPORTANTE: Inicializar estructura de datos en Firebase para el nuevo usuario
-        console.log('🔧 Inicializando estructura de datos en Firebase para:', usuario);
-        const userDataRef = db.collection('usuarios-data').doc(usuario);
-        await userDataRef.set({
-            usuario: usuario,
-            nombreTaller: nombreTaller,
-            ultimaActualizacion: new Date().toISOString(),
-            version: '2.0',
-            fechaCreacion: new Date().toISOString()
+        const { customToken, license } = await llamarFuncionSegura('/api/register-account', {
+            method: 'POST',
+            body: JSON.stringify({
+                nombreTaller,
+                username: usuario,
+                password,
+                licenseKey: licenciaTemporal.licenseKey
+            })
         });
-        
-        // Crear subcollections vacías (esto asegura que la estructura esté lista)
-        await userDataRef.collection('clientes').doc('_init').set({ init: true });
-        await userDataRef.collection('ordenes').doc('_init').set({ init: true });
-        await userDataRef.collection('repuestos').doc('_init').set({ init: true });
-        
-        // Eliminar documentos de inicialización
-        await userDataRef.collection('clientes').doc('_init').delete();
-        await userDataRef.collection('ordenes').doc('_init').delete();
-        await userDataRef.collection('repuestos').doc('_init').delete();
-        
-        console.log('✅ Estructura de datos inicializada en Firebase');
-        
-        localStorage.removeItem('licenciaTemporal');
-        
-        // Iniciar sesión automáticamente
-        localStorage.setItem('sesionActiva', 'true');
-        localStorage.setItem('usuario', usuario);
-        localStorage.setItem('nombreTaller', nombreTaller);
-        
-        // Inicializar datos locales vacíos
-        Storage.set('clientes', []);
-        Storage.set('ordenes', []);
-        Storage.set('repuestos', []);
-        
-        console.log('✅ Datos locales inicializados');
-        
-        // Ocultar modal y mostrar app
+        const usuarioAutenticado = (await auth.signInWithCustomToken(customToken)).user;
+        const token = await usuarioAutenticado.getIdTokenResult();
+        const usernameAuth = token.claims.username;
+        if (typeof usernameAuth !== 'string' || !usernameAuth) {
+            await auth.signOut();
+            throw new Error('La cuenta creada no tiene una identidad válida.');
+        }
+
+        Storage.clear();
+        licenciaActivaEnMemoria = license;
+        licenciaTemporalEnMemoria = null;
+        usuarioActualFirebase = usernameAuth;
+        nombreTallerActual = token.claims.nombreTaller || nombreTaller;
+        window.usuarioSesionActiva = usernameAuth;
+        window.actualizarNombreUsuarioSidebar?.();
+        await verificarCuentaFirebase(usuarioAutenticado);
+        if (!(await cargarDatosUsuario(usernameAuth)) || !(await verificarLicenciaActiva())) return;
+
+        inicializarSincronizacionTiendas();
         document.getElementById('modalRegistro').style.display = 'none';
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
-        
         mostrarNotificacion(`✅ ¡Bienvenido ${nombreTaller}! Tu cuenta ha sido creada con sincronización automática en la nube`, 'success');
         actualizarDashboard();
     } catch (error) {
-        console.error('Error al registrar usuario:', error);
-        errorDiv.textContent = '❌ Error al crear la cuenta. Por favor intenta de nuevo.';
+        console.error('Error al registrar usuario:', error.message);
+        errorDiv.textContent = `❌ ${error.message || 'No se pudo crear la cuenta. Intenta de nuevo.'}`;
         errorDiv.style.display = 'block';
     }
 }
@@ -737,8 +625,6 @@ window.registrarUsuario = registrarUsuario;
 function mostrarInfoLicencia() {
     const contenedor = document.getElementById('infoLicenciaConfiguracion');
     const avisoRenovacion = document.getElementById('avisoRenovacionLicencia');
-    const licenciaActiva = localStorage.getItem('licenciaActiva');
-
     if (!contenedor || !avisoRenovacion) {
         console.warn('⚠️ Contenedores de licencia no encontrados en el DOM');
         return;
@@ -747,24 +633,14 @@ function mostrarInfoLicencia() {
     avisoRenovacion.style.display = 'none';
     avisoRenovacion.textContent = '';
 
-    if (!licenciaActiva) {
-        console.log('ℹ️ No hay licencia activa en localStorage');
+    if (!licenciaActivaEnMemoria) {
+        console.log('ℹ️ No hay licencia activa');
         contenedor.style.display = 'none';
         contenedor.innerHTML = '';
         return;
     }
 
-    console.log('✅ Licencia encontrada en localStorage');
-
-    let licencia;
-    try {
-        licencia = JSON.parse(licenciaActiva);
-    } catch (error) {
-        console.error('❌ No se pudo leer la licencia activa:', error);
-        contenedor.style.display = 'none';
-        contenedor.innerHTML = '';
-        return;
-    }
+    const licencia = licenciaActivaEnMemoria;
 
     // Validar que el tipo de suscripción sea válido
     // Si la licencia tiene fechaExpiracion null pero licenseType no es 'vitalicia', corregir
@@ -851,46 +727,39 @@ function mostrarInfoLicencia() {
     }
 }
 
-function cerrarSesion() {
-    if (confirm('¿Estás seguro de cerrar sesión?')) {
-        // Limpiar TODOS los datos para evitar mezcla entre usuarios
-        console.log('🧹 Limpiando datos de sesión...');
-        Storage.clear();
+async function cerrarSesion(confirmar = true) {
+    if (confirmar && !confirm('¿Estás seguro de cerrar sesión?')) return;
 
-        // Guardar tipo de login antes de limpiar
-        const tipoLogin = localStorage.getItem('tipoLogin');
-        
-        // Remover datos locales
-        localStorage.removeItem('sesionActiva');
-        localStorage.removeItem('usuario');
-        localStorage.removeItem('usuarioGoogle');
-        localStorage.removeItem('tipoLogin');
-        localStorage.removeItem('nombreTaller');
-        localStorage.removeItem('licenciaActiva');
-        localStorage.removeItem('licenciaTemporal');
-        
-        // Cerrar sesión de Google si es necesario
-        if (tipoLogin === 'google' && auth.currentUser) {
-            auth.signOut().then(() => {
-                console.log('✅ Sesión de Google cerrada');
-            }).catch((error) => {
-                console.error('Error al cerrar sesión de Google:', error);
-            });
-        }
-        
-        document.getElementById('loginScreen').style.display = 'flex';
-        document.getElementById('mainApp').style.display = 'none';
-        document.getElementById('loginForm').reset();
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
-        location.reload();
+    Storage.clear();
+    usuarioActualFirebase = null;
+    nombreTallerActual = null;
+    licenciaActivaEnMemoria = null;
+    licenciaTemporalEnMemoria = null;
+    categoriasEnMemoria = [];
+    configuracionTallerCache = null;
+    window.usuarioSesionActiva = null;
+    if (unsubscribeTiendas) {
+        unsubscribeTiendas();
+        unsubscribeTiendas = null;
     }
+
+    try {
+        await auth.signOut();
+    } catch (error) {
+        console.error('Error al cerrar la sesión de Firebase:', error.code || error.message);
+        mostrarNotificacion('No se pudo cerrar la sesión correctamente.', 'error');
+    }
+
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+    document.getElementById('loginForm').reset();
+    location.reload();
 }
 
 function exportarDatos() {
     try {
-        const usuario = localStorage.getItem('usuario');
-        const nombreTaller = localStorage.getItem('nombreTaller');
+        const usuario = usuarioActualFirebase;
+        const nombreTaller = nombreTallerActual;
         
         // Obtener todos los datos del usuario
         const clientes = Storage.get('clientes');
@@ -1003,7 +872,7 @@ function importarDatos() {
 // Función auxiliar para realizar la importación
 async function realizarImportacion(datosImportados, modo) {
     try {
-        const usuario = localStorage.getItem('usuario');
+        const usuario = usuarioActualFirebase;
         
         let clientesActuales = Storage.get('clientes');
         let ordenesActuales = Storage.get('ordenes');
@@ -1092,26 +961,14 @@ async function realizarImportacion(datosImportados, modo) {
             });
         }
         
-        // Guardar en localStorage
+        // Mantener los datos importados en memoria mientras se confirma la escritura en Firebase.
         Storage.set('clientes', clientesNuevos);
         Storage.set('ordenes', ordenesNuevos);
         Storage.set('repuestos', repuestosNuevos);
         
-        // SIEMPRE sincronizar con Firebase después de importar
-        const sesionActiva = localStorage.getItem('sesionActiva');
-        let firebaseSyncSuccess = false;
-        
-        if (sesionActiva === 'true') {
-            try {
-                console.log('📤 Subiendo datos importados a Firebase...');
-                await sincronizarConFirebase();
-                firebaseSyncSuccess = true;
-                console.log('✅ Datos importados y sincronizados con Firebase exitosamente');
-            } catch (error) {
-                console.error('⚠️ Error al sincronizar con Firebase:', error);
-                // Continuar aunque falle Firebase (datos ya están en localStorage)
-            }
-        }
+        if (!usuario || !auth.currentUser) throw new Error('Inicia sesión para importar datos a Firebase.');
+        console.log('📤 Subiendo datos importados a Firebase...');
+        await sincronizarConFirebase();
         
         // Recargar vistas
         if (typeof cargarClientes === 'function') cargarClientes();
@@ -1133,11 +990,7 @@ async function realizarImportacion(datosImportados, modo) {
               `Total órdenes: ${ordenesNuevos.length}\n` +
               `Total repuestos: ${repuestosNuevos.length}`;
         
-        const resultadoFirebase = firebaseSyncSuccess 
-            ? '\n\n🔥 FIREBASE: Datos subidos correctamente\n✅ Sincronizado en la nube'
-            : '\n\n⚠️ FIREBASE: No se pudo sincronizar\n(Los datos están guardados localmente)';
-        
-        alert(resultadoBase + resultadoFirebase);
+        alert(`${resultadoBase}\n\n🔥 Datos guardados en Firebase.`);
         
     } catch (error) {
         console.error('Error en realizarImportacion:', error);
@@ -1148,7 +1001,7 @@ async function realizarImportacion(datosImportados, modo) {
 // Función para sincronizar datos locales con Firebase
 async function sincronizarConFirebase() {
     try {
-        const usuario = localStorage.getItem('usuario');
+        const usuario = usuarioActualFirebase;
         if (!usuario) {
             throw new Error('No hay usuario autenticado');
         }
@@ -1280,122 +1133,97 @@ async function cargarDatosDemo() {
 
 // Sistema de almacenamiento con Firebase - Cada usuario tiene su propia base de datos
 class Storage {
+    static cache = new Map();
+
     static get(key) {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : [];
+        return this.cache.get(key) || [];
     }
+
     static set(key, data) {
-        localStorage.setItem(key, JSON.stringify(data));
+        this.cache.set(key, data);
     }
+
     static getNextId(key) {
         const items = this.get(key);
         return items.length > 0 ? Math.max(...items.map(item => item.id)) + 1 : 1;
     }
+
     static clear() {
-        localStorage.removeItem('clientes');
-        localStorage.removeItem('ordenes');
-        localStorage.removeItem('repuestos');
+        this.cache.clear();
+    }
+
+    static keys() {
+        return Array.from(this.cache.keys());
     }
     
-    // Métodos para Firebase - Estructura: usuarios/{usuario}/{coleccion}
+    // Firestore is authoritative; this map only holds the active session's in-memory view.
     static async syncToFirebase(usuario, key, data) {
-        try {
-            if (!usuario) {
-                console.warn(`No hay usuario para sincronizar ${key}`);
-                return false;
-            }
-            
-            console.log(`🔄 Sincronizando ${data.length} items de ${key} para usuario: ${usuario}`);
-            
-            // Usar subcollection dentro del documento del usuario
-            const userRef = db.collection('usuarios-data').doc(usuario);
-            const collectionRef = userRef.collection(key);
-            
-            // Crear documento del usuario si no existe
-            await userRef.set({ 
-                ultimaActualizacion: new Date().toISOString(),
-                usuario: usuario 
-            }, { merge: true });
-            
-            // Obtener documentos actuales en Firebase
-            const snapshot = await collectionRef.get();
-            const existingIds = new Set();
-            snapshot.docs.forEach(doc => {
-                existingIds.add(doc.id);
-            });
-            
-            // Guardar/actualizar cada item usando su ID como documento ID
-            const savePromises = data.map(item => {
-                const docId = String(item.id); // Usar el ID del item como ID del documento
-                existingIds.delete(docId); // Marcar como procesado
-                return collectionRef.doc(docId).set(item);
-            });
-            await Promise.all(savePromises);
-            
-            // Eliminar documentos que ya no existen en los datos locales
-            const deletePromises = Array.from(existingIds).map(docId => 
-                collectionRef.doc(docId).delete()
-            );
-            await Promise.all(deletePromises);
-            
-            console.log(`✅ ${key} sincronizado correctamente para usuario: ${usuario}`);
-            return true;
-        } catch (error) {
-            console.error(`❌ Error al sincronizar ${key}:`, error);
-            console.error('Stack:', error.stack);
-            return false;
+        if (!usuario || !auth.currentUser) {
+            throw new Error('Se requiere una sesión autenticada de Firebase para guardar datos.');
         }
+
+        const userRef = db.collection('usuarios-data').doc(usuario);
+        const collectionRef = userRef.collection(key);
+        const snapshot = await collectionRef.get();
+        const existingIds = new Set(snapshot.docs.map(doc => doc.id));
+        const operations = [];
+        data.forEach(item => {
+            const docId = String(item.id);
+            existingIds.delete(docId);
+            operations.push(batch => batch.set(collectionRef.doc(docId), item));
+        });
+        existingIds.forEach(docId => operations.push(batch => batch.delete(collectionRef.doc(docId))));
+        operations.push(batch => batch.set(userRef, {
+            ultimaActualizacion: new Date().toISOString(),
+            usuario
+        }, { merge: true }));
+
+        for (let index = 0; index < operations.length; index += 450) {
+            const batch = db.batch();
+            operations.slice(index, index + 450).forEach(operation => operation(batch));
+            await batch.commit();
+        }
+        this.set(key, data);
+        console.log(`✅ ${key} guardado en Firebase`);
+        return true;
     }
     
     static async loadFromFirebase(usuario, key) {
-        try {
-            if (!usuario) return [];
-            
-            // Cargar desde subcollection del usuario
-            const collectionRef = db.collection('usuarios-data').doc(usuario).collection(key);
-            const snapshot = await collectionRef.get();
-            
-            const data = [];
-            snapshot.forEach(doc => {
-                // Ya no necesitamos agregar firebaseId porque el ID del documento es el ID del item
-                data.push(doc.data());
-            });
-            
-            console.log(`✅ Cargados ${data.length} registros de ${key} para usuario: ${usuario}`);
-            return data;
-        } catch (error) {
-            console.error(`❌ Error al cargar ${key} desde Firebase:`, error);
-            console.error('Stack:', error.stack);
-            return [];
+        if (!usuario || !auth.currentUser) {
+            throw new Error('Se requiere una sesión autenticada de Firebase para cargar datos.');
         }
+
+        const collectionRef = db.collection('usuarios-data').doc(usuario).collection(key);
+        const snapshot = await collectionRef.get();
+        const data = snapshot.docs.map(doc => doc.data());
+        this.set(key, data);
+        console.log(`✅ Cargados ${data.length} registros de ${key} desde Firebase`);
+        return data;
     }
     
-    // Método combinado: guardar localmente Y sincronizar con Firebase
     static async saveAndSync(key, data) {
-        // Guardar localmente primero
-        this.set(key, data);
-        console.log(`💾 Guardado localmente: ${key} (${data.length} items)`);
-        
-        // Sincronizar con Firebase si hay usuario activo
-        const usuario = localStorage.getItem('usuario');
-        if (usuario) {
-            const success = await this.syncToFirebase(usuario, key, data);
-            if (!success) {
-                console.warn(`⚠️ No se pudo sincronizar ${key} con Firebase, pero está guardado localmente`);
-            }
-        } else {
-            console.warn(`⚠️ No hay usuario activo, ${key} solo se guardó localmente`);
+        const usuario = usuarioActualFirebase;
+        if (!usuario || !auth.currentUser) {
+            throw new Error('Inicia sesión para guardar cambios en Firebase.');
         }
+        await this.syncToFirebase(usuario, key, data);
     }
 }
 
 // Función para resetear el sistema
-function resetearSistema() {
+async function resetearSistema() {
     if (confirm('⚠️ ADVERTENCIA: Esto eliminará TODOS los datos del sistema (clientes, órdenes, inventario).\n\n¿Estás seguro de continuar?')) {
         if (confirm('Esta acción NO se puede deshacer. ¿Confirmas que deseas borrar todo?')) {
-            Storage.clear();
-            alert('✅ Sistema reseteado. La página se recargará.');
-            location.reload();
+            try {
+                const colecciones = new Set([...Storage.keys(), 'clientes', 'ordenes', 'repuestos', 'tiendas', 'gastos']);
+                await Promise.all(Array.from(colecciones, key => Storage.saveAndSync(key, [])));
+                Storage.clear();
+                alert('✅ Datos eliminados de Firebase. La página se recargará.');
+                location.reload();
+            } catch (error) {
+                console.error('No se pudieron eliminar los datos de Firebase:', error.code || error.message);
+                mostrarNotificacion('No se pudieron eliminar los datos de Firebase.', 'error');
+            }
         }
     }
 }
@@ -1426,7 +1254,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 
 // Función para refrescar todos los datos desde Firebase
 async function refrescarDatos() {
-    const usuario = localStorage.getItem('usuario');
+    const usuario = usuarioActualFirebase;
     if (!usuario) {
         mostrarNotificacion('❌ No hay usuario activo', 'error');
         return;
@@ -2713,8 +2541,7 @@ function cancelarFormRepuesto() {
 
 // Obtener todas las categorías disponibles
 function obtenerCategorias() {
-    const categoriasLocal = JSON.parse(localStorage.getItem('categorias') || '[]');
-    return categoriasLocal.length > 0 ? categoriasLocal : [
+    return categoriasEnMemoria.length > 0 ? categoriasEnMemoria : [
         'Pantallas', 'Baterías', 'Cámaras', 'Conectores', 
         'Altavoces', 'Botones', 'Carcasas', 'Otro'
     ];
@@ -2737,7 +2564,7 @@ function cerrarModalCategoria() {
 }
 
 // Agregar nueva categoría
-function agregarNuevaCategoria() {
+async function agregarNuevaCategoria() {
     const nombreCategoria = document.getElementById('nuevaCategoriaInput').value.trim();
     
     if (!nombreCategoria) {
@@ -2760,7 +2587,16 @@ function agregarNuevaCategoria() {
     
     // Agregar nueva categoría
     categorias.push(nombreCategoria);
-    localStorage.setItem('categorias', JSON.stringify(categorias));
+    try {
+        const usuario = obtenerUsuarioActual();
+        if (!usuario || !auth.currentUser) throw new Error('Inicia sesión para guardar categorías.');
+        await db.collection('configuraciones').doc(usuario).set({ categorias }, { merge: true });
+        categoriasEnMemoria = categorias;
+    } catch (error) {
+        console.error('Error al guardar categoría en Firebase:', error.code || error.message);
+        mostrarNotificacion('No se pudo guardar la categoría en Firebase.', 'error');
+        return;
+    }
     
     // Actualizar los selects de categoría
     actualizarSelectsCategorias();
@@ -3162,7 +2998,7 @@ function generarReportes() {
     let gastosDelPeriodo = 0;
     
     console.log('🔍 Calculando gastos del período...');
-    console.log('Total de gastos en localStorage:', gastos.length);
+    console.log('Total de gastos cargados desde Firebase:', gastos.length);
     console.log('Período filtrado:', fechaInicio.toISOString().split('T')[0], 'a', fechaFin.toISOString().split('T')[0]);
     
     gastos.forEach(gasto => {
@@ -3724,30 +3560,19 @@ async function imprimirFacturaCompleta() {
         return;
     }
     
-    // Guardar el ID localmente ANTES de cerrar el modal
+    // Capturar el ID antes de cerrar el modal.
     const ordenId = ordenIdTemporal;
     cerrarModalSeleccionImpresion();
     
     console.log('✅ ID de orden capturado:', ordenId);
     
     // Intentar cargar datos actualizados desde Firebase (sin sobrescribir si falla)
-    const usuario = firebase.auth().currentUser;
-    if (usuario) {
-        try {
-            const ordenesFirebase = await Storage.loadFromFirebase(usuario.uid, 'ordenes');
-            const clientesFirebase = await Storage.loadFromFirebase(usuario.uid, 'clientes');
-            
-            // Solo actualizar si se cargaron datos
-            if (ordenesFirebase && ordenesFirebase.length > 0) {
-                Storage.set('ordenes', ordenesFirebase);
-            }
-            if (clientesFirebase && clientesFirebase.length > 0) {
-                Storage.set('clientes', clientesFirebase);
-            }
-        } catch (error) {
-            console.warn('⚠️ No se pudieron cargar datos desde Firebase, usando datos locales:', error);
-        }
-    }
+    const usuario = usuarioActualFirebase;
+    if (!usuario || !auth.currentUser) throw new Error('Inicia sesión para consultar órdenes en Firebase.');
+    await Promise.all([
+        Storage.loadFromFirebase(usuario, 'ordenes'),
+        Storage.loadFromFirebase(usuario, 'clientes')
+    ]);
     
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
@@ -3914,30 +3739,19 @@ async function imprimirSoloTicket() {
         return;
     }
     
-    // Guardar el ID localmente ANTES de cerrar el modal
+    // Capturar el ID antes de cerrar el modal.
     const ordenId = ordenIdTemporal;
     cerrarModalSeleccionImpresion();
     
     console.log('✅ ID de orden capturado:', ordenId);
     
     // Intentar cargar datos actualizados desde Firebase (sin sobrescribir si falla)
-    const usuario = firebase.auth().currentUser;
-    if (usuario) {
-        try {
-            const ordenesFirebase = await Storage.loadFromFirebase(usuario.uid, 'ordenes');
-            const clientesFirebase = await Storage.loadFromFirebase(usuario.uid, 'clientes');
-            
-            // Solo actualizar si se cargaron datos
-            if (ordenesFirebase && ordenesFirebase.length > 0) {
-                Storage.set('ordenes', ordenesFirebase);
-            }
-            if (clientesFirebase && clientesFirebase.length > 0) {
-                Storage.set('clientes', clientesFirebase);
-            }
-        } catch (error) {
-            console.warn('⚠️ No se pudieron cargar datos desde Firebase, usando datos locales:', error);
-        }
-    }
+    const usuario = usuarioActualFirebase;
+    if (!usuario || !auth.currentUser) throw new Error('Inicia sesión para consultar órdenes en Firebase.');
+    await Promise.all([
+        Storage.loadFromFirebase(usuario, 'ordenes'),
+        Storage.loadFromFirebase(usuario, 'clientes')
+    ]);
     
     const ordenes = Storage.get('ordenes');
     const clientes = Storage.get('clientes');
@@ -4032,7 +3846,7 @@ function imprimirTicketPequeno(orden, cliente, nombreTaller) {
 // DASHBOARD
 function actualizarDashboard() {
     // Asegurar que los datos más recientes estén cargados
-    const usuario = localStorage.getItem('usuario');
+    const usuario = usuarioActualFirebase;
     if (usuario) {
         // Intentar refrescar datos de Firebase en background (sin bloquear la UI)
         console.log('🔄 Refrescando datos en background...');
@@ -4218,126 +4032,41 @@ function previsualizarLogo(event) {
 // Función para cargar la configuración del taller
 async function cargarConfiguracion() {
     try {
-        console.log('🔧 Iniciando carga de configuración...');
         mostrarInfoLicencia();
-        
         const usuarioActual = obtenerUsuarioActual();
-        if (!usuarioActual) {
-            console.log('⚠️ No hay usuario autenticado');
-            return;
-        }
-        
-        console.log('👤 Usuario actual:', usuarioActual);
+        if (!usuarioActual || !auth.currentUser) throw new Error('No hay una sesión de Firebase activa.');
 
-        // Verificar que los elementos del formulario existan
         const nombreInput = document.getElementById('nombreTaller');
         if (!nombreInput) {
-            console.error('❌ No se encontró el formulario de configuración. Verificando DOM...');
             setTimeout(() => cargarConfiguracion(), 500);
             return;
         }
 
-        // Intentar cargar desde Firebase primero
-        if (typeof db !== 'undefined' && db) {
-            try {
-                console.log('🔍 Intentando cargar desde Firebase...');
-                const docRef = db.collection('configuraciones').doc(usuarioActual);
-                const doc = await docRef.get();
-                
-                if (doc.exists) {
-                    const config = doc.data();
-                    configuracionTallerCache = config;
-                    console.log('📦 Config encontrada en Firebase:', config);
-                    
-                    // Llenar el formulario
-                    document.getElementById('nombreTaller').value = config.nombreTaller || '';
-                    document.getElementById('direccionTaller').value = config.direccionTaller || '';
-                    document.getElementById('telefonoTaller').value = config.telefonoTaller || '';
-                    document.getElementById('emailTaller').value = config.emailTaller || '';
-                    document.getElementById('politicasTaller').value = config.politicasTaller || '';
-                    
-                    // Cargar logo si existe
-                    if (config.logoUrl) {
-                        const preview = document.getElementById('logoPreview');
-                        preview.innerHTML = `<img src="${config.logoUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="Logo">`;
-                        logoBase64Temporal = config.logoUrl;
-                    }
-                    
-                    console.log('✅ Configuración cargada desde Firebase');
-                    mostrarInfoLicencia();
-                    mostrarNotificacion('Configuración cargada correctamente', 'success');
-                    return;
-                }
-            } catch (error) {
-                console.log('⚠️ No se pudo cargar desde Firebase:', error.code);
-                console.log('💡 Trabajando en modo local con localStorage');
-                // Si es error de permisos, mostrar mensaje informativo
-                if (error.code === 'permission-denied') {
-                    console.warn('🔒 Firebase requiere configuración de reglas. Ver FIRESTORE-RULES-CONFIGURACION.txt');
-                    console.info('📝 Por ahora, la configuración se guardará solo localmente');
-                }
-            }
+        const snapshot = await db.collection('configuraciones').doc(usuarioActual).get();
+        const config = snapshot.exists ? snapshot.data() : {};
+        configuracionTallerCache = config;
+        categoriasEnMemoria = Array.isArray(config.categorias) ? config.categorias : categoriasEnMemoria;
+
+        document.getElementById('nombreTaller').value = config.nombreTaller || '';
+        document.getElementById('direccionTaller').value = config.direccionTaller || '';
+        document.getElementById('telefonoTaller').value = config.telefonoTaller || '';
+        document.getElementById('emailTaller').value = config.emailTaller || '';
+        document.getElementById('politicasTaller').value = config.politicasTaller || '';
+
+        if (config.logoUrl) {
+            document.getElementById('logoPreview').innerHTML = `<img src="${config.logoUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="Logo">`;
+            logoBase64Temporal = config.logoUrl;
         }
-        
-        // Cargar desde localStorage como respaldo
-        const configLocal = localStorage.getItem(`configuracion_${usuarioActual}`);
-        if (configLocal) {
-            const config = JSON.parse(configLocal);
-            configuracionTallerCache = config;
-            console.log('📦 Config encontrada en localStorage:', config);
-            
-            document.getElementById('nombreTaller').value = config.nombreTaller || '';
-            document.getElementById('direccionTaller').value = config.direccionTaller || '';
-            document.getElementById('telefonoTaller').value = config.telefonoTaller || '';
-            document.getElementById('emailTaller').value = config.emailTaller || '';
-            document.getElementById('politicasTaller').value = config.politicasTaller || '';
-            
-            if (config.logoUrl) {
-                const preview = document.getElementById('logoPreview');
-                preview.innerHTML = `<img src="${config.logoUrl}" style="width: 100%; height: 100%; object-fit: contain;" alt="Logo">`;
-                logoBase64Temporal = config.logoUrl;
-            }
-            
-            console.log('✅ Configuración cargada desde localStorage');
-            mostrarInfoLicencia();
-        } else {
-            console.log('ℹ️ No hay configuración guardada, formulario vacío');
-            mostrarInfoLicencia();
-        }
+
+        mostrarInfoLicencia();
     } catch (error) {
-        console.error('❌ Error al cargar configuración:', error);
-        mostrarNotificacion('Error al cargar la configuración', 'error');
+        console.error('Error al cargar configuración desde Firebase:', error.code || error.message);
+        mostrarNotificacion('No se pudo cargar la configuración desde Firebase.', 'error');
     }
 }
 
-// Función para obtener el usuario actual
 function obtenerUsuarioActual() {
-    // Primero intentar con Firebase Auth
-    if (typeof auth !== 'undefined' && auth && auth.currentUser) {
-        console.log('👤 Usuario de Firebase Auth:', auth.currentUser.uid);
-        return auth.currentUser.uid;
-    }
-    
-    // Luego con el usuario de localStorage
-    const usuario = localStorage.getItem('usuarioActual');
-    if (usuario) {
-        console.log('👤 Usuario de localStorage:', usuario);
-        return usuario;
-    }
-    
-    // Como último recurso, usar el nombre de usuario del login
-    const sesion = localStorage.getItem('sesionActiva');
-    if (sesion === 'true') {
-        // Buscar el último usuario que inició sesión
-        const ultimoUsuario = localStorage.getItem('ultimoUsuarioLogin');
-        if (ultimoUsuario) {
-            console.log('👤 Último usuario login:', ultimoUsuario);
-            return ultimoUsuario;
-        }
-    }
-    
-    console.warn('⚠️ No se pudo obtener el usuario actual');
-    return null;
+    return auth.currentUser ? usuarioActualFirebase : null;
 }
 
 // Función para guardar la configuración
@@ -4360,6 +4089,7 @@ async function guardarConfiguracion(event) {
         telefonoTaller: document.getElementById('telefonoTaller').value,
         emailTaller: document.getElementById('emailTaller').value,
         politicasTaller: document.getElementById('politicasTaller').value,
+        categorias: categoriasEnMemoria,
         logoUrl: logoBase64Temporal || configuracionTallerCache?.logoUrl || null,
         fechaActualizacion: new Date().toISOString()
     };
@@ -4371,45 +4101,10 @@ async function guardarConfiguracion(event) {
     });
     
     try {
-        let guardadoEnFirebase = false;
-        
-        // Guardar en Firebase
-        console.log('🔥 Verificando Firebase...');
-        console.log('db disponible:', typeof db !== 'undefined' && db);
-        console.log('auth.currentUser:', auth?.currentUser?.uid);
-        
-        if (typeof db !== 'undefined' && db) {
-            try {
-                console.log('📤 Intentando guardar en Firebase colección: configuraciones, documento:', usuarioActual);
-                await db.collection('configuraciones').doc(usuarioActual).set(config, { merge: true });
-                console.log('✅ Configuración guardada exitosamente en Firebase');
-                guardadoEnFirebase = true;
-            } catch (error) {
-                console.error('❌ Error al guardar en Firebase:', error);
-                console.error('Código de error:', error.code);
-                console.error('Mensaje:', error.message);
-                if (error.code === 'permission-denied') {
-                    console.warn('🔒 Firebase requiere configuración de reglas. Ver FIRESTORE-RULES-CONFIGURACION.txt');
-                    console.warn('📋 Reglas sugeridas: allow read, write: if request.auth != null;');
-                }
-                console.info('💾 Guardando solo en localStorage...');
-            }
-        } else {
-            console.warn('⚠️ Firebase no está disponible');
-        }
-        
-        // Guardar en localStorage como respaldo
-        console.log('💾 Guardando en localStorage con clave:', `configuracion_${usuarioActual}`);
-        localStorage.setItem(`configuracion_${usuarioActual}`, JSON.stringify(config));
+        if (!auth.currentUser) throw new Error('No hay una sesión de Firebase activa.');
+        await db.collection('configuraciones').doc(usuarioActual).set(config, { merge: true });
         configuracionTallerCache = config;
-        console.log('✅ Guardado en localStorage completado');
-        
-        const mensajeExito = guardadoEnFirebase 
-            ? '✅ Configuración guardada y sincronizada en la nube'
-            : '✅ Configuración guardada localmente (Firebase no disponible)';
-        
-        console.log('📢 Mensaje de éxito:', mensajeExito);
-        mostrarNotificacion(mensajeExito, 'success');
+        mostrarNotificacion('✅ Configuración guardada en Firebase.', 'success');
         
         // Mostrar mensaje de éxito en el formulario
         const mensaje = document.getElementById('configuracionMensaje');
@@ -4445,29 +4140,10 @@ async function obtenerConfiguracionTaller() {
     const usuarioActual = obtenerUsuarioActual();
     if (!usuarioActual) return null;
     
-    // Intentar cargar desde Firebase
-    if (typeof db !== 'undefined' && db) {
-        try {
-            const docRef = db.collection('configuraciones').doc(usuarioActual);
-            const doc = await docRef.get();
-            
-            if (doc.exists) {
-                configuracionTallerCache = doc.data();
-                return configuracionTallerCache;
-            }
-        } catch (error) {
-            console.log('Error al cargar desde Firebase:', error);
-        }
-    }
-    
-    // Cargar desde localStorage
-    const configLocal = localStorage.getItem(`configuracion_${usuarioActual}`);
-    if (configLocal) {
-        configuracionTallerCache = JSON.parse(configLocal);
-        return configuracionTallerCache;
-    }
-    
-    return null;
+    if (!auth.currentUser) throw new Error('No hay una sesión de Firebase activa.');
+    const doc = await db.collection('configuraciones').doc(usuarioActual).get();
+    configuracionTallerCache = doc.exists ? doc.data() : null;
+    return configuracionTallerCache;
 }
 
 // Función auxiliar para mostrar secciones (usada desde el botón del header)
@@ -5468,36 +5144,28 @@ function verOrdenesTienda(tiendaId) {
 // === SINCRONIZACIÓN EN TIEMPO REAL CON FIREBASE ===
 function inicializarSincronizacionTiendas() {
     try {
-        const usuario = localStorage.getItem('usuarioActual');
-        if (!usuario) return;
+        const usuario = usuarioActualFirebase;
+        if (!usuario || !auth.currentUser) return;
+        if (unsubscribeTiendas) unsubscribeTiendas();
         
-        // Escuchar cambios en la colección de tiendas
-        db.collection('usuarios-data').doc(usuario).collection('tiendas')
-            .onSnapshot((snapshot) => {
+        unsubscribeTiendas = db.collection('usuarios-data').doc(usuario).collection('tiendas')
+            .onSnapshot(snapshot => {
                 const tiendas = [];
                 snapshot.forEach(doc => {
                     tiendas.push(doc.data());
                 });
                 
-                // Si hay cambios, actualizar localStorage
-                if (tiendas.length > 0) {
-                    const tiendas_actual = Storage.get('tiendas') || [];
-                    const tiendas_nuevas = JSON.stringify(tiendas);
-                    const tiendas_actual_str = JSON.stringify(tiendas_actual);
-                    
-                    // Solo actualizar si hay cambios
-                    if (tiendas_nuevas !== tiendas_actual_str) {
-                        localStorage.setItem('tiendas', tiendas_nuevas);
-                        console.log('🔄 Tiendas sincronizadas desde Firebase');
-                        
-                        // Si estamos viendo tiendas, actualizar la vista
-                        if (document.getElementById('tiendas') && document.getElementById('tiendas').style.display !== 'none') {
-                            mostrarTiendas();
-                        }
+                const tiendasActuales = Storage.get('tiendas') || [];
+                if (JSON.stringify(tiendas) !== JSON.stringify(tiendasActuales)) {
+                    Storage.set('tiendas', tiendas);
+                    console.log('🔄 Tiendas actualizadas desde Firebase');
+                    if (document.getElementById('tiendas')?.classList.contains('active')) {
+                        mostrarTiendas();
                     }
                 }
-            }, (error) => {
+            }, error => {
                 console.error('❌ Error al escuchar tiendas:', error);
+                mostrarNotificacion('No se pudieron sincronizar las tiendas desde Firebase.', 'error');
             });
     } catch (error) {
         console.error('❌ Error inicializando sincronización:', error);
@@ -5766,15 +5434,9 @@ function imprimirFactura(ordenId) {
 // Función para obtener órdenes pendientes de pago de una tienda
 async function obtenerOrdenesPendientesTienda(tiendaId) {
     // Sincronizar con Firebase primero para garantizar datos actuales
-    const usuario = localStorage.getItem('usuario');
+    const usuario = usuarioActualFirebase;
     if (usuario) {
-        try {
-            const ordenes = await Storage.loadFromFirebase(usuario, 'ordenes');
-            Storage.set('ordenes', ordenes);
-            console.log('✅ Órdenes sincronizadas desde Firebase');
-        } catch (error) {
-            console.warn('⚠️ No se pudo sincronizar órdenes, usando caché local:', error);
-        }
+        await Storage.loadFromFirebase(usuario, 'ordenes');
     }
     
     const ordenes = Storage.get('ordenes') || [];
@@ -5792,25 +5454,13 @@ async function generarReporteCuentasPorCobrar(tiendaId) {
     mostrarNotificacion('🔄 Sincronizando datos...', 'info');
     
     // Sincronizar tiendas, órdenes y clientes desde Firebase
-    const usuario = localStorage.getItem('usuario');
-    if (usuario) {
-        try {
-            const [tiendas, ordenes, clientes] = await Promise.all([
-                Storage.loadFromFirebase(usuario, 'tiendas'),
-                Storage.loadFromFirebase(usuario, 'ordenes'),
-                Storage.loadFromFirebase(usuario, 'clientes')
-            ]);
-            
-            // Actualizar localStorage con datos actuales
-            Storage.set('tiendas', tiendas);
-            Storage.set('ordenes', ordenes);
-            Storage.set('clientes', clientes);
-            
-            console.log('✅ Datos sincronizados desde Firebase');
-        } catch (error) {
-            console.warn('⚠️ Algunos datos no se pudieron sincronizar, usando caché local:', error);
-        }
-    }
+    const usuario = usuarioActualFirebase;
+    if (!usuario || !auth.currentUser) throw new Error('Inicia sesión para consultar reportes en Firebase.');
+    await Promise.all([
+        Storage.loadFromFirebase(usuario, 'tiendas'),
+        Storage.loadFromFirebase(usuario, 'ordenes'),
+        Storage.loadFromFirebase(usuario, 'clientes')
+    ]);
     
     const tiendas = Storage.get('tiendas') || [];
     const tienda = tiendas.find(t => String(t.id).trim() === String(tiendaId).trim());
@@ -6449,13 +6099,14 @@ window.descargarReportePDF = descargarReportePDF;
 // ===== ESTADÍSTICAS DE MARCAS Y REPARACIONES =====
 let chartMarcasInstance = null;
 let chartReparacionesInstance = null;
+let chartModelosInstance = null;
 
 async function cargarEstadisticas() {
     console.log('📊 Cargando estadísticas...');
     
     try {
         const periodo = document.getElementById('filtroPerioedoStats').value || 'mes';
-        const usuario = localStorage.getItem('usuario');
+        const usuario = usuarioActualFirebase;
         
         if (!usuario) {
             console.error('❌ Usuario no autenticado');
@@ -6480,6 +6131,12 @@ async function cargarEstadisticas() {
         
         // Analizar reparaciones
         const estadisticasReparaciones = analizarReparaciones(ordenesFiltradas);
+
+        // Analizar modelos de equipos
+        const estadisticasModelos = analizarModelos(ordenesFiltradas);
+
+        // Analizar órdenes por cliente, excluyendo el cliente genérico
+        const estadisticasClientes = analizarClientes(ordenesFiltradas, Storage.get('clientes') || []);
         
         // Actualizar resumen
         document.getElementById('totalOrdenesStats').textContent = ordenesFiltradas.length;
@@ -6489,10 +6146,13 @@ async function cargarEstadisticas() {
         // Generar gráficas
         generarGraficaMarcas(estadisticasMarcas);
         generarGraficaReparaciones(estadisticasReparaciones);
+        generarGraficaModelos(estadisticasModelos);
         
         // Llenar tablas
         llenarTablaMarcas(estadisticasMarcas);
         llenarTablaReparaciones(estadisticasReparaciones);
+        llenarTablaModelos(estadisticasModelos);
+        llenarTablaClientes(estadisticasClientes);
         
         console.log('✅ Estadísticas cargadas correctamente');
     } catch (error) {
@@ -6503,31 +6163,38 @@ async function cargarEstadisticas() {
 
 function filtrarOrdenesPorPeriodo(ordenes, periodo) {
     const ahora = new Date();
-    let fechaInicio = new Date();
+    let fechaInicio;
     
     switch(periodo) {
+        case 'semana': {
+            const diasDesdeLunes = (ahora.getDay() + 6) % 7;
+            fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - diasDesdeLunes);
+            break;
+        }
         case 'mes':
-            fechaInicio.setMonth(ahora.getMonth());
-            fechaInicio.setDate(1);
+            fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
             break;
         case '3meses':
-            fechaInicio.setMonth(ahora.getMonth() - 3);
+            fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 3, ahora.getDate());
             break;
         case '6meses':
-            fechaInicio.setMonth(ahora.getMonth() - 6);
+            fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 6, ahora.getDate());
             break;
         case 'ano':
-            fechaInicio.setFullYear(ahora.getFullYear());
-            fechaInicio.setMonth(0);
-            fechaInicio.setDate(1);
+            fechaInicio = new Date(ahora.getFullYear(), 0, 1);
             break;
         default:
             return ordenes;
     }
     
     return ordenes.filter(orden => {
-        const fechaOrden = new Date(orden.fecha || orden.fechaCreacion);
-        return fechaOrden >= fechaInicio;
+        const fechaValor = orden.fechaIngreso || orden.fecha || orden.fechaCreacion;
+        if (!fechaValor) return false;
+
+        const fechaOrden = typeof fechaValor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fechaValor)
+            ? new Date(`${fechaValor}T00:00:00`)
+            : new Date(fechaValor);
+        return !Number.isNaN(fechaOrden.getTime()) && fechaOrden >= fechaInicio;
     });
 }
 
@@ -6579,6 +6246,61 @@ function analizarMarcas(ordenes) {
     return Object.fromEntries(
         Object.entries(marcas).sort(([,a], [,b]) => b - a)
     );
+}
+
+function analizarModelos(ordenes) {
+    const modelos = new Map();
+
+    ordenes.forEach(orden => {
+        const marca = typeof orden.marca === 'string' ? orden.marca.trim() : '';
+        const modelo = typeof orden.modelo === 'string' ? orden.modelo.trim() : '';
+        const nombreModelo = modelo
+            ? [marca, modelo].filter(Boolean).join(' ')
+            : (typeof orden.modeloDispositivo === 'string' ? orden.modeloDispositivo.trim() : '');
+
+        if (!nombreModelo) return;
+
+        const clave = nombreModelo.toLowerCase().replace(/\s+/g, ' ');
+        const existente = modelos.get(clave);
+        if (existente) {
+            existente.cantidad++;
+        } else {
+            modelos.set(clave, { modelo: nombreModelo.replace(/\s+/g, ' '), cantidad: 1 });
+        }
+    });
+
+    return Array.from(modelos.values()).sort((a, b) => b.cantidad - a.cantidad);
+}
+
+function analizarClientes(ordenes, clientes) {
+    const clientesPorId = new Map();
+    const nombreNormalizado = texto => String(texto || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    clientes.forEach(cliente => {
+        const nombre = [cliente.nombre, cliente.apellido].filter(Boolean).join(' ').trim();
+        clientesPorId.set(String(cliente.id), {
+            nombre,
+            esClienteFinal: nombreNormalizado(nombre) === 'cliente final'
+        });
+    });
+
+    const conteoPorId = new Map();
+    ordenes.forEach(orden => {
+        if (orden.clienteId === undefined || orden.clienteId === null) return;
+
+        const cliente = clientesPorId.get(String(orden.clienteId));
+        if (!cliente || cliente.esClienteFinal || !cliente.nombre) return;
+
+        const clave = String(orden.clienteId);
+        const existente = conteoPorId.get(clave);
+        if (existente) {
+            existente.cantidad++;
+        } else {
+            conteoPorId.set(clave, { nombre: cliente.nombre, cantidad: 1 });
+        }
+    });
+
+    return Array.from(conteoPorId.values()).sort((a, b) => b.cantidad - a.cantidad);
 }
 
 function analizarReparaciones(ordenes) {
@@ -6829,6 +6551,51 @@ function generarGraficaReparaciones(reparaciones) {
     });
 }
 
+function generarGraficaModelos(modelos) {
+    const ctx = document.getElementById('chartModelos');
+    if (!ctx) return;
+
+    if (chartModelosInstance) {
+        chartModelosInstance.destroy();
+    }
+
+    const modelosPrincipales = modelos.slice(0, 10);
+    chartModelosInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: modelosPrincipales.map(item => item.modelo),
+            datasets: [{
+                label: 'Órdenes',
+                data: modelosPrincipales.map(item => item.cantidad),
+                backgroundColor: 'rgba(14, 165, 233, 0.8)',
+                borderColor: 'rgb(2, 132, 199)',
+                borderWidth: 1,
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: context => `${context.parsed.x} órdenes`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: { precision: 0 }
+                }
+            }
+        }
+    });
+}
+
 function llenarTablaMarcas(marcas) {
     const tbody = document.getElementById('tablaDetalleMarcas');
     if (!tbody) return;
@@ -6899,6 +6666,82 @@ function llenarTablaReparaciones(reparaciones) {
     });
     
     tbody.innerHTML = html;
+}
+
+function llenarTablaModelos(modelos) {
+    const tbody = document.getElementById('tablaDetalleModelos');
+    if (!tbody) return;
+
+    const total = modelos.reduce((suma, item) => suma + item.cantidad, 0);
+    const escaparHTML = texto => texto.replace(/[&<>"']/g, caracter => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[caracter]);
+
+    if (modelos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">No hay modelos registrados en este período.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = modelos.map((item, index) => {
+        const porcentaje = ((item.cantidad / total) * 100).toFixed(2);
+        const colorFondo = index % 2 === 0 ? '#f8f9fa' : '#fff';
+        const nombre = escaparHTML(item.modelo);
+
+        return `
+            <tr style="background: ${colorFondo}; border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 12px; font-weight: 500;">${nombre}</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600;">${item.cantidad}</td>
+                <td style="padding: 12px; text-align: center; color: #0284c7;">${porcentaje}%</td>
+                <td style="padding: 12px; text-align: center;">
+                    <div style="background: #f0f0f0; height: 20px; border-radius: 10px; overflow: hidden; position: relative;">
+                        <div style="background: linear-gradient(90deg, #0ea5e9, #0284c7); height: 100%; width: ${porcentaje}%;" title="${porcentaje}%"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function llenarTablaClientes(clientes) {
+    const tbody = document.getElementById('tablaDetalleClientesStats');
+    if (!tbody) return;
+
+    const total = clientes.reduce((suma, cliente) => suma + cliente.cantidad, 0);
+    if (clientes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">No hay clientes con órdenes en este período.</td></tr>';
+        return;
+    }
+
+    const escaparHTML = texto => texto.replace(/[&<>"']/g, caracter => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[caracter]);
+
+    tbody.innerHTML = clientes.map((cliente, index) => {
+        const porcentaje = ((cliente.cantidad / total) * 100).toFixed(2);
+        const colorFondo = index % 2 === 0 ? '#f8f9fa' : '#fff';
+        const nombre = escaparHTML(cliente.nombre);
+
+        return `
+            <tr style="background: ${colorFondo}; border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 12px; font-weight: 500;">${nombre}</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600;">${cliente.cantidad}</td>
+                <td style="padding: 12px; text-align: center; color: #11998e;">${porcentaje}%</td>
+                <td style="padding: 12px; text-align: center;">
+                    <div style="background: #f0f0f0; height: 20px; border-radius: 10px; overflow: hidden; position: relative;">
+                        <div style="background: linear-gradient(90deg, #11998e, #38ef7d); height: 100%; width: ${porcentaje}%;" title="${porcentaje}%"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function actualizarEstadisticas() {

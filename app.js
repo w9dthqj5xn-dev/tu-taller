@@ -4078,6 +4078,66 @@ function obtenerUsuarioActual() {
     return auth.currentUser ? usuarioActualFirebase : null;
 }
 
+async function cambiarContrasena(event) {
+    event.preventDefault();
+    const form = document.getElementById('cambiarContrasenaForm');
+    const mensaje = document.getElementById('cambiarContrasenaMensaje');
+    const boton = document.getElementById('cambiarContrasenaButton');
+    const contrasenaActual = document.getElementById('contrasenaActual').value;
+    const nuevaContrasena = document.getElementById('nuevaContrasena').value;
+    const confirmarContrasena = document.getElementById('confirmarContrasena').value;
+    const usuario = auth.currentUser;
+
+    mensaje.style.display = 'none';
+    if (!usuario || !usuario.email) {
+        mostrarResultadoCambioContrasena(mensaje, 'No hay una sesión activa. Inicia sesión de nuevo e inténtalo otra vez.', false);
+        return;
+    }
+    if (nuevaContrasena.length < 6 || nuevaContrasena.length > 128) {
+        mostrarResultadoCambioContrasena(mensaje, 'La nueva contraseña debe tener entre 6 y 128 caracteres.', false);
+        return;
+    }
+    if (nuevaContrasena !== confirmarContrasena) {
+        mostrarResultadoCambioContrasena(mensaje, 'La nueva contraseña y su confirmación no coinciden.', false);
+        return;
+    }
+    if (nuevaContrasena === contrasenaActual) {
+        mostrarResultadoCambioContrasena(mensaje, 'La nueva contraseña debe ser diferente de la actual.', false);
+        return;
+    }
+
+    boton.disabled = true;
+    try {
+        const credential = firebase.auth.EmailAuthProvider.credential(usuario.email, contrasenaActual);
+        await usuario.reauthenticateWithCredential(credential);
+        await usuario.updatePassword(nuevaContrasena);
+        form.reset();
+        mostrarResultadoCambioContrasena(mensaje, 'Contraseña actualizada correctamente. Usa la nueva contraseña la próxima vez que inicies sesión.', true);
+    } catch (error) {
+        console.error('Error al cambiar la contraseña:', error.code || error.message);
+        const texto = error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential'
+            ? 'La contraseña actual no es correcta.'
+            : error.code === 'auth/weak-password'
+                ? 'La nueva contraseña es demasiado débil. Elige otra.'
+                : error.code === 'auth/requires-recent-login'
+                    ? 'Por seguridad, cierra sesión, vuelve a entrar y repite el cambio.'
+                    : error.code === 'auth/network-request-failed'
+                        ? 'No hay conexión con Firebase. Revisa tu conexión e inténtalo de nuevo.'
+                        : 'No se pudo cambiar la contraseña. Inténtalo de nuevo.';
+        mostrarResultadoCambioContrasena(mensaje, texto, false);
+    } finally {
+        boton.disabled = false;
+    }
+}
+
+function mostrarResultadoCambioContrasena(contenedor, texto, exito) {
+    contenedor.textContent = texto;
+    contenedor.style.display = 'block';
+    contenedor.style.background = exito ? '#d4edda' : '#f8d7da';
+    contenedor.style.color = exito ? '#155724' : '#721c24';
+    contenedor.style.border = `1px solid ${exito ? '#c3e6cb' : '#f5c6cb'}`;
+}
+
 // Función para guardar la configuración
 async function guardarConfiguracion(event) {
     if (event) event.preventDefault();
@@ -4402,6 +4462,7 @@ async function eliminarGasto(id) {
 window.previsualizarLogo = previsualizarLogo;
 window.cargarConfiguracion = cargarConfiguracion;
 window.guardarConfiguracion = guardarConfiguracion;
+window.cambiarContrasena = cambiarContrasena;
 window.obtenerConfiguracionTaller = obtenerConfiguracionTaller;
 window.cargarGastos = cargarGastos;
 window.filtrarGastos = filtrarGastos;

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Administrador de Licencias | Tu-Taller</title>
+    <style>
+        :root {
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #172033;
+            background: #f1f5f9;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 18px max(20px, calc((100% - 1180px) / 2));
+            color: white;
+            background: #172554;
+        }
+        header h1 { margin: 0; font-size: 20px; }
+        a { color: #1d4ed8; }
+        main { width: min(1180px, calc(100% - 32px)); margin: 28px auto; }
+        .panel {
+            margin-bottom: 20px;
+            padding: 22px;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            background: white;
+            box-shadow: 0 5px 20px #0f172a0a;
+        }
+        h2 { margin: 0 0 16px; font-size: 19px; }
+        .muted { color: #64748b; }
+        .login { max-width: 430px; margin: 70px auto; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        label { display: grid; gap: 6px; color: #334155; font-size: 14px; font-weight: 600; }
+        input, select, button {
+            min-height: 42px;
+            padding: 9px 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font: inherit;
+        }
+        button { cursor: pointer; font-weight: 650; }
+        button:disabled { cursor: wait; opacity: .65; }
+        .primary { color: white; border-color: #1d4ed8; background: #1d4ed8; }
+        .secondary { color: #1e293b; background: white; }
+        .danger { color: #991b1b; border-color: #fecaca; background: #fff1f2; }
+        .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .notice { display: none; margin: 14px 0; padding: 12px; border-radius: 8px; }
+        .notice.error { display: block; color: #991b1b; background: #fee2e2; }
+        .notice.info { display: block; color: #1e3a8a; background: #dbeafe; }
+        .license-list { display: grid; gap: 12px; }
+        .license-card { padding: 16px; border: 1px solid #e2e8f0; border-radius: 10px; }
+        .license-head { display: flex; justify-content: space-between; gap: 12px; }
+        .license-head h3 { margin: 0 0 8px; }
+        .license-key { overflow-wrap: anywhere; font-family: ui-monospace, monospace; }
+        .badge { display: inline-block; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+        .badge.active { color: #166534; background: #dcfce7; }
+        .badge.suspended { color: #92400e; background: #fef3c7; }
+        .badge.expired { color: #991b1b; background: #fee2e2; }
+        @media (max-width: 640px) {
+            header { align-items: flex-start; flex-direction: column; }
+            .grid { grid-template-columns: 1fr; }
+            .toolbar, .license-head { align-items: flex-start; flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🔑 Administrador de Licencias</h1>
+        <div class="actions">
+            <a href="index.html" style="color:white">Volver al sistema</a>
+            <button id="logoutButton" class="secondary" type="button" hidden>Cerrar sesión</button>
+        </div>
+    </header>
+    <main>
+        <section id="loginPanel" class="panel login">
+            <h2>Acceso de administrador</h2>
+            <p class="muted">Inicia sesión con tu cuenta de Tu-Taller autorizada como administradora.</p>
+            <form id="loginForm" class="grid">
+                <label>Usuario
+                    <input id="username" autocomplete="username" required minlength="4" maxlength="64">
+                </label>
+                <label>Contraseña
+                    <input id="password" type="password" autocomplete="current-password" required minlength="6">
+                </label>
+                <button class="primary" type="submit" style="grid-column:1/-1">Iniciar sesión</button>
+            </form>
+            <div id="loginNotice" class="notice" role="alert"></div>
+        </section>
+
+        <section id="adminPanel" hidden>
+            <div class="panel toolbar">
+                <div>
+                    <h2 style="margin-bottom:4px">Licencias</h2>
+                    <span id="adminIdentity" class="muted"></span>
+                </div>
+                <button id="refreshButton" class="secondary" type="button">Actualizar lista</button>
+            </div>
+
+            <section class="panel">
+                <h2>Crear licencia</h2>
+                <form id="licenseForm" class="grid">
+                    <label>Nombre del cliente
+                        <input id="clientName" required maxlength="120">
+                    </label>
+                    <label>Correo del cliente (opcional)
+                        <input id="clientEmail" type="email" maxlength="254">
+                    </label>
+                    <label>Tipo
+                        <select id="licenseType">
+                            <option value="prueba">Prueba (3 días)</option>
+                            <option value="mensual">Mensual (30 días)</option>
+                            <option value="trimestral">Trimestral (90 días)</option>
+                            <option value="semestral">Semestral (180 días)</option>
+                            <option value="anual">Anual (365 días)</option>
+                            <option value="vitalicia">Vitalicia</option>
+                        </select>
+                    </label>
+                    <label>Dispositivos máximos
+                        <input id="maxDevices" type="number" min="1" max="99" value="1" required>
+                    </label>
+                    <button class="primary" type="submit" style="grid-column:1/-1">Generar y guardar licencia</button>
+                </form>
+                <div id="createdLicense" class="notice info" role="status"></div>
+                <div id="adminNotice" class="notice" role="alert"></div>
+            </section>
+
+            <section class="panel">
+                <h2>Licencias registradas</h2>
+                <div id="licensesList" class="license-list"><p class="muted">Cargando…</p></div>
+            </section>
+        </section>
+    </main>
+
+    <script src="env.js?v=14"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js?v=14"></script>
+    <script>
+        const loginPanel = document.getElementById('loginPanel');
+        const adminPanel = document.getElementById('adminPanel');
+        const loginNotice = document.getElementById('loginNotice');
+        const adminNotice = document.getElementById('adminNotice');
+        const licensesList = document.getElementById('licensesList');
+        const logoutButton = document.getElementById('logoutButton');
+
+        function usernameEmail(username) {
+            const bytes = new TextEncoder().encode(username.trim());
+            return crypto.subtle.digest('SHA-256', bytes).then(hash => {
+                const hex = Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+                return `u.${hex}@auth.tu-taller.invalid`;
+            });
+        }
+
+        function showNotice(element, message, type = 'error') {
+            element.textContent = message;
+            element.className = `notice ${type}`;
+        }
+
+        function clearNotice(element) {
+            element.textContent = '';
+            element.className = 'notice';
+        }
+
+        function dateText(value) {
+            if (!value) return 'Sin vencimiento';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? 'Fecha inválida' : date.toLocaleDateString('es');
+        }
+
+        function expirationFor(type, createdAt) {
+            const days = { prueba: 3, mensual: 30, trimestral: 90, semestral: 180, anual: 365, vitalicia: 0 }[type];
+            if (days === undefined) throw new Error('Tipo de licencia inválido.');
+            if (!days) return null;
+            const expiration = new Date(createdAt);
+            expiration.setDate(expiration.getDate() + days);
+            return expiration.toISOString();
+        }
+
+        function randomSegment(length) {
+            const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            const random = new Uint8Array(length);
+            crypto.getRandomValues(random);
+            return Array.from(random, value => alphabet[value % alphabet.length]).join('');
+        }
+
+        async function uniqueLicenseKey(type) {
+            const prefix = type.slice(0, 3).toUpperCase();
+            for (let attempt = 0; attempt < 5; attempt++) {
+                const key = `TT-${prefix}-${randomSegment(8)}-${randomSegment(6)}-${randomSegment(6)}`;
+                const existing = await db.collection('licencias').where('licenseKey', '==', key).limit(1).get();
+                if (existing.empty) return key;
+            }
+            throw new Error('No se pudo generar una clave única. Intenta nuevamente.');
+        }
+
+        async function requireAdministrator(user) {
+            if (!user) return false;
+            const token = await user.getIdTokenResult(true);
+            if (token.claims.admin !== true) {
+                await auth.signOut();
+                loginPanel.hidden = false;
+                adminPanel.hidden = true;
+                logoutButton.hidden = true;
+                showNotice(loginNotice, 'Esta cuenta todavía no tiene permisos de administrador. Solicita que se habilite el acceso y vuelve a iniciar sesión.');
+                return false;
+            }
+            loginPanel.hidden = true;
+            adminPanel.hidden = false;
+            logoutButton.hidden = false;
+            document.getElementById('adminIdentity').textContent = `Sesión: ${token.claims.username || user.email}`;
+            clearNotice(loginNotice);
+            await loadLicenses();
+            return true;
+        }
+
+        async function loadLicenses() {
+            licensesList.replaceChildren();
+            const loading = document.createElement('p');
+            loading.className = 'muted';
+            loading.textContent = 'Cargando licencias desde Firebase…';
+            licensesList.append(loading);
+            try {
+                const snapshot = await db.collection('licencias').orderBy('fechaCreacion', 'desc').get();
+                licensesList.replaceChildren();
+                if (snapshot.empty) {
+                    const empty = document.createElement('p');
+                    empty.className = 'muted';
+                    empty.textContent = 'Todavía no hay licencias registradas.';
+                    licensesList.append(empty);
+                    return;
+                }
+                snapshot.forEach(doc => licensesList.append(makeLicenseCard(doc.id, doc.data())));
+            } catch (error) {
+                console.error('Error cargando licencias:', error.code || error.message);
+                licensesList.replaceChildren();
+                const message = document.createElement('p');
+                message.className = 'notice error';
+                message.textContent = 'No se pudieron cargar las licencias desde Firebase. Verifica los permisos y la conexión.';
+                licensesList.append(message);
+            }
+        }
+
+        function makeLicenseCard(id, license) {
+            const card = document.createElement('article');
+            card.className = 'license-card';
+            const expired = license.fechaExpiracion && new Date(license.fechaExpiracion) < new Date();
+            const status = license.suspendida ? 'Suspendida' : expired ? 'Expirada' : license.activa === false ? 'Inactiva' : 'Activa';
+            const statusClass = license.suspendida ? 'suspended' : expired || license.activa === false ? 'expired' : 'active';
+
+            const head = document.createElement('div');
+            head.className = 'license-head';
+            const identity = document.createElement('div');
+            const name = document.createElement('h3');
+            name.textContent = license.clientName || 'Cliente';
+            const key = document.createElement('div');
+            key.className = 'license-key muted';
+            key.textContent = license.licenseKey || id;
+            identity.append(name, key);
+            const badge = document.createElement('span');
+            badge.className = `badge ${statusClass}`;
+            badge.textContent = status;
+            head.append(identity, badge);
+
+            const detail = document.createElement('p');
+            detail.className = 'muted';
+            const typeLabel = license.licenseType || 'mensual';
+            detail.textContent = `Tipo: ${typeLabel} · Dispositivos: ${Number(license.maxDevices) || 1} · Vence: ${dateText(license.fechaExpiracion)} · Usuario: ${license.usuarioAsociado || 'Sin asociar'}`;
+
+            const actions = document.createElement('div');
+            actions.className = 'actions';
+            const toggle = document.createElement('button');
+            toggle.className = 'secondary';
+            toggle.type = 'button';
+            toggle.textContent = license.suspendida ? 'Reactivar' : 'Suspender';
+            toggle.addEventListener('click', () => toggleLicense(id, license));
+            actions.append(toggle);
+
+            const copy = document.createElement('button');
+            copy.className = 'secondary';
+            copy.type = 'button';
+            copy.textContent = 'Copiar clave';
+            copy.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(license.licenseKey || id);
+                    showNotice(adminNotice, 'Clave copiada.', 'info');
+                } catch (error) {
+                    console.error('No se pudo copiar la clave:', error);
+                    showNotice(adminNotice, 'No se pudo copiar la clave automáticamente.');
+                }
+            });
+            actions.append(copy);
+            card.append(head, detail, actions);
+            return card;
+        }
+
+        async function toggleLicense(id, license) {
+            const suspending = license.suspendida !== true;
+            const action = suspending ? 'suspender' : 'reactivar';
+            if (!confirm(`¿Deseas ${action} la licencia de ${license.clientName || 'este cliente'}?`)) return;
+            try {
+                await db.collection('licencias').doc(id).update({
+                    suspendida: suspending,
+                    [suspending ? 'fechaSuspension' : 'fechaActivacion']: new Date().toISOString()
+                });
+                clearNotice(adminNotice);
+                await loadLicenses();
+            } catch (error) {
+                console.error('No se pudo actualizar la licencia:', error.code || error.message);
+                showNotice(adminNotice, 'No se pudo actualizar la licencia en Firebase.');
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async event => {
+            event.preventDefault();
+            clearNotice(loginNotice);
+            const button = event.currentTarget.querySelector('button[type="submit"]');
+            button.disabled = true;
+            try {
+                const username = document.getElementById('username').value.trim();
+                const email = await usernameEmail(username);
+                const password = document.getElementById('password').value;
+                const credential = await auth.signInWithEmailAndPassword(email, password);
+                await requireAdministrator(credential.user);
+            } catch (error) {
+                console.error('No se pudo iniciar sesión en administración:', error.code || error.message);
+                showNotice(loginNotice, 'Usuario o contraseña incorrectos, o la cuenta aún no tiene permisos de administrador.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        document.getElementById('licenseForm').addEventListener('submit', async event => {
+            event.preventDefault();
+            clearNotice(adminNotice);
+            const button = event.currentTarget.querySelector('button[type="submit"]');
+            button.disabled = true;
+            try {
+                const clientName = document.getElementById('clientName').value.trim();
+                const clientEmail = document.getElementById('clientEmail').value.trim();
+                const licenseType = document.getElementById('licenseType').value;
+                const maxDevices = Number(document.getElementById('maxDevices').value);
+                if (!clientName || !Number.isInteger(maxDevices) || maxDevices < 1 || maxDevices > 99) {
+                    throw new Error('Revisa el nombre del cliente y el máximo de dispositivos (1–99).');
+                }
+                const now = new Date().toISOString();
+                const licenseKey = await uniqueLicenseKey(licenseType);
+                const license = {
+                    clientName,
+                    clientEmail,
+                    licenseType,
+                    licenseKey,
+                    maxDevices,
+                    fechaCreacion: now,
+                    fechaExpiracion: expirationFor(licenseType, now),
+                    activa: true,
+                    suspendida: false
+                };
+                await db.collection('licencias').add(license);
+                const result = document.getElementById('createdLicense');
+                result.textContent = `Licencia creada: ${licenseKey}. Copia y entrega esta clave al cliente.`;
+                result.className = 'notice info';
+                event.currentTarget.reset();
+                document.getElementById('maxDevices').value = '1';
+                await loadLicenses();
+            } catch (error) {
+                console.error('No se pudo crear la licencia:', error.code || error.message);
+                showNotice(adminNotice, error.message || 'No se pudo guardar la licencia en Firebase.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        document.getElementById('refreshButton').addEventListener('click', loadLicenses);
+        logoutButton.addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+                adminPanel.hidden = true;
+                loginPanel.hidden = false;
+                logoutButton.hidden = true;
+                document.getElementById('loginForm').reset();
+            } catch (error) {
+                console.error('No se pudo cerrar sesión:', error.code || error.message);
+                showNotice(adminNotice, 'No se pudo cerrar la sesión. Intenta nuevamente.');
+            }
+        });
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                requireAdministrator(user).catch(error => {
+                    console.error('No se pudo verificar el permiso administrativo:', error.code || error.message);
+                    showNotice(loginNotice, 'No se pudo verificar el permiso de administrador.');
+                });
+            } else {
+                adminPanel.hidden = true;
+                loginPanel.hidden = false;
+                logoutButton.hidden = true;
+            }
+        });
+    </script>
+</body>
+</html>

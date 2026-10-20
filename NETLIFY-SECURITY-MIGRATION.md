@@ -17,13 +17,19 @@ En el primer inicio de sesión después de habilitar las funciones, el usuario p
 
 ## Conceder acceso de administrador
 
-Después de que la cuenta haya completado su primer inicio de sesión, ejecuta localmente:
+El enlace «Administrador de Licencias» abre `licencias.html` y requiere una cuenta de Firebase Authentication con el claim `admin`. Para conceder permisos a una cuenta de taller ya migrada, ejecuta localmente:
 
 ```sh
 FIREBASE_SERVICE_ACCOUNT='(JSON privado de la cuenta de servicio)' node admin-tools/set-admin.mjs <usuario>
 ```
 
-El usuario administrador debe cerrar sesión y volver a entrar para recibir el nuevo token. No almacenes el JSON de cuenta de servicio en el repositorio, en `env.js` ni en variables que se publiquen al navegador.
+La antigua cuenta `admin_licencias` era una credencial fija del panel anterior, no una cuenta de Firebase. Para crear una cuenta administrativa independiente, descarga una clave de servicio nueva y ejecuta el script desde una terminal interactiva; la contraseña se solicita sin mostrarla:
+
+```sh
+node admin-tools/create-license-admin.mjs admin_licencias /ruta/privada/service-account.json
+```
+
+No reutilices claves de servicio que hayan sido compartidas o expuestas. La cuenta creada inicia sesión en `/licencias.html`, donde puede generar, listar, suspender y reactivar licencias. No almacenes el JSON de cuenta de servicio en el repositorio ni en `env.js`.
 
 ## Importante
 

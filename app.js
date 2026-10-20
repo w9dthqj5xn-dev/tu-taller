@@ -366,7 +366,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         try {
             usuarioAutenticado = (await auth.signInWithEmailAndPassword(emailAuth, password)).user;
         } catch (errorAuth) {
-            if (!['auth/user-not-found', 'auth/invalid-credential'].includes(errorAuth.code)) {
+            if (![
+                'auth/user-not-found',
+                'auth/invalid-credential',
+                'auth/invalid-login-credentials'
+            ].includes(errorAuth.code)) {
                 throw errorAuth;
             }
 

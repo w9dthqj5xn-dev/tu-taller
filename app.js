@@ -1628,15 +1628,25 @@ function claveCatalogoDispositivo(valor) {
     return String(valor || '').trim().toLocaleLowerCase('es');
 }
 
+function valoresUnicosSinDistinguirMayusculas(valores) {
+    const unicos = new Map();
+    valores.forEach(valor => {
+        const limpio = String(valor || '').trim();
+        const clave = claveCatalogoDispositivo(limpio);
+        if (clave && !unicos.has(clave)) unicos.set(clave, limpio);
+    });
+    return [...unicos.values()];
+}
+
 function obtenerMarcasDispositivos() {
     const marcasHistoricas = (Storage.get('ordenes') || [])
         .map(orden => String(orden.marca || '').trim())
         .filter(Boolean);
-    return [...new Set([
+    return valoresUnicosSinDistinguirMayusculas([
         ...MARCAS_DISPOSITIVOS_PREDEFINIDAS,
         ...catalogoDispositivosCuenta.marcas,
         ...marcasHistoricas
-    ])].sort((a, b) => a.localeCompare(b, 'es'));
+    ]).sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 function obtenerModelosDispositivo(marca) {
@@ -1647,7 +1657,7 @@ function obtenerModelosDispositivo(marca) {
         .filter(orden => claveCatalogoDispositivo(orden.marca) === claveMarca)
         .map(orden => String(orden.modelo || '').trim())
         .filter(Boolean);
-    return [...new Set([...modelosGuardados, ...modelosHistoricos])]
+    return valoresUnicosSinDistinguirMayusculas([...modelosGuardados, ...modelosHistoricos])
         .sort((a, b) => a.localeCompare(b, 'es'));
 }
 
@@ -1659,21 +1669,11 @@ function crearOpcionDatalist(valor) {
 
 function actualizarChecklistMarcas() {
     const marcas = obtenerMarcasDispositivos();
-    const contenedor = document.getElementById('ordenMarcasChecklist');
     const datalist = document.getElementById('ordenMarcasSugeridas');
-    if (!contenedor || !datalist) return;
+    if (!datalist) return;
 
-    contenedor.replaceChildren();
     datalist.replaceChildren();
-    const marcaActual = claveCatalogoDispositivo(document.getElementById('ordenMarca').value);
     marcas.forEach(marca => {
-        const boton = document.createElement('button');
-        boton.type = 'button';
-        boton.className = claveCatalogoDispositivo(marca) === marcaActual ? 'btn-primary' : 'btn-secondary';
-        boton.textContent = marca;
-        boton.setAttribute('aria-pressed', String(claveCatalogoDispositivo(marca) === marcaActual));
-        boton.addEventListener('click', () => seleccionarMarcaEquipo(marca));
-        contenedor.appendChild(boton);
         datalist.appendChild(crearOpcionDatalist(marca));
     });
     actualizarChecklistModelos();
@@ -1702,25 +1702,12 @@ function actualizarModelosOrden() {
 
 function actualizarChecklistModelos() {
     const campoMarca = document.getElementById('ordenMarca');
-    const contenedor = document.getElementById('ordenModelosChecklist');
     const datalist = document.getElementById('ordenModelosSugeridos');
     const modelos = obtenerModelosDispositivo(campoMarca.value);
-    if (!contenedor || !datalist) return;
+    if (!datalist) return;
 
-    contenedor.replaceChildren();
     datalist.replaceChildren();
-    const modeloActual = claveCatalogoDispositivo(document.getElementById('ordenModelo').value);
     modelos.forEach(modelo => {
-        const boton = document.createElement('button');
-        boton.type = 'button';
-        boton.className = claveCatalogoDispositivo(modelo) === modeloActual ? 'btn-primary' : 'btn-secondary';
-        boton.textContent = modelo;
-        boton.setAttribute('aria-pressed', String(claveCatalogoDispositivo(modelo) === modeloActual));
-        boton.addEventListener('click', () => {
-            document.getElementById('ordenModelo').value = modelo;
-            actualizarChecklistModelos();
-        });
-        contenedor.appendChild(boton);
         datalist.appendChild(crearOpcionDatalist(modelo));
     });
 }
@@ -1736,16 +1723,18 @@ async function cargarCatalogoDispositivos() {
     const modelosPorMarca = catalogo?.modelosPorMarca && typeof catalogo.modelosPorMarca === 'object'
         ? catalogo.modelosPorMarca
         : {};
+    const modelosNormalizados = {};
+    Object.entries(modelosPorMarca).forEach(([marca, modelos]) => {
+        const claveMarca = claveCatalogoDispositivo(marca);
+        if (!claveMarca || !Array.isArray(modelos)) return;
+        modelosNormalizados[claveMarca] = valoresUnicosSinDistinguirMayusculas([
+            ...(modelosNormalizados[claveMarca] || []),
+            ...modelos
+        ]);
+    });
     catalogoDispositivosCuenta = {
-        marcas: [...new Set(marcas.filter(marca => typeof marca === 'string' && marca.trim()).map(marca => marca.trim()))],
-        modelosPorMarca: Object.fromEntries(
-            Object.entries(modelosPorMarca).map(([marca, modelos]) => [
-                claveCatalogoDispositivo(marca),
-                Array.isArray(modelos)
-                    ? [...new Set(modelos.filter(modelo => typeof modelo === 'string' && modelo.trim()).map(modelo => modelo.trim()))]
-                    : []
-            ])
-        )
+        marcas: valoresUnicosSinDistinguirMayusculas(marcas.filter(marca => typeof marca === 'string')),
+        modelosPorMarca: modelosNormalizados
     };
     actualizarChecklistMarcas();
 }

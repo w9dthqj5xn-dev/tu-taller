@@ -580,14 +580,12 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label style="font-weight: 600;">Marca *</label>
-                                <div id="ordenMarcasChecklist" role="group" aria-label="Marcas frecuentes" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px;"></div>
-                                <input type="text" id="ordenMarca" required list="ordenMarcasSugeridas" placeholder="Selecciona una marca o escribe otra" autocomplete="off" oninput="actualizarModelosOrden()" onchange="guardarMarcaCatalogo()" onblur="guardarMarcaCatalogo()" style="width: 100%; padding: 10px;">
+                                <input type="text" id="ordenMarca" required list="ordenMarcasSugeridas" placeholder="Escribe o selecciona una marca" autocomplete="off" oninput="actualizarModelosOrden()" onchange="guardarMarcaCatalogo()" onblur="guardarMarcaCatalogo()" style="width: 100%; padding: 10px;">
                                 <datalist id="ordenMarcasSugeridas"></datalist>
                             </div>
                             <div class="form-group">
                                 <label style="font-weight: 600;">Modelo *</label>
-                                <div id="ordenModelosChecklist" role="group" aria-label="Modelos frecuentes de la marca" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px;"></div>
-                                <input type="text" id="ordenModelo" required list="ordenModelosSugeridos" placeholder="Selecciona un modelo o escribe otro" autocomplete="off" oninput="actualizarChecklistModelos()" onchange="guardarModeloCatalogo()" onblur="guardarModeloCatalogo()" style="width: 100%; padding: 10px;">
+                                <input type="text" id="ordenModelo" required list="ordenModelosSugeridos" placeholder="Escribe o selecciona un modelo" autocomplete="off" oninput="actualizarChecklistModelos()" onchange="guardarModeloCatalogo()" onblur="guardarModeloCatalogo()" style="width: 100%; padding: 10px;">
                                 <datalist id="ordenModelosSugeridos"></datalist>
                             </div>
                         </div>
@@ -1529,7 +1527,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="firebase-config.js?v=14"></script>
-    <script src="app.js?v=17"></script>
+    <script src="app.js?v=18"></script>
 
     <!-- Scripts de Sidebar Colapsable -->
     <script>

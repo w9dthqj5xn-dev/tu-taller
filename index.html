@@ -579,12 +579,16 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Marca *</label>
-                                <input type="text" id="ordenMarca" required>
+                                <label style="font-weight: 600;">Marca *</label>
+                                <div id="ordenMarcasChecklist" role="group" aria-label="Marcas frecuentes" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px;"></div>
+                                <input type="text" id="ordenMarca" required list="ordenMarcasSugeridas" placeholder="Selecciona una marca o escribe otra" autocomplete="off" oninput="actualizarModelosOrden()" onchange="guardarMarcaCatalogo()" onblur="guardarMarcaCatalogo()" style="width: 100%; padding: 10px;">
+                                <datalist id="ordenMarcasSugeridas"></datalist>
                             </div>
                             <div class="form-group">
-                                <label>Modelo *</label>
-                                <input type="text" id="ordenModelo" required>
+                                <label style="font-weight: 600;">Modelo *</label>
+                                <div id="ordenModelosChecklist" role="group" aria-label="Modelos frecuentes de la marca" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px;"></div>
+                                <input type="text" id="ordenModelo" required list="ordenModelosSugeridos" placeholder="Selecciona un modelo o escribe otro" autocomplete="off" oninput="actualizarChecklistModelos()" onchange="guardarModeloCatalogo()" onblur="guardarModeloCatalogo()" style="width: 100%; padding: 10px;">
+                                <datalist id="ordenModelosSugeridos"></datalist>
                             </div>
                         </div>
                         <div class="form-group">
@@ -605,8 +609,8 @@
                             <div id="ordenChecklistProblemaItems" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px;"></div>
                         </div>
                         <div class="form-group">
-                            <label for="ordenProblema">Detalles adicionales del problema *</label>
-                            <textarea id="ordenProblema" rows="3" required placeholder="Describe cualquier detalle adicional que explique el problema reportado."></textarea>
+                            <label for="ordenProblema">Detalles adicionales del problema <span id="ordenProblemaObligatorio">*</span></label>
+                            <textarea id="ordenProblema" rows="3" placeholder="Opcional si seleccionas un tipo de servicio."></textarea>
                         </div>
                         <div class="form-group">
                             <label>Accesorios Incluidos</label>
@@ -1525,7 +1529,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="firebase-config.js?v=14"></script>
-    <script src="app.js?v=16"></script>
+    <script src="app.js?v=17"></script>
 
     <!-- Scripts de Sidebar Colapsable -->
     <script>

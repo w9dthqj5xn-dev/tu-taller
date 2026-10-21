@@ -746,6 +746,7 @@ async function cerrarSesion(confirmar = true) {
     licenciaTemporalEnMemoria = null;
     categoriasEnMemoria = [];
     configuracionTallerCache = null;
+    catalogoDispositivosCuenta = { marcas: [], modelosPorMarca: {} };
     window.usuarioSesionActiva = null;
     if (unsubscribeTiendas) {
         unsubscribeTiendas();
@@ -1552,6 +1553,21 @@ function verHistorialCliente(id) {
 // ÓRDENES
 let repuestosOrdenTemp = [];
 let tipoServicioOrdenActual = null;
+let marcaAnteriorEnFormulario = '';
+let catalogoDispositivosCuenta = { marcas: [], modelosPorMarca: {} };
+let guardadoCatalogoDispositivos = Promise.resolve();
+
+const MARCAS_DISPOSITIVOS_PREDEFINIDAS = [
+    'Apple',
+    'Samsung',
+    'Motorola',
+    'LG',
+    'Huawei',
+    'Tecno',
+    'Infinix',
+    'Google',
+    'T-Mobile'
+];
 
 const TIPOS_SERVICIO_ORDEN = {
     reparacion: {
@@ -1608,11 +1624,205 @@ function escaparHtml(texto) {
     })[caracter]);
 }
 
+function claveCatalogoDispositivo(valor) {
+    return String(valor || '').trim().toLocaleLowerCase('es');
+}
+
+function obtenerMarcasDispositivos() {
+    const marcasHistoricas = (Storage.get('ordenes') || [])
+        .map(orden => String(orden.marca || '').trim())
+        .filter(Boolean);
+    return [...new Set([
+        ...MARCAS_DISPOSITIVOS_PREDEFINIDAS,
+        ...catalogoDispositivosCuenta.marcas,
+        ...marcasHistoricas
+    ])].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+function obtenerModelosDispositivo(marca) {
+    const claveMarca = claveCatalogoDispositivo(marca);
+    if (!claveMarca) return [];
+    const modelosGuardados = catalogoDispositivosCuenta.modelosPorMarca[claveMarca] || [];
+    const modelosHistoricos = (Storage.get('ordenes') || [])
+        .filter(orden => claveCatalogoDispositivo(orden.marca) === claveMarca)
+        .map(orden => String(orden.modelo || '').trim())
+        .filter(Boolean);
+    return [...new Set([...modelosGuardados, ...modelosHistoricos])]
+        .sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+function crearOpcionDatalist(valor) {
+    const opcion = document.createElement('option');
+    opcion.value = valor;
+    return opcion;
+}
+
+function actualizarChecklistMarcas() {
+    const marcas = obtenerMarcasDispositivos();
+    const contenedor = document.getElementById('ordenMarcasChecklist');
+    const datalist = document.getElementById('ordenMarcasSugeridas');
+    if (!contenedor || !datalist) return;
+
+    contenedor.replaceChildren();
+    datalist.replaceChildren();
+    const marcaActual = claveCatalogoDispositivo(document.getElementById('ordenMarca').value);
+    marcas.forEach(marca => {
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = claveCatalogoDispositivo(marca) === marcaActual ? 'btn-primary' : 'btn-secondary';
+        boton.textContent = marca;
+        boton.setAttribute('aria-pressed', String(claveCatalogoDispositivo(marca) === marcaActual));
+        boton.addEventListener('click', () => seleccionarMarcaEquipo(marca));
+        contenedor.appendChild(boton);
+        datalist.appendChild(crearOpcionDatalist(marca));
+    });
+    actualizarChecklistModelos();
+}
+
+function seleccionarMarcaEquipo(marca) {
+    const campoMarca = document.getElementById('ordenMarca');
+    const campoModelo = document.getElementById('ordenModelo');
+    if (claveCatalogoDispositivo(campoMarca.value) !== claveCatalogoDispositivo(marca)) {
+        campoModelo.value = '';
+    }
+    campoMarca.value = marca;
+    marcaAnteriorEnFormulario = claveCatalogoDispositivo(marca);
+    actualizarChecklistMarcas();
+    guardarMarcaCatalogo();
+}
+
+function actualizarModelosOrden() {
+    const marcaActual = claveCatalogoDispositivo(document.getElementById('ordenMarca').value);
+    if (marcaAnteriorEnFormulario && marcaActual !== marcaAnteriorEnFormulario) {
+        document.getElementById('ordenModelo').value = '';
+    }
+    marcaAnteriorEnFormulario = marcaActual;
+    actualizarChecklistMarcas();
+}
+
+function actualizarChecklistModelos() {
+    const campoMarca = document.getElementById('ordenMarca');
+    const contenedor = document.getElementById('ordenModelosChecklist');
+    const datalist = document.getElementById('ordenModelosSugeridos');
+    const modelos = obtenerModelosDispositivo(campoMarca.value);
+    if (!contenedor || !datalist) return;
+
+    contenedor.replaceChildren();
+    datalist.replaceChildren();
+    const modeloActual = claveCatalogoDispositivo(document.getElementById('ordenModelo').value);
+    modelos.forEach(modelo => {
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = claveCatalogoDispositivo(modelo) === modeloActual ? 'btn-primary' : 'btn-secondary';
+        boton.textContent = modelo;
+        boton.setAttribute('aria-pressed', String(claveCatalogoDispositivo(modelo) === modeloActual));
+        boton.addEventListener('click', () => {
+            document.getElementById('ordenModelo').value = modelo;
+            actualizarChecklistModelos();
+        });
+        contenedor.appendChild(boton);
+        datalist.appendChild(crearOpcionDatalist(modelo));
+    });
+}
+
+async function cargarCatalogoDispositivos() {
+    const usuario = obtenerUsuarioActual();
+    if (!usuario) return;
+
+    catalogoDispositivosCuenta = { marcas: [], modelosPorMarca: {} };
+    const config = await obtenerConfiguracionTaller();
+    const catalogo = config?.catalogoDispositivos;
+    const marcas = Array.isArray(catalogo?.marcas) ? catalogo.marcas : [];
+    const modelosPorMarca = catalogo?.modelosPorMarca && typeof catalogo.modelosPorMarca === 'object'
+        ? catalogo.modelosPorMarca
+        : {};
+    catalogoDispositivosCuenta = {
+        marcas: [...new Set(marcas.filter(marca => typeof marca === 'string' && marca.trim()).map(marca => marca.trim()))],
+        modelosPorMarca: Object.fromEntries(
+            Object.entries(modelosPorMarca).map(([marca, modelos]) => [
+                claveCatalogoDispositivo(marca),
+                Array.isArray(modelos)
+                    ? [...new Set(modelos.filter(modelo => typeof modelo === 'string' && modelo.trim()).map(modelo => modelo.trim()))]
+                    : []
+            ])
+        )
+    };
+    actualizarChecklistMarcas();
+}
+
+function agregarMarcaAlCatalogo(marca) {
+    const marcaLimpia = String(marca || '').trim();
+    if (!marcaLimpia) return false;
+    const existe = obtenerMarcasDispositivos().some(item => claveCatalogoDispositivo(item) === claveCatalogoDispositivo(marcaLimpia));
+    if (!existe) catalogoDispositivosCuenta.marcas.push(marcaLimpia);
+    return !existe;
+}
+
+async function guardarCatalogoDispositivosEnCuenta() {
+    const usuario = obtenerUsuarioActual();
+    if (!usuario) throw new Error('Inicia sesión para guardar las marcas y modelos de tu cuenta.');
+
+    guardadoCatalogoDispositivos = guardadoCatalogoDispositivos.catch(() => {}).then(async () => {
+        if (obtenerUsuarioActual() !== usuario) {
+            throw new Error('La sesión cambió antes de guardar el catálogo. Inténtalo de nuevo.');
+        }
+
+        const catalogoDispositivos = {
+            marcas: catalogoDispositivosCuenta.marcas,
+            modelosPorMarca: catalogoDispositivosCuenta.modelosPorMarca
+        };
+        await db.collection('configuraciones').doc(usuario).set({ catalogoDispositivos }, { merge: true });
+        if (obtenerUsuarioActual() === usuario) {
+            configuracionTallerCache = { ...(configuracionTallerCache || {}), catalogoDispositivos };
+        }
+    });
+    return guardadoCatalogoDispositivos;
+}
+
+async function guardarMarcaCatalogo() {
+    const marca = document.getElementById('ordenMarca').value.trim();
+    if (!marca || !agregarMarcaAlCatalogo(marca)) return;
+    actualizarChecklistMarcas();
+    try {
+        await guardarCatalogoDispositivosEnCuenta();
+    } catch (error) {
+        console.error('Error al guardar la marca del dispositivo:', error.code || error.message);
+        mostrarNotificacion('No se pudo guardar la marca en tu catálogo. Inténtalo de nuevo.', 'error');
+    }
+}
+
+async function guardarModeloCatalogo() {
+    const marca = document.getElementById('ordenMarca').value.trim();
+    const modelo = document.getElementById('ordenModelo').value.trim();
+    if (!marca || !modelo) return;
+
+    const cambioMarca = agregarMarcaAlCatalogo(marca);
+    const claveMarca = claveCatalogoDispositivo(marca);
+    const modelos = catalogoDispositivosCuenta.modelosPorMarca[claveMarca] || [];
+    const existe = modelos.some(item => claveCatalogoDispositivo(item) === claveCatalogoDispositivo(modelo));
+    if (!existe) catalogoDispositivosCuenta.modelosPorMarca[claveMarca] = [...modelos, modelo];
+    if (!cambioMarca && existe) return;
+
+    actualizarChecklistMarcas();
+    try {
+        await guardarCatalogoDispositivosEnCuenta();
+    } catch (error) {
+        console.error('Error al guardar el modelo del dispositivo:', error.code || error.message);
+        mostrarNotificacion('No se pudo guardar el modelo en tu catálogo. Inténtalo de nuevo.', 'error');
+    }
+}
+
 function seleccionarTipoServicio(tipo, seleccionados = [], otroDetalle = '') {
     if (!TIPOS_SERVICIO_ORDEN[tipo]) return;
     if (tipoServicioOrdenActual === tipo && seleccionados.length === 0 && !otroDetalle) return;
 
     tipoServicioOrdenActual = tipo;
+    const campoDetalles = document.getElementById('ordenProblema');
+    const indicadorObligatorio = document.getElementById('ordenProblemaObligatorio');
+    campoDetalles.required = false;
+    campoDetalles.placeholder = 'Opcional: agrega cualquier detalle adicional.';
+    indicadorObligatorio.textContent = '(opcional)';
+    indicadorObligatorio.style.color = '#666';
     document.querySelectorAll('[data-tipo-servicio]').forEach(boton => {
         const seleccionado = boton.dataset.tipoServicio === tipo;
         boton.classList.toggle('btn-primary', seleccionado);
@@ -1656,6 +1866,12 @@ function seleccionarTipoServicio(tipo, seleccionados = [], otroDetalle = '') {
 
 function limpiarTipoServicio() {
     tipoServicioOrdenActual = null;
+    const campoDetalles = document.getElementById('ordenProblema');
+    const indicadorObligatorio = document.getElementById('ordenProblemaObligatorio');
+    campoDetalles.required = true;
+    campoDetalles.placeholder = 'Describe el problema reportado o selecciona un tipo de servicio.';
+    indicadorObligatorio.textContent = '*';
+    indicadorObligatorio.style.color = '';
     document.querySelectorAll('[data-tipo-servicio]').forEach(boton => {
         boton.classList.remove('btn-primary');
         boton.classList.add('btn-secondary');
@@ -1821,6 +2037,12 @@ function mostrarFormOrden() {
     document.getElementById('formOrden').style.display = 'block';
     document.getElementById('ordenForm').reset();
     limpiarTipoServicio();
+    marcaAnteriorEnFormulario = '';
+    actualizarChecklistMarcas();
+    cargarCatalogoDispositivos().catch(error => {
+        console.error('Error al cargar el catálogo de marcas y modelos:', error.code || error.message);
+        mostrarNotificacion('No se pudo cargar el catálogo guardado de marcas y modelos.', 'error');
+    });
     document.getElementById('ordenId').value = '';
     
     // Limpiar el input de búsqueda de cliente si existe
@@ -2172,7 +2394,7 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
         document.getElementById('ordenTipoServicioSelector').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
     }
-    if (!detallesProblema) {
+    if (!detallesProblema && !tipoServicio) {
         document.getElementById('ordenProblema').setCustomValidity('Escribe los detalles adicionales del problema.');
         document.getElementById('ordenProblema').reportValidity();
         document.getElementById('ordenProblema').setCustomValidity('');
@@ -2187,16 +2409,15 @@ document.getElementById('ordenForm').addEventListener('submit', async (e) => {
             document.getElementById('ordenProblemaOtro')?.focus();
             return;
         }
-        if (resultadoChecklist.seleccionados.length === 0) {
-            alert('Selecciona al menos un problema del checklist.');
-            document.getElementById('ordenChecklistProblema').scrollIntoView({ behavior: 'smooth', block: 'center' });
-            return;
-        }
         problemasChecklist = resultadoChecklist.seleccionados;
     }
     const tipoServicioNombre = TIPOS_SERVICIO_ORDEN[tipoServicio]?.nombre || tipoServicio;
-    const problema = tipoServicioOrdenActual
-        ? `Tipo de servicio: ${tipoServicioNombre}\nProblemas seleccionados: ${problemasChecklist.join(', ')}\nDetalles adicionales: ${detallesProblema}`
+    const problema = tipoServicio
+        ? [
+            `Tipo de servicio: ${tipoServicioNombre}`,
+            problemasChecklist.length ? `Problemas seleccionados: ${problemasChecklist.join(', ')}` : '',
+            detallesProblema ? `Detalles adicionales: ${detallesProblema}` : ''
+        ].filter(Boolean).join('\n')
         : detallesProblema;
     
     const tieneGarantia = document.querySelector('input[name="tipoGarantia"]:checked').value === 'con';
@@ -2411,6 +2632,12 @@ function editarOrden(id) {
     document.getElementById('ordenTipoDispositivo').value = orden.tipoDispositivo;
     document.getElementById('ordenMarca').value = orden.marca;
     document.getElementById('ordenModelo').value = orden.modelo;
+    marcaAnteriorEnFormulario = claveCatalogoDispositivo(orden.marca);
+    actualizarChecklistMarcas();
+    cargarCatalogoDispositivos().catch(error => {
+        console.error('Error al cargar el catálogo de marcas y modelos:', error.code || error.message);
+        mostrarNotificacion('No se pudo cargar el catálogo guardado de marcas y modelos.', 'error');
+    });
     document.getElementById('ordenIMEI').value = orden.imei;
     document.getElementById('ordenProblema').value = orden.problemaDetalle ?? orden.problema;
     limpiarTipoServicio();
@@ -4128,6 +4355,10 @@ window.cancelarFormCliente = cancelarFormCliente;
 window.mostrarFormOrden = mostrarFormOrden;
 window.cancelarFormOrden = cancelarFormOrden;
 window.seleccionarTipoServicio = seleccionarTipoServicio;
+window.seleccionarMarcaEquipo = seleccionarMarcaEquipo;
+window.actualizarModelosOrden = actualizarModelosOrden;
+window.guardarMarcaCatalogo = guardarMarcaCatalogo;
+window.guardarModeloCatalogo = guardarModeloCatalogo;
 window.mostrarFormClienteRapido = mostrarFormClienteRapido;
 window.cancelarClienteRapido = cancelarClienteRapido;
 window.guardarClienteRapido = guardarClienteRapido;
